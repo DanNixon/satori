@@ -66,8 +66,11 @@ async fn main() -> Result<(), ()> {
                         error!("MQTT channel error: {}", err);
                     }
                 }
+                // Immediately process events
+                events.process(&camera_client, &mqtt_client, mqtt_control_topic).await;
             }
             _ = process_interval.tick() => {
+                debug!("Processing events at interval");
                 events.process(&camera_client, &mqtt_client, mqtt_control_topic).await;
             }
         }

@@ -7,7 +7,7 @@ use crate::config::Config;
 use clap::Parser;
 use satori_common::camera_config::CamerasConfig;
 use std::{net::SocketAddr, path::PathBuf};
-use tracing::info;
+use tracing::{debug, info};
 
 /// Run the event processor.
 #[derive(Clone, Parser)]
@@ -64,8 +64,11 @@ async fn main() -> Result<(), ()> {
             }
             Ok(mqtt_channel_client::Event::Rx(msg)) = mqtt_rx.recv() => {
                 queue.handle_mqtt_message(msg);
+                // Immediately process the queue
+                queue.process(&context).await;
             }
             _ = queue_process_interval.tick() => {
+                debug!("Processing queue at interval");
                 queue.process(&context).await;
             }
         }
