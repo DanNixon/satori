@@ -13,6 +13,7 @@ FROM docker.io/library/debian:bullseye-slim
 
 RUN apt-get update && \
     apt-get install --yes \
+      ca-certificates \
       tini
 
 COPY --from=builder \
