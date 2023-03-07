@@ -1,0 +1,100 @@
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+jobs:
+  formatting-and-quality:
+    name: Formatting and Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup
+        run: rustup component add clippy rustfmt
+
+      - name: Format
+        run: cargo fmt -- --check
+
+      - name: Clippy
+        run: cargo clippy -- -Dwarnings
+
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: cargo build --all-targets
+
+      - name: Start MinIO
+        run: |
+          podman run \
+            -d \
+            -p 9000:9000 \
+            -e "MINIO_ACCESS_KEY=minioadmin" \
+            -e "MINIO_SECRET_KEY=minioadmin" \
+            minio/minio \
+            server /data
+
+      - name: Test
+        env:
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+        run: cargo test --all-targets
+
+  container-image:
+    name: Build and push container image
+    if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
+    needs:
+      - build-and-test
+      - formatting-and-quality
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        component:
+          - agent
+          - archiver
+          - ctl
+          - event-processor
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Derive tags
+        run: |
+          echo 'tags<<EOF' >> $GITHUB_ENV
+          if [[ "${{ github.ref_type }}" == 'tag' ]]; then
+            echo "latest ${{ github.ref_name }} ${{ github.sha }}" >> $GITHUB_ENV
+          else
+            echo "${{ github.ref_name }} ${{ github.sha }}" >> $GITHUB_ENV
+          fi
+          echo 'EOF' >> $GITHUB_ENV
+
+      - name: Build container image
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: "satori-${{ matrix.component }}"
+          tags: "${{ env.tags }}"
+          containerfiles: "${{ matrix.component }}/Containerfile"
+          oci: true
+
+      - name: Push image to GHCR
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: ghcr.io/dannixon
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}

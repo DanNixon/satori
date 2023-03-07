@@ -1,0 +1,22 @@
+FROM docker.io/library/rust:bullseye as builder
+
+RUN apt-get update && \
+    apt-get install --yes \
+      cmake
+
+COPY . .
+RUN cd ctl && cargo install \
+      --path . \
+      --root /usr/local
+
+FROM docker.io/library/debian:bullseye-slim
+
+RUN apt-get update && \
+    apt-get install --yes \
+      tini
+
+COPY --from=builder \
+  /usr/local/bin/satorictl \
+  /usr/local/bin/satorictl
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/satorictl"]

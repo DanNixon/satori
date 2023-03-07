@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Live View</title>
+    <style>
+      div video {
+        position: absolute;
+        z-index: -1;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    </style>
+  </head>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <body>
+    <div>
+      <video id="video" controls="true"></video>
+      <script>
+        var video = document.getElementById('video');
+        var videoSrc = 'stream.m3u8';
+        if (Hls.isSupported()) {
+          var hls = new Hls(startPosition=0, worker=true);
+          hls.loadSource(videoSrc);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            video.play();
+          });
+        }
+        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = videoSrc;
+          video.addEventListener('loadedmetadata', function() {
+            video.play();
+          });
+        }
+      </script>
+    </div>
+  </body>
+</html>

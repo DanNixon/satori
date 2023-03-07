@@ -1,0 +1,17 @@
+[package]
+name = "satori-common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { version = "0.4.23", features = ["serde"] }
+mqtt-channel-client = { version = "0.4", features = ["metrics"] }
+paho-mqtt = "0.11"
+regex = "1.7.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.91"
+serde_with = "2.1"
+thiserror = "1.0.38"
+toml = "0.7"
+tracing = "0.1"
+url = { version = "2.3", features = ["serde"] }

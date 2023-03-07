@@ -1,0 +1,29 @@
+FROM docker.io/library/rust:bullseye as builder
+
+RUN apt-get update && \
+    apt-get install --yes \
+      cmake
+
+COPY . .
+RUN cd agent && cargo install \
+      --path . \
+      --root /usr/local
+
+FROM docker.io/library/debian:testing-slim
+
+RUN apt-get update && \
+    apt-get install --yes \
+      ffmpeg \
+      tini
+
+COPY --from=builder \
+  /usr/local/bin/satori-agent \
+  /usr/local/bin/satori-agent
+
+ENV OBSERVABILITY_ADDRESS "0.0.0.0:9090"
+EXPOSE 9090
+
+ENV HTTP_SERVER_ADDRESS "0.0.0.0:8000"
+EXPOSE 8000
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/satori-agent"]

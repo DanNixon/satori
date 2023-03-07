@@ -1,0 +1,57 @@
+use super::{CliExecute, CliResult};
+use async_trait::async_trait;
+use clap::Parser;
+use satori_common::{mqtt::MqttConfig, Message};
+use std::{path::PathBuf, time::Duration};
+
+/// Manually send a trigger command.
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct TriggerCommand {
+    /// Path to MQTT configuration.
+    #[arg(long)]
+    mqtt: PathBuf,
+
+    /// String used to uniquely identify different distinct trigger scenarios.
+    #[arg(long)]
+    id: String,
+
+    /// Name of the cameras that are affected by the trigger.
+    #[arg(long)]
+    camera: Option<Vec<String>>,
+
+    /// A human readable reason for this trigger.
+    #[arg(long)]
+    reason: Option<String>,
+
+    /// Time into the past.
+    #[arg(long)]
+    pre: Option<u64>,
+
+    /// Time into the future.
+    #[arg(long)]
+    post: Option<u64>,
+}
+
+#[async_trait]
+impl CliExecute for TriggerCommand {
+    async fn execute(&self) -> CliResult {
+        let mqtt_config: MqttConfig = satori_common::load_config_file(&self.mqtt);
+        let mqtt = mqtt_config.build_client(true).await;
+
+        let trigger = satori_common::TriggerCommand {
+            id: self.id.clone(),
+            timestamp: None,
+            cameras: self.camera.clone(),
+            reason: self.reason.clone(),
+            pre: self.pre.map(Duration::from_secs),
+            post: self.post.map(Duration::from_secs),
+        };
+        let message = Message::TriggerCommand(trigger);
+        let result =
+            satori_common::mqtt::send_json(&mqtt, mqtt_config.topic(), &message).map_err(|_| ());
+
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        let _ = mqtt.stop().await;
+        result
+    }
+}

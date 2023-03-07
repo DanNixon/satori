@@ -1,0 +1,10 @@
+[workspace]
+members = [
+  "common",
+  "storage",
+
+  "agent",
+  "archiver",
+  "ctl",
+  "event-processor",
+]

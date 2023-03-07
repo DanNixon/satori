@@ -1,0 +1,17 @@
+[package]
+name = "satorictl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+satori-common = { path = "../common" }
+satori-storage = { path = "../storage" }
+
+async-trait = "0.1.60"
+chrono = "0.4.23"
+clap = { version = "4.0", features = ["derive", "env"] }
+mqtt-channel-client = "0.4"
+serde_json = "1.0.91"
+tokio = { version = "1.21", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
