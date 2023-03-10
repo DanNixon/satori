@@ -1,4 +1,6 @@
-use crate::{StorageError, StorageProvider, StorageResult};
+use crate::{
+    encryption::KeyOperations, EncryptionConfig, StorageError, StorageProvider, StorageResult,
+};
 use async_trait::async_trait;
 use bytes::Bytes;
 use s3::{creds::Credentials, region::Region, Bucket};
@@ -14,11 +16,14 @@ pub struct S3Config {
     bucket: String,
     region: String,
     endpoint: String,
+    #[serde(default)]
+    encryption: EncryptionConfig,
 }
 
 #[derive(Clone)]
 pub struct S3Storage {
     bucket: Bucket,
+    encryption: EncryptionConfig,
 }
 
 impl S3Storage {
@@ -34,7 +39,10 @@ impl S3Storage {
         .unwrap()
         .with_path_style();
 
-        Self { bucket }
+        Self {
+            bucket,
+            encryption: config.encryption,
+        }
     }
 
     fn get_events_path(&self) -> PathBuf {
@@ -99,6 +107,10 @@ impl StorageProvider for S3Storage {
 
         let data = serde_json::to_vec_pretty(&event)?;
 
+        let info =
+            crate::encryption::info::event_info_from_filename(&event.metadata.get_filename());
+        let data = self.encryption.event.encrypt(info, data.into())?;
+
         let status_code = self
             .bucket
             .put_object(path.to_str().unwrap(), &data)
@@ -129,7 +141,12 @@ impl StorageProvider for S3Storage {
         let response = self.bucket.get_object(path.to_str().unwrap()).await?;
 
         if response.status_code() == 200 {
-            Ok(serde_json::from_slice(response.bytes())?)
+            let data = response.bytes().to_owned();
+
+            let info = crate::encryption::info::event_info_from_filename(filename);
+            let data = self.encryption.event.decrypt(info, data.into())?;
+
+            Ok(serde_json::from_slice(&data)?)
         } else {
             Err(StorageError::S3Failure(response.status_code()))
         }
@@ -173,6 +190,10 @@ impl StorageProvider for S3Storage {
     ) -> StorageResult<()> {
         let path = self.get_segment_filename(camera_name, filename);
 
+        let info =
+            crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
+        let data = self.encryption.segment.encrypt(info, data)?;
+
         let status_code = self
             .bucket
             .put_object(path.to_str().unwrap(), &data)
@@ -203,7 +224,15 @@ impl StorageProvider for S3Storage {
         let response = self.bucket.get_object(path.to_str().unwrap()).await?;
 
         if response.status_code() == 200 {
-            Ok(Bytes::from(response.bytes().to_owned()))
+            let data = response.bytes().to_owned();
+
+            let info = crate::encryption::info::segment_info_from_camera_and_filename(
+                camera_name,
+                filename,
+            );
+            let data = self.encryption.segment.decrypt(info, data.into())?;
+
+            Ok(data)
         } else {
             Err(StorageError::S3Failure(response.status_code()))
         }
@@ -218,98 +247,121 @@ impl StorageProvider for S3Storage {
 
 #[cfg(test)]
 mod test {
-    use super::super::test as storage_tests;
     use super::*;
-    use crate::Provider;
     use rand::Rng;
     use s3::BucketConfiguration;
 
-    async fn run_test<Fut>(test_func: impl FnOnce(Provider) -> Fut)
-    where
-        Fut: std::future::Future<Output = ()>,
-    {
-        let id = rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
-            .take(8)
-            .map(char::from)
-            .collect::<String>()
-            .to_lowercase();
-        let bucket_name = format!("satori-storage-test-{id}");
+    mod no_encryption {
+        use super::*;
 
-        Bucket::create_with_path_style(
-            &bucket_name,
-            Region::Custom {
-                region: "".into(),
-                endpoint: "http://localhost:9000".into(),
-            },
-            Credentials::default().unwrap(),
-            BucketConfiguration::default(),
-        )
-        .await
-        .unwrap();
+        macro_rules! test {
+            ( $test:ident ) => {
+                #[tokio::test]
+                async fn $test() {
+                    let id = rand::thread_rng()
+                        .sample_iter(&rand::distributions::Alphanumeric)
+                        .take(8)
+                        .map(char::from)
+                        .collect::<String>()
+                        .to_lowercase();
+                    let bucket_name = format!("satori-storage-test-{id}");
 
-        let provider = super::super::super::StorageConfig::S3(S3Config {
-            bucket: bucket_name,
-            region: "".into(),
-            endpoint: "http://localhost:9000".into(),
-        })
-        .create_provider();
+                    Bucket::create_with_path_style(
+                        &bucket_name,
+                        Region::Custom {
+                            region: "".into(),
+                            endpoint: "http://localhost:9000".into(),
+                        },
+                        Credentials::default().unwrap(),
+                        BucketConfiguration::default(),
+                    )
+                    .await
+                    .unwrap();
 
-        test_func(provider).await;
+                    let provider = crate::StorageConfig::S3(S3Config {
+                        bucket: bucket_name,
+                        region: "".into(),
+                        endpoint: "http://localhost:9000".into(),
+                        encryption: EncryptionConfig::default(),
+                    })
+                    .create_provider();
+
+                    crate::providers::test::$test(provider).await;
+                }
+            };
+        }
+
+        crate::providers::test::all_storage_tests!(test);
     }
 
-    #[tokio::test]
-    async fn test_init() {
-        run_test(storage_tests::test_init).await;
-    }
+    mod encryption_hpke {
+        use super::*;
 
-    #[tokio::test]
-    async fn test_add_first_event() {
-        run_test(storage_tests::test_add_first_event).await;
-    }
+        macro_rules! test {
+            ( $test:ident ) => {
+                #[tokio::test]
+                async fn $test() {
+                    let id = rand::thread_rng()
+                        .sample_iter(&rand::distributions::Alphanumeric)
+                        .take(8)
+                        .map(char::from)
+                        .collect::<String>()
+                        .to_lowercase();
+                    let bucket_name = format!("satori-storage-test-{id}");
 
-    #[tokio::test]
-    async fn test_add_event() {
-        run_test(storage_tests::test_add_event).await;
-    }
+                    Bucket::create_with_path_style(
+                        &bucket_name,
+                        Region::Custom {
+                            region: "".into(),
+                            endpoint: "http://localhost:9000".into(),
+                        },
+                        Credentials::default().unwrap(),
+                        BucketConfiguration::default(),
+                    )
+                    .await
+                    .unwrap();
 
-    #[tokio::test]
-    async fn test_add_segment_new_camera() {
-        run_test(storage_tests::test_add_segment_new_camera).await;
-    }
+                    let provider = crate::StorageConfig::S3(S3Config {
+                        bucket: bucket_name,
+                        region: "".into(),
+                        endpoint: "http://localhost:9000".into(),
+                        encryption: toml::from_str(
+                            "
+[event]
+kind = \"hpke\"
+public_key = \"\"\"
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
+-----END PUBLIC KEY-----
+\"\"\"
+private_key = \"\"\"
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
+-----END PRIVATE KEY-----
+\"\"\"
+[segment]
+kind = \"hpke\"
+public_key = \"\"\"
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VuAyEA4xQouJZhiNpBedFJBs3lE8FIOMQtnMzZG426m2nVjko=
+-----END PUBLIC KEY-----
+\"\"\"
+private_key = \"\"\"
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
+-----END PRIVATE KEY-----
+\"\"\"
+",
+                        )
+                        .unwrap(),
+                    })
+                    .create_provider();
 
-    #[tokio::test]
-    async fn test_add_segment_existing_camera() {
-        run_test(storage_tests::test_add_segment_existing_camera).await;
-    }
+                    crate::providers::test::$test(provider).await;
+                }
+            };
+        }
 
-    #[tokio::test]
-    async fn test_event_getters() {
-        run_test(storage_tests::test_event_getters).await;
-    }
-
-    #[tokio::test]
-    async fn test_segment_getters() {
-        run_test(storage_tests::test_segment_getters).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_event() {
-        run_test(storage_tests::test_delete_event).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_event_filename() {
-        run_test(storage_tests::test_delete_event_filename).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_segment() {
-        run_test(storage_tests::test_delete_segment).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_last_segment_deletes_camera() {
-        run_test(storage_tests::test_delete_last_segment_deletes_camera).await;
+        crate::providers::test::all_storage_tests!(test);
     }
 }
