@@ -1,3 +1,6 @@
+mod encryption;
+pub use self::encryption::{EncryptionConfig, EncryptionKey};
+
 pub mod error;
 pub use self::error::{StorageError, StorageResult};
 

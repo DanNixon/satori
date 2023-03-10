@@ -167,71 +167,23 @@ impl StorageProvider for DummyStorage {
 
 #[cfg(test)]
 mod test {
-    use super::super::test as storage_tests;
     use super::*;
-    use crate::Provider;
 
-    async fn run_test<Fut>(test_func: impl FnOnce(Provider) -> Fut)
-    where
-        Fut: std::future::Future<Output = ()>,
-    {
-        let provider =
-            super::super::super::StorageConfig::Dummy(DummyConfig::default()).create_provider();
-        test_func(provider).await;
-    }
+    mod no_encryption {
+        use super::*;
 
-    #[tokio::test]
-    async fn test_init() {
-        run_test(storage_tests::test_init).await;
-    }
+        macro_rules! test {
+            ( $test:ident ) => {
+                #[tokio::test]
+                async fn $test() {
+                    let provider =
+                        crate::StorageConfig::Dummy(DummyConfig::default()).create_provider();
 
-    #[tokio::test]
-    async fn test_add_first_event() {
-        run_test(storage_tests::test_add_first_event).await;
-    }
+                    crate::providers::test::$test(provider).await;
+                }
+            };
+        }
 
-    #[tokio::test]
-    async fn test_add_event() {
-        run_test(storage_tests::test_add_event).await;
-    }
-
-    #[tokio::test]
-    async fn test_add_segment_new_camera() {
-        run_test(storage_tests::test_add_segment_new_camera).await;
-    }
-
-    #[tokio::test]
-    async fn test_add_segment_existing_camera() {
-        run_test(storage_tests::test_add_segment_existing_camera).await;
-    }
-
-    #[tokio::test]
-    async fn test_event_getters() {
-        run_test(storage_tests::test_event_getters).await;
-    }
-
-    #[tokio::test]
-    async fn test_segment_getters() {
-        run_test(storage_tests::test_segment_getters).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_event() {
-        run_test(storage_tests::test_delete_event).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_event_filename() {
-        run_test(storage_tests::test_delete_event_filename).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_segment() {
-        run_test(storage_tests::test_delete_segment).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_last_segment_deletes_camera() {
-        run_test(storage_tests::test_delete_last_segment_deletes_camera).await;
+        crate::providers::test::all_storage_tests!(test);
     }
 }

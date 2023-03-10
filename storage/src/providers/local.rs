@@ -1,4 +1,4 @@
-use crate::{StorageProvider, StorageResult};
+use crate::{encryption::KeyOperations, EncryptionConfig, StorageProvider, StorageResult};
 use async_trait::async_trait;
 use bytes::Bytes;
 use satori_common::Event;
@@ -13,12 +13,15 @@ use tracing::warn;
 #[derive(Debug, Deserialize)]
 pub struct LocalConfig {
     path: PathBuf,
+    #[serde(default)]
+    encryption: EncryptionConfig,
 }
 
 #[derive(Clone)]
 pub struct LocalStorage {
     event_directory: PathBuf,
     segment_directory: PathBuf,
+    encryption: EncryptionConfig,
 }
 
 impl LocalStorage {
@@ -29,6 +32,7 @@ impl LocalStorage {
         let storage = Self {
             event_directory,
             segment_directory,
+            encryption: config.encryption,
         };
 
         storage.make_directories();
@@ -58,9 +62,18 @@ impl LocalStorage {
 impl StorageProvider for LocalStorage {
     #[tracing::instrument(skip(self))]
     async fn put_event(&self, event: &Event) -> StorageResult<()> {
+        let info =
+            crate::encryption::info::event_info_from_filename(&event.metadata.get_filename());
+
         let filename = self.get_event_filename(event);
-        let file = File::create(filename)?;
-        serde_json::to_writer_pretty(file, &event)?;
+        let mut file = File::create(filename)?;
+
+        let data = serde_json::to_vec_pretty(&event)?;
+
+        let data = self.encryption.event.encrypt(info, data.into())?;
+
+        file.write_all(&data)?;
+
         Ok(())
     }
 
@@ -71,9 +84,17 @@ impl StorageProvider for LocalStorage {
 
     #[tracing::instrument(skip(self))]
     async fn get_event(&self, filename: &Path) -> StorageResult<Event> {
+        let info = crate::encryption::info::event_info_from_filename(filename);
+
         let filename = self.event_directory.join(filename);
-        let file = File::open(filename)?;
-        Ok(serde_json::from_reader(file)?)
+        let mut file = File::open(filename)?;
+
+        let mut data = Vec::new();
+        file.read_to_end(&mut data)?;
+
+        let data = self.encryption.event.decrypt(info, data.into())?;
+
+        Ok(serde_json::from_slice(&data)?)
     }
 
     #[tracing::instrument(skip(self))]
@@ -101,12 +122,18 @@ impl StorageProvider for LocalStorage {
         filename: &Path,
         data: Bytes,
     ) -> StorageResult<()> {
+        let info =
+            crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
+
         let dir = self.get_segment_directory(camera_name);
         std::fs::create_dir_all(&dir)?;
 
         let filename = dir.join(filename);
         let mut file = File::create(filename)?;
+
+        let data = self.encryption.segment.encrypt(info, data)?;
         file.write_all(&data)?;
+
         Ok(())
     }
 
@@ -118,12 +145,18 @@ impl StorageProvider for LocalStorage {
 
     #[tracing::instrument(skip(self))]
     async fn get_segment(&self, camera_name: &str, filename: &Path) -> StorageResult<Bytes> {
+        let info =
+            crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
+
         let filename = self.get_segment_filename(camera_name, filename);
-        println!("filename : {}", filename.display());
+
         let mut file = File::open(filename)?;
         let mut data = Vec::new();
         file.read_to_end(&mut data)?;
-        Ok(Bytes::from(data))
+
+        let data = self.encryption.segment.decrypt(info, data.into())?;
+
+        Ok(data)
     }
 
     #[tracing::instrument(skip(self))]
@@ -195,79 +228,85 @@ fn list_dir_dirs(dir: &Path) -> StorageResult<Vec<String>> {
 
 #[cfg(test)]
 mod test {
-    use super::super::test as storage_tests;
     use super::*;
-    use crate::Provider;
 
-    async fn run_test<Fut>(test_func: impl FnOnce(Provider) -> Fut)
-    where
-        Fut: std::future::Future<Output = ()>,
-    {
-        let temp_dir = tempfile::Builder::new()
-            .prefix("satori_local_storage_test")
-            .tempdir()
-            .unwrap();
+    mod no_encryption {
+        use super::*;
 
-        let provider = super::super::super::StorageConfig::Local(LocalConfig {
-            path: temp_dir.path().to_owned(),
-        })
-        .create_provider();
+        macro_rules! test {
+            ( $test:ident ) => {
+                #[tokio::test]
+                async fn $test() {
+                    let temp_dir = tempfile::Builder::new()
+                        .prefix("satori_local_storage_test")
+                        .tempdir()
+                        .unwrap();
 
-        test_func(provider).await;
+                    let provider = crate::StorageConfig::Local(LocalConfig {
+                        path: temp_dir.path().to_owned(),
+                        encryption: EncryptionConfig::default(),
+                    })
+                    .create_provider();
+
+                    crate::providers::test::$test(provider).await;
+                }
+            };
+        }
+
+        crate::providers::test::all_storage_tests!(test);
     }
 
-    #[tokio::test]
-    async fn test_init() {
-        run_test(storage_tests::test_init).await;
-    }
+    mod encryption_hpke {
+        use super::*;
 
-    #[tokio::test]
-    async fn test_add_first_event() {
-        run_test(storage_tests::test_add_first_event).await;
-    }
+        macro_rules! test {
+            ( $test:ident ) => {
+                #[tokio::test]
+                async fn $test() {
+                    let temp_dir = tempfile::Builder::new()
+                        .prefix("satori_local_storage_test")
+                        .tempdir()
+                        .unwrap();
 
-    #[tokio::test]
-    async fn test_add_event() {
-        run_test(storage_tests::test_add_event).await;
-    }
+                    let provider = crate::StorageConfig::Local(LocalConfig {
+                        path: temp_dir.path().to_owned(),
+                        encryption: toml::from_str(
+                            "
+[event]
+kind = \"hpke\"
+public_key = \"\"\"
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
+-----END PUBLIC KEY-----
+\"\"\"
+private_key = \"\"\"
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
+-----END PRIVATE KEY-----
+\"\"\"
+[segment]
+kind = \"hpke\"
+public_key = \"\"\"
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VuAyEA4xQouJZhiNpBedFJBs3lE8FIOMQtnMzZG426m2nVjko=
+-----END PUBLIC KEY-----
+\"\"\"
+private_key = \"\"\"
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
+-----END PRIVATE KEY-----
+\"\"\"
+",
+                        )
+                        .unwrap(),
+                    })
+                    .create_provider();
 
-    #[tokio::test]
-    async fn test_add_segment_new_camera() {
-        run_test(storage_tests::test_add_segment_new_camera).await;
-    }
+                    crate::providers::test::$test(provider).await;
+                }
+            };
+        }
 
-    #[tokio::test]
-    async fn test_add_segment_existing_camera() {
-        run_test(storage_tests::test_add_segment_existing_camera).await;
-    }
-
-    #[tokio::test]
-    async fn test_event_getters() {
-        run_test(storage_tests::test_event_getters).await;
-    }
-
-    #[tokio::test]
-    async fn test_segment_getters() {
-        run_test(storage_tests::test_segment_getters).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_event() {
-        run_test(storage_tests::test_delete_event).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_event_filename() {
-        run_test(storage_tests::test_delete_event_filename).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_segment() {
-        run_test(storage_tests::test_delete_segment).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete_last_segment_deletes_camera() {
-        run_test(storage_tests::test_delete_last_segment_deletes_camera).await;
+        crate::providers::test::all_storage_tests!(test);
     }
 }
