@@ -59,15 +59,16 @@ async fn main() -> Result<(), ()> {
             event = mqtt_rx.recv() => {
                 match event {
                     Ok(mqtt_channel_client::Event::Rx(msg)) => {
-                        handle_mqtt_message(msg, &mut events, &config.triggers);
+                        if handle_mqtt_message(msg, &mut events, &config.triggers) {
+                            // Immediately process events
+                            events.process(&camera_client, &mqtt_client, mqtt_control_topic).await;
+                        }
                     }
                     Ok(_) => {}
                     Err(err) => {
                         error!("MQTT channel error: {}", err);
                     }
                 }
-                // Immediately process events
-                events.process(&camera_client, &mqtt_client, mqtt_control_topic).await;
             }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");
@@ -84,16 +85,19 @@ fn handle_mqtt_message(
     msg: paho_mqtt::Message,
     events: &mut EventSet,
     trigger_config: &TriggersConfig,
-) {
+) -> bool {
     let msg = serde_json::from_str::<satori_common::Message>(&msg.payload_str());
     if let Err(err) = msg {
         error!("Failed to parse MQTT message ({})", err);
-        return;
+        return false;
     }
 
     if let satori_common::Message::TriggerCommand(cmd) = msg.unwrap() {
         debug!("Trigger command: {:?}", cmd);
         let trigger = trigger_config.create_trigger(&cmd);
         events.trigger(&trigger);
+        true
+    } else {
+        false
     }
 }
