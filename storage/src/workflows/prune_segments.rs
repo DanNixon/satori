@@ -24,6 +24,7 @@ pub async fn prune_unreferenced_segments(storage: Provider) -> StorageResult<()>
         let camera_segments = storage.list_segments(&camera).await?;
 
         // Get referenced segments for camera
+        info!("Calculating unreferenced segments for camera \"{camera}\"");
         let unreferenced_segments = match referenced_segments.get_segments_for_camera(&camera) {
             // Remove referenced segments from the list of stored segments
             Some(referenced_segments) => camera_segments
