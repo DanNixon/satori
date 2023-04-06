@@ -4,6 +4,7 @@ use satori_common::{
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
 use std::{collections::HashMap, path::PathBuf, time::Duration};
+use tracing::info;
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
@@ -36,8 +37,18 @@ pub(crate) struct TriggersConfig {
 impl TriggersConfig {
     #[tracing::instrument(skip(self))]
     pub(crate) fn create_trigger(&self, cmd: &TriggerCommand) -> Trigger {
-        let template = self.templates.get(&cmd.id);
-        Trigger::from_default_and_command(template.unwrap_or(&self.fallback), cmd)
+        let template = match self.templates.get(&cmd.id) {
+            Some(t) => {
+                info!("Found predefined template for ID \"{}\"", cmd.id);
+                t
+            }
+            None => {
+                info!("No template matches ID \"{}\", using fallback", cmd.id);
+                &self.fallback
+            }
+        };
+
+        Trigger::from_default_and_command(template, cmd)
     }
 }
 
