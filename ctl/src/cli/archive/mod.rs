@@ -1,5 +1,6 @@
 mod delete_event;
 mod delete_segment;
+mod explore;
 mod export_video;
 mod get_event;
 mod get_segment;
@@ -43,6 +44,7 @@ impl CliExecute for ArchiveCommand {
             ArchiveSubcommand::PruneEvents(cmd) => cmd.execute(storage).await,
             ArchiveSubcommand::PruneSegments(cmd) => cmd.execute(storage).await,
             ArchiveSubcommand::ExportVideo(cmd) => cmd.execute(storage).await,
+            ArchiveSubcommand::Explore(cmd) => cmd.execute(storage).await,
         }
     }
 }
@@ -59,4 +61,5 @@ pub(crate) enum ArchiveSubcommand {
     PruneEvents(prune_events::PruneEventsCommand),
     PruneSegments(prune_segments::PruneSegmentsCommand),
     ExportVideo(export_video::ExportVideoSubcommand),
+    Explore(explore::ExploreCommand),
 }
