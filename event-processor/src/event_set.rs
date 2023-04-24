@@ -1,5 +1,5 @@
 use crate::{error::EventProcessorResult, hls_client::HlsClient, segments::Playlist};
-use prometheus_client::registry::Registry;
+use kagiyama::prometheus::registry::Registry;
 use satori_common::{ArchiveCommand, CameraSegments, Event, EventReason, Message, Trigger};
 use std::{
     fs::File,
@@ -257,7 +257,8 @@ fn update_event(event: &mut Event, other: &Trigger) {
 }
 
 mod metrics {
-    use prometheus_client::{
+    use kagiyama::prometheus::{
+        self as prometheus_client,
         encoding::EncodeLabelSet,
         metrics::{counter::Counter, family::Family, gauge::Gauge},
     };

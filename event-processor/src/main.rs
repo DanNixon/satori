@@ -82,7 +82,7 @@ async fn main() -> Result<(), ()> {
 
 #[tracing::instrument(skip_all)]
 fn handle_mqtt_message(
-    msg: paho_mqtt::Message,
+    msg: mqtt_channel_client::paho_mqtt::Message,
     events: &mut EventSet,
     trigger_config: &TriggersConfig,
 ) -> bool {

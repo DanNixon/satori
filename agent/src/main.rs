@@ -3,7 +3,7 @@ mod ffmpeg;
 mod server;
 
 use clap::Parser;
-use prometheus_client::{metrics::gauge::Gauge, registry::Unit};
+use kagiyama::prometheus::{metrics::gauge::Gauge, registry::Unit};
 use std::{fs, net::SocketAddr, path::PathBuf, time::Duration};
 use tracing::{debug, info, warn};
 
