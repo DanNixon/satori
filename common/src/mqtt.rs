@@ -15,9 +15,10 @@ pub struct MqttConfig {
 
 impl MqttConfig {
     pub async fn build_client(&self, anon: bool) -> mqtt_channel_client::Client {
-        let mut create_options = paho_mqtt::create_options::CreateOptionsBuilder::new()
-            .server_uri(self.broker.clone())
-            .persistence(paho_mqtt::PersistenceType::None);
+        let mut create_options =
+            mqtt_channel_client::paho_mqtt::create_options::CreateOptionsBuilder::new()
+                .server_uri(self.broker.clone())
+                .persistence(mqtt_channel_client::paho_mqtt::PersistenceType::None);
         if !anon {
             create_options = create_options.client_id(&self.client_id);
         }
@@ -32,13 +33,14 @@ impl MqttConfig {
         )
         .expect("MQTT client should be created");
 
-        let connect_options = paho_mqtt::connect_options::ConnectOptionsBuilder::new()
-            .clean_session(true)
-            .automatic_reconnect(Duration::from_secs(1), Duration::from_secs(5))
-            .keep_alive_interval(Duration::from_secs(5))
-            .user_name(&self.username)
-            .password(&self.password)
-            .finalize();
+        let connect_options =
+            mqtt_channel_client::paho_mqtt::connect_options::ConnectOptionsBuilder::new()
+                .clean_session(true)
+                .automatic_reconnect(Duration::from_secs(1), Duration::from_secs(5))
+                .keep_alive_interval(Duration::from_secs(5))
+                .user_name(&self.username)
+                .password(&self.password)
+                .finalize();
 
         mqtt_client
             .start(connect_options)
@@ -67,5 +69,5 @@ pub fn send_json<T: serde::Serialize>(
     s: &T,
 ) -> mqtt_channel_client::Result<()> {
     let data = serde_json::to_vec(s).unwrap();
-    client.send(paho_mqtt::Message::new(topic, data, 2))
+    client.send(mqtt_channel_client::paho_mqtt::Message::new(topic, data, 2))
 }

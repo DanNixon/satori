@@ -1,6 +1,6 @@
 use crate::{error::ArchiverResult, task::ArchiveTask, Context};
 use futures::StreamExt;
-use prometheus_client::registry::Registry;
+use kagiyama::prometheus::registry::Registry;
 use satori_common::{ArchiveCommand, CameraSegments, Event};
 use std::{
     collections::VecDeque,
@@ -109,7 +109,7 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn handle_mqtt_message(&mut self, msg: paho_mqtt::Message) {
+    pub(crate) fn handle_mqtt_message(&mut self, msg: mqtt_channel_client::paho_mqtt::Message) {
         match serde_json::from_str(&msg.payload_str()) {
             Ok(msg) => {
                 if let satori_common::Message::ArchiveCommand(cmd) = msg {
@@ -197,7 +197,8 @@ impl ArchiveTaskQueue {
 }
 
 mod metrics {
-    use prometheus_client::{
+    use kagiyama::prometheus::{
+        self as prometheus_client,
         encoding::{EncodeLabelSet, EncodeLabelValue},
         metrics::{counter::Counter, family::Family, gauge::Gauge},
     };
@@ -283,7 +284,11 @@ mod test {
                 segment_list: vec![],
             },
         ));
-        let msg = paho_mqtt::Message::new("", serde_json::to_string(&msg).unwrap(), 2);
+        let msg = mqtt_channel_client::paho_mqtt::Message::new(
+            "",
+            serde_json::to_string(&msg).unwrap(),
+            2,
+        );
         queue.handle_mqtt_message(msg);
         assert!(queue.queue.is_empty());
     }
@@ -299,7 +304,11 @@ mod test {
                 segment_list: vec!["one.ts".into(), "two.ts".into()],
             },
         ));
-        let msg = paho_mqtt::Message::new("", serde_json::to_string(&msg).unwrap(), 2);
+        let msg = mqtt_channel_client::paho_mqtt::Message::new(
+            "",
+            serde_json::to_string(&msg).unwrap(),
+            2,
+        );
         queue.handle_mqtt_message(msg);
         assert_eq!(queue.queue.len(), 2);
     }
@@ -340,7 +349,11 @@ mod test {
                 cameras: Default::default(),
             }),
         );
-        let msg = paho_mqtt::Message::new("", serde_json::to_string(&msg).unwrap(), 2);
+        let msg = mqtt_channel_client::paho_mqtt::Message::new(
+            "",
+            serde_json::to_string(&msg).unwrap(),
+            2,
+        );
         queue.handle_mqtt_message(msg);
 
         // Add two segments to the queue
@@ -350,7 +363,11 @@ mod test {
                 segment_list: vec!["one.ts".into(), "two.ts".into()],
             },
         ));
-        let msg = paho_mqtt::Message::new("", serde_json::to_string(&msg).unwrap(), 2);
+        let msg = mqtt_channel_client::paho_mqtt::Message::new(
+            "",
+            serde_json::to_string(&msg).unwrap(),
+            2,
+        );
         queue.handle_mqtt_message(msg);
 
         assert_eq!(
