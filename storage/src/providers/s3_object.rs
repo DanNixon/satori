@@ -144,7 +144,7 @@ impl StorageProvider for S3Storage {
             let data = response.bytes().to_owned();
 
             let info = crate::encryption::info::event_info_from_filename(filename);
-            let data = self.encryption.event.decrypt(info, data.into())?;
+            let data = self.encryption.event.decrypt(info, data)?;
 
             Ok(serde_json::from_slice(&data)?)
         } else {
@@ -230,7 +230,7 @@ impl StorageProvider for S3Storage {
                 camera_name,
                 filename,
             );
-            let data = self.encryption.segment.decrypt(info, data.into())?;
+            let data = self.encryption.segment.decrypt(info, data)?;
 
             Ok(data)
         } else {
