@@ -14,7 +14,7 @@ pub(crate) trait CliExecute {
 
 /// Control Satori NVR.
 #[derive(Debug, Clone, Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version = satori_common::version!(), about, long_about = None)]
 pub(crate) struct Cli {
     #[command(subcommand)]
     command: Command,

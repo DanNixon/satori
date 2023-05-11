@@ -13,5 +13,7 @@ pub use self::trigger::{Trigger, TriggerTemplate};
 
 pub const SEGMENT_FILENAME_FORMAT: &str = "%Y-%m-%dT%H_%M_%S%z.ts";
 
+mod version;
+
 mod utils;
 pub use self::utils::load_config_file;
