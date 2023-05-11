@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4.23", features = ["serde"] }
+clap = { version = "4.0", features = ["cargo", "string"] }
 mqtt-channel-client = { version = "0.5.0", features = ["metrics"] }
 regex = "1.7.1"
 serde = { version = "1.0", features = ["derive"] }
