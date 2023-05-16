@@ -121,9 +121,6 @@ impl EventSet {
             return;
         }
 
-        // First remove any events that have outlived the TTL
-        self.prune_expired_events();
-
         for event in &mut self.events {
             info!("Processing event: {:?}", event.metadata);
 
@@ -189,6 +186,9 @@ impl EventSet {
                 error!("Failed to send archive event command, reason: {}", err);
             }
         }
+
+        // Now remove any events that have outlived the TTL
+        self.prune_expired_events();
 
         self.active_events.set(self.events.len() as i64);
 
