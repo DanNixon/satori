@@ -18,6 +18,9 @@ pub enum StorageError {
     #[error("Camera with name \"{0}\" was not found")]
     NoSuchCamera(String),
 
+    #[error("A camera was not specified, but is required to be")]
+    CameraMustBeSpecified,
+
     #[error(
         "Error in a storage workflow resulting in a subset of actions being successful (see logs)"
     )]

@@ -1,24 +1,38 @@
 use crate::{Provider, StorageError, StorageProvider, StorageResult};
 use bytes::{BufMut, Bytes};
-use satori_common::CameraSegments;
+use satori_common::{CameraSegments, Event};
 use std::path::Path;
 use tracing::info;
 
 pub async fn export_event_video(
     storage: Provider,
     event_filename: &Path,
-    camera_name: String,
+    camera_name: Option<String>,
 ) -> StorageResult<Bytes> {
     info!("Getting event: {}", event_filename.display());
     let event = storage.get_event(event_filename).await?;
-
-    let camera = event
-        .cameras
-        .iter()
-        .find(|c| c.name == camera_name)
-        .ok_or(StorageError::NoSuchCamera(camera_name))?;
-
+    let camera = get_camera_from_event_by_name(&event, camera_name)?;
     get_file_from_segments(storage, camera).await
+}
+
+fn get_camera_from_event_by_name(
+    event: &Event,
+    camera_name: Option<String>,
+) -> StorageResult<&CameraSegments> {
+    Ok(match camera_name {
+        Some(camera_name) => event
+            .cameras
+            .iter()
+            .find(|c| c.name == camera_name)
+            .ok_or(StorageError::NoSuchCamera(camera_name))?,
+        None => {
+            if event.cameras.len() == 1 {
+                &event.cameras[0]
+            } else {
+                return Err(StorageError::CameraMustBeSpecified);
+            }
+        }
+    })
 }
 
 async fn get_file_from_segments(
@@ -77,10 +91,13 @@ mod test {
 
         provider.put_event(&event).await.unwrap();
 
-        let video_bytes =
-            export_event_video(provider, &event.metadata.get_filename(), "camera1".into())
-                .await
-                .unwrap();
+        let video_bytes = export_event_video(
+            provider,
+            &event.metadata.get_filename(),
+            Some("camera1".into()),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(video_bytes, Bytes::from("twothree"));
     }
