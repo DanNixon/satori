@@ -6,7 +6,7 @@ use tracing::error;
 /// Removes events matching specific rules.
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct PruneEventsCommand {
-    // Number of days worth of events to keep
+    /// Number of days worth of events to keep
     #[arg(long)]
     days: i64,
 }
