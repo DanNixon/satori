@@ -7,14 +7,18 @@ use tracing::{error, info};
 /// Exports a video file for a given event.
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ExportVideoSubcommand {
-    /// Filename of the event to export.
-    event: PathBuf,
-
     /// Name of the camera who's video should be exported.
-    camera: String,
+    ///
+    /// Can be omitted for events containing a single camera.
+    #[arg(short, long)]
+    camera: Option<String>,
 
     /// Name of the output video file.
+    #[arg(short, long)]
     output: PathBuf,
+
+    /// Filename of the event to export.
+    event: PathBuf,
 }
 
 impl ExportVideoSubcommand {
@@ -24,12 +28,11 @@ impl ExportVideoSubcommand {
             error!("{}", err);
         })?;
 
-        let file_content =
-            workflows::export_event_video(storage, &self.event, Some(self.camera.clone()))
-                .await
-                .map_err(|err| {
-                    error!("{}", err);
-                })?;
+        let file_content = workflows::export_event_video(storage, &self.event, self.camera.clone())
+            .await
+            .map_err(|err| {
+                error!("{}", err);
+            })?;
 
         info!("Saving video: {}", self.output.display());
         file.write_all(&file_content).map_err(|err| {
