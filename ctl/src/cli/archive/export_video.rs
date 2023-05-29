@@ -24,11 +24,12 @@ impl ExportVideoSubcommand {
             error!("{}", err);
         })?;
 
-        let file_content = workflows::export_event_video(storage, &self.event, self.camera.clone())
-            .await
-            .map_err(|err| {
-                error!("{}", err);
-            })?;
+        let file_content =
+            workflows::export_event_video(storage, &self.event, Some(self.camera.clone()))
+                .await
+                .map_err(|err| {
+                    error!("{}", err);
+                })?;
 
         info!("Saving video: {}", self.output.display());
         file.write_all(&file_content).map_err(|err| {
