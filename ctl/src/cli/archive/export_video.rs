@@ -15,7 +15,7 @@ pub(crate) struct ExportVideoSubcommand {
 
     /// Name of the output video file.
     #[arg(short, long)]
-    output: PathBuf,
+    output: Option<PathBuf>,
 
     /// Filename of the event to export.
     event: PathBuf,
@@ -23,18 +23,27 @@ pub(crate) struct ExportVideoSubcommand {
 
 impl ExportVideoSubcommand {
     pub(super) async fn execute(&self, storage: Provider) -> CliResult {
-        info!("Creating output file: {}", self.output.display());
-        let mut file = File::create(&self.output).map_err(|err| {
+        let (event, file_content) =
+            workflows::export_event_video(storage, &self.event, self.camera.clone())
+                .await
+                .map_err(|err| {
+                    error!("{}", err);
+                })?;
+
+        // Use the user provided output filename if one exists, otherwise generate one.
+        let output_filename = match &self.output {
+            Some(filename) => filename.clone(),
+            None => {
+                workflows::generate_video_filename(&event, self.camera.clone()).map_err(|err| {
+                    error!("{}", err);
+                })?
+            }
+        };
+
+        info!("Saving video: {}", output_filename.display());
+        let mut file = File::create(&output_filename).map_err(|err| {
             error!("{}", err);
         })?;
-
-        let file_content = workflows::export_event_video(storage, &self.event, self.camera.clone())
-            .await
-            .map_err(|err| {
-                error!("{}", err);
-            })?;
-
-        info!("Saving video: {}", self.output.display());
         file.write_all(&file_content).map_err(|err| {
             error!("{}", err);
         })?;
