@@ -8,11 +8,12 @@ pub async fn export_event_video(
     storage: Provider,
     event_filename: &Path,
     camera_name: Option<String>,
-) -> StorageResult<Bytes> {
+) -> StorageResult<(Event, Bytes)> {
     info!("Getting event: {}", event_filename.display());
     let event = storage.get_event(event_filename).await?;
     let camera = get_camera_from_event_by_name(&event, camera_name)?;
-    get_file_from_segments(storage, camera).await
+    let video_data = get_file_from_segments(storage, camera).await?;
+    Ok((event, video_data))
 }
 
 fn get_camera_from_event_by_name(
@@ -91,7 +92,7 @@ mod test {
 
         provider.put_event(&event).await.unwrap();
 
-        let video_bytes = export_event_video(
+        let (returned_event, video_bytes) = export_event_video(
             provider,
             &event.metadata.get_filename(),
             Some("camera1".into()),
@@ -99,6 +100,7 @@ mod test {
         .await
         .unwrap();
 
+        assert_eq!(returned_event, event);
         assert_eq!(video_bytes, Bytes::from("twothree"));
     }
 }
