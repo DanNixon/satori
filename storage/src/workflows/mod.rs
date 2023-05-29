@@ -1,5 +1,5 @@
 mod export_event_video;
-pub use export_event_video::export_event_video;
+pub use export_event_video::{export_event_video, generate_video_filename};
 
 mod prune_events;
 pub use prune_events::prune_events_older_than;
