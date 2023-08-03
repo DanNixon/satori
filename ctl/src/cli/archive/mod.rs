@@ -10,7 +10,7 @@ mod list_segments;
 mod prune_events;
 mod prune_segments;
 
-use super::{CliExecute, CliResult};
+use super::{CliExecute, CliResult, CliResultWithValue};
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use satori_storage::StorageConfig;

@@ -6,6 +6,12 @@ pub enum StorageError {
     #[error("serde_cbor error: {0}")]
     SerdeCborError(#[from] serde_cbor::Error),
 
+    #[error("toml serialization error: {0}")]
+    SerdeTomlSerError(#[from] toml::ser::Error),
+
+    #[error("toml deserialization error: {0}")]
+    SerdeTomlDeError(#[from] toml::de::Error),
+
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
 

@@ -1,18 +1,80 @@
-use super::CliResult;
-use clap::Parser;
+use super::{CliResult, CliResultWithValue};
+use clap::{Parser, Subcommand};
 use satori_storage::{workflows, Provider};
+use std::path::PathBuf;
 use tracing::error;
 
 /// Removes segments that are not referenced by any event.
 #[derive(Debug, Clone, Parser)]
-pub(crate) struct PruneSegmentsCommand {}
+pub(crate) struct PruneSegmentsCommand {
+    #[command(subcommand)]
+    command: PruneSegmentsAction,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub(crate) enum PruneSegmentsAction {
+    /// Calculate segments that are not referenced by any event and delete them
+    Prune,
+
+    /// Calculate segments that are not referenced by any event and produce a report detailing them
+    Report {
+        /// Filename of the report to create
+        report: PathBuf,
+    },
+
+    /// Delete unreferenced events given a report
+    Delete {
+        /// Filename of the report to load
+        report: PathBuf,
+    },
+}
 
 impl PruneSegmentsCommand {
     pub(super) async fn execute(&self, storage: Provider) -> CliResult {
-        workflows::prune_unreferenced_segments(storage)
-            .await
-            .map_err(|err| {
-                error!("{}", err);
-            })
+        match &self.command {
+            PruneSegmentsAction::Prune => {
+                let unreferenced_segments =
+                    calculate_unrefeferenced_segments(storage.clone()).await?;
+
+                delete_unreferenced_segments(storage, unreferenced_segments).await
+            }
+            PruneSegmentsAction::Report { report } => {
+                let unreferenced_segments =
+                    calculate_unrefeferenced_segments(storage.clone()).await?;
+
+                unreferenced_segments.save(report).map_err(|err| {
+                    error!("{}", err);
+                })
+            }
+            PruneSegmentsAction::Delete { report } => {
+                let unreferenced_segments =
+                    workflows::UnreferencedSegments::load(report).map_err(|err| {
+                        error!("{}", err);
+                    })?;
+
+                delete_unreferenced_segments(storage, unreferenced_segments).await
+            }
+        }
     }
+}
+
+async fn calculate_unrefeferenced_segments(
+    storage: Provider,
+) -> CliResultWithValue<workflows::UnreferencedSegments> {
+    workflows::calculate_unreferenced_segments(storage)
+        .await
+        .map_err(|err| {
+            error!("{}", err);
+        })
+}
+
+async fn delete_unreferenced_segments(
+    storage: Provider,
+    segments: workflows::UnreferencedSegments,
+) -> CliResult {
+    workflows::delete_unreferenced_segments(storage, segments)
+        .await
+        .map_err(|err| {
+            error!("{}", err);
+        })
 }

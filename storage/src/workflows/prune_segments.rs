@@ -1,27 +1,69 @@
 use crate::{Provider, StorageProvider, StorageResult};
 use satori_common::Event;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    fs::File,
+    io::Write,
+    path::{Path, PathBuf},
 };
 use tracing::info;
 
-pub async fn prune_unreferenced_segments(storage: Provider) -> StorageResult<()> {
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct UnreferencedSegments {
+    #[serde(flatten)]
+    inner: HashMap<String, Vec<PathBuf>>,
+}
+
+impl UnreferencedSegments {
+    pub fn save(&self, file: &Path) -> StorageResult<()> {
+        let mut file = File::create(file)?;
+        let report = toml::to_string_pretty(self)?;
+        Ok(write!(file, "{}", report)?)
+    }
+
+    pub fn load(file: &Path) -> StorageResult<Self> {
+        Ok(toml::from_str(&std::fs::read_to_string(file)?)?)
+    }
+}
+
+pub async fn calculate_unreferenced_segments(
+    storage: Provider,
+) -> StorageResult<UnreferencedSegments> {
+    info!("Getting camera list");
+    let cameras = storage.list_cameras().await?;
+
+    info!("Getting segment list(s)");
+    let mut camera_segment_cache: HashMap<String, Vec<PathBuf>> = HashMap::new();
+    // For each camera that has segments in the archive
+    for camera in &cameras {
+        info!("Getting segment list for camera \"{camera}\"");
+        // Get a list of all segments stored for the camera
+        camera_segment_cache.insert(camera.clone(), storage.list_segments(camera).await?);
+    }
+
     info!("Getting event list");
     let event_filenames = storage.list_events().await?;
 
-    info!("Calculating referenced segments");
-    let mut referenced_segments = CameraSegmentCollection::default();
+    info!(
+        "Calculating referenced segments (from {} events)",
+        event_filenames.len()
+    );
+    let mut referenced_segments = UniqueCameraSegmentCollection::default();
     for filename in event_filenames {
+        info!("Processing event {}", filename.display());
         let event = storage.get_event(&filename).await?;
         referenced_segments.add_from_event(event);
     }
 
+    let mut all_unreferenced_segments = UnreferencedSegments::default();
+
     // For each camera that has segments in the archive
-    let cameras = storage.list_cameras().await?;
     for camera in cameras {
-        // Get a list of all segments stored for the camera
-        let camera_segments = storage.list_segments(&camera).await?;
+        // Get the list of events for this camera from the cache
+        let camera_segments = camera_segment_cache
+            .remove(&camera)
+            .expect("camera should be in segment cache");
 
         // Get referenced segments for camera
         info!("Calculating unreferenced segments for camera \"{camera}\"");
@@ -35,9 +77,22 @@ pub async fn prune_unreferenced_segments(storage: Provider) -> StorageResult<()>
             None => camera_segments,
         };
 
-        // Delete the unreferenced segments
-        for s in unreferenced_segments {
-            info!("Pruning segment: {}", s.display());
+        // Record the unreferenced segments
+        all_unreferenced_segments
+            .inner
+            .insert(camera, unreferenced_segments);
+    }
+
+    Ok(all_unreferenced_segments)
+}
+
+pub async fn delete_unreferenced_segments(
+    storage: Provider,
+    unreferenced_segments: UnreferencedSegments,
+) -> StorageResult<()> {
+    for (camera, segments) in unreferenced_segments.inner {
+        for s in segments {
+            info!("Pruning \"{camera}\" segment: {}", s.display());
             storage.delete_segment(&camera, &s).await?;
         }
     }
@@ -46,11 +101,11 @@ pub async fn prune_unreferenced_segments(storage: Provider) -> StorageResult<()>
 }
 
 #[derive(Debug, Default)]
-struct CameraSegmentCollection {
+struct UniqueCameraSegmentCollection {
     inner: HashMap<String, HashSet<PathBuf>>,
 }
 
-impl CameraSegmentCollection {
+impl UniqueCameraSegmentCollection {
     fn add_from_event(&mut self, event: Event) {
         for camera in event.cameras {
             if !self.inner.contains_key(&camera.name) {
@@ -179,7 +234,13 @@ mod test {
             .await
             .unwrap();
 
-        prune_unreferenced_segments(provider.clone()).await.unwrap();
+        let unreferenced_segments = calculate_unreferenced_segments(provider.clone())
+            .await
+            .unwrap();
+
+        delete_unreferenced_segments(provider.clone(), unreferenced_segments)
+            .await
+            .unwrap();
 
         assert_eq!(
             provider.list_cameras().await.unwrap(),
@@ -258,7 +319,13 @@ mod test {
             .await
             .unwrap();
 
-        prune_unreferenced_segments(provider.clone()).await.unwrap();
+        let unreferenced_segments = calculate_unreferenced_segments(provider.clone())
+            .await
+            .unwrap();
+
+        delete_unreferenced_segments(provider.clone(), unreferenced_segments)
+            .await
+            .unwrap();
 
         assert_eq!(
             provider.list_cameras().await.unwrap(),
