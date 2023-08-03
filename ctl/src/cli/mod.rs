@@ -5,7 +5,8 @@ mod trigger;
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 
-pub(crate) type CliResult = Result<(), ()>;
+pub(crate) type CliResultWithValue<T> = Result<T, ()>;
+pub(crate) type CliResult = CliResultWithValue<()>;
 
 #[async_trait]
 pub(crate) trait CliExecute {
