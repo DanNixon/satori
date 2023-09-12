@@ -1,34 +1,78 @@
 {
-  description = "Satori build/development environment";
-
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    naersk.url = "github:nix-community/naersk";
   };
 
-  outputs = { self, nixpkgs }:
-    let
-      allSystems = [
-        "x86_64-linux" # 64-bit Intel/AMD Linux
-        "aarch64-linux" # 64-bit ARM Linux
-        "x86_64-darwin" # 64-bit Intel macOS
-        "aarch64-darwin" # 64-bit ARM macOS
-      ];
-
-      forAllSystems = f: nixpkgs.lib.genAttrs allSystems (system: f {
-        pkgs = import nixpkgs { inherit system; };
-      });
-    in
-    {
-      devShells = forAllSystems ({ pkgs }: {
-        default = pkgs.mkShell {
-          packages = (with pkgs; [
-            rustup
-
-            cmake
-            openssl
-            pkg-config
-          ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
+  outputs = { self, nixpkgs, flake-utils, fenix, naersk }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = (import nixpkgs) {
+          inherit system;
         };
-      });
-    };
+
+        toolchain = fenix.packages.${system}.toolchainOf {
+          channel = "1.72";
+          sha256 = "Q9UgzzvxLi4x9aWUJTn+/5EXekC98ODRU1TwhUs9RnY=";
+        };
+
+        naersk' = pkgs.callPackage naersk {
+          cargo = toolchain.rust;
+          rustc = toolchain.rust;
+        };
+
+        ws_cargo_toml = builtins.readFile ./Cargo.toml;
+        ws_cargo = builtins.fromTOML ws_cargo_toml;
+
+        version = ws_cargo.workspace.package.version;
+        git_revision = self.shortRev or self.dirtyShortRev;
+
+        nativeBuildInputs = with pkgs; [ cmake pkg-config ];
+        buildInputs = with pkgs; [ openssl ];
+
+      in rec {
+        devShell = pkgs.mkShell {
+          nativeBuildInputs = nativeBuildInputs ++ [ toolchain.toolchain ];
+          buildInputs = buildInputs;
+          packages = with pkgs; [ nix skopeo ];
+        };
+
+        packages = {
+          satori-agent = import ./agent { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
+          satori-archiver = import ./archiver { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
+          satorictl = import ./ctl { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
+          satori-event-processor = import ./event-processor { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
+
+          fmt = naersk'.buildPackage {
+            src = ./.;
+            nativeBuildInputs = nativeBuildInputs;
+            buildInputs = buildInputs;
+            mode = "fmt";
+          };
+
+          clippy = naersk'.buildPackage {
+            src = ./.;
+            nativeBuildInputs = nativeBuildInputs;
+            buildInputs = buildInputs;
+            mode = "clippy";
+          };
+
+          test = naersk'.buildPackage {
+            src = ./.;
+            nativeBuildInputs = nativeBuildInputs;
+            buildInputs = buildInputs;
+            mode = "test";
+            # Ensure detailed test output appears in nix build log
+            cargoTestOptions = x: x ++ ["1>&2"];
+
+            AWS_ACCESS_KEY_ID = "minioadmin";
+            AWS_SECRET_ACCESS_KEY = "minioadmin";
+          };
+        };
+      }
+    );
 }
