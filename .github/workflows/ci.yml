@@ -19,21 +19,10 @@ jobs:
       - uses: cachix/install-nix-action@v20
 
       - name: Format
-        run: nix develop --command cargo fmt -- --check
+        run: nix build -L .#fmt
 
       - name: Clippy
-        run: nix develop --command cargo clippy -- -Dwarnings
-
-  build-and-test:
-    name: Build and Test
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
-
-      - name: Build
-        run: nix develop --command cargo build --all-targets
+        run: nix build -L .#clippy
 
       - name: Start MinIO
         run: |
@@ -43,57 +32,43 @@ jobs:
             -e "MINIO_ACCESS_KEY=minioadmin" \
             -e "MINIO_SECRET_KEY=minioadmin" \
             minio/minio \
-            server /data
+            server \
+            /data
 
       - name: Test
-        env:
-          AWS_ACCESS_KEY_ID: minioadmin
-          AWS_SECRET_ACCESS_KEY: minioadmin
-        run: nix develop --command cargo test --all-targets
+        run: nix build -L --no-sandbox .#test
 
-  container-image:
-    name: Build and push container image
-    if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
+  build:
+    name: Build
     needs:
-      - build-and-test
       - formatting-and-quality
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        component:
-          - agent
-          - archiver
-          - ctl
-          - event-processor
+        package:
+          - satori-agent
+          - satori-archiver
+          - satorictl
+          - satori-event-processor
 
     steps:
       - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v20
 
-      - name: Derive tags
+      - name: Build
+        run: nix build -L .#${{ matrix.package }}.package
+
+      - name: Build and push container image
+        if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
         run: |
-          echo 'tags<<EOF' >> $GITHUB_ENV
+          set -x
+
+          local_cr="docker-archive://$(nix build .#${{ matrix.package }}.container-image --no-link --print-out-paths)"
+          remote_cr="docker://ghcr.io/dannixon/${{ matrix.package }}"
+
+          skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.ref_name }}"
+          skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.sha }}"
           if [[ "${{ github.ref_type }}" == 'tag' ]]; then
-            echo "latest ${{ github.ref_name }} ${{ github.sha }}" >> $GITHUB_ENV
-          else
-            echo "${{ github.ref_name }} ${{ github.sha }}" >> $GITHUB_ENV
+            skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:latest"
           fi
-          echo 'EOF' >> $GITHUB_ENV
-
-      - name: Build container image
-        id: build-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: "satori-${{ matrix.component }}"
-          tags: "${{ env.tags }}"
-          containerfiles: "${{ matrix.component }}/Containerfile"
-          oci: true
-
-      - name: Push image to GHCR
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-image.outputs.image }}
-          tags: ${{ steps.build-image.outputs.tags }}
-          registry: ghcr.io/dannixon
-          username: ${{ github.repository_owner }}
-          password: ${{ github.token }}
