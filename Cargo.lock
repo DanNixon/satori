@@ -2094,7 +2094,7 @@ checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
 
 [[package]]
 name = "satori-agent"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "axum",
  "byte-unit",
@@ -2118,7 +2118,7 @@ dependencies = [
 
 [[package]]
 name = "satori-archiver"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "bytes",
  "chrono",
@@ -2160,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "satori-event-processor"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "bytes",
  "chrono",
