@@ -13,3 +13,7 @@ members = [
 [workspace.package]
 version = "0.2.0"
 edition = "2021"
+
+[workspace.dependencies]
+mqtt-channel-client = { version = "0.6.0", features = ["metrics"] }
+toml = "0.8"
