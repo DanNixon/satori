@@ -6,7 +6,7 @@
   buildInputs,
   nativeBuildInputs,
 } : rec {
-  package = naersk'.buildPackage {
+  satori-agent = naersk'.buildPackage {
     name = "satori-agent";
     version = version;
 
@@ -25,13 +25,13 @@
     };
   };
 
-  container-image = let
+  satori-agent-container-image = let
     entrypoint = pkgs.writeShellApplication {
       name = "entrypoint";
       text = ''
         #!${pkgs.runtimeShell}
         mkdir -m 1777 /tmp
-        ${package}/bin/satori-agent "$@"
+        ${satori-agent}/bin/satori-agent "$@"
       '';
     };
   in

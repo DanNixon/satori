@@ -57,14 +57,14 @@ jobs:
       - uses: cachix/install-nix-action@v20
 
       - name: Build
-        run: nix build -L .#${{ matrix.package }}.package
+        run: nix build -L .#${{ matrix.package }}
 
       - name: Build and push container image
         if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
         run: |
           set -x
 
-          local_cr="docker-archive://$(nix build .#${{ matrix.package }}.container-image --no-link --print-out-paths)"
+          local_cr="docker-archive://$(nix build .#${{ matrix.package }}-container-image --no-link --print-out-paths)"
           remote_cr="docker://ghcr.io/dannixon/${{ matrix.package }}"
 
           skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.ref_name }}"
