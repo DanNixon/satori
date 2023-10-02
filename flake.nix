@@ -48,11 +48,6 @@
         };
 
         packages = {
-          satori-agent = import ./agent { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
-          satori-archiver = import ./archiver { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
-          satorictl = import ./ctl { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
-          satori-event-processor = import ./event-processor { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
-
           fmt = naersk'.buildPackage {
             src = ./.;
             nativeBuildInputs = nativeBuildInputs;
@@ -78,7 +73,11 @@
             AWS_ACCESS_KEY_ID = "minioadmin";
             AWS_SECRET_ACCESS_KEY = "minioadmin";
           };
-        };
+        } //
+        import ./agent { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
+        import ./archiver { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
+        import ./ctl { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
+        import ./event-processor { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
       }
     );
 }

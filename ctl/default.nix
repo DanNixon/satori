@@ -6,7 +6,7 @@
   buildInputs,
   nativeBuildInputs,
 } : rec {
-  package = naersk'.buildPackage {
+  satorictl = naersk'.buildPackage {
     name = "satorictl";
     version = version;
 
@@ -21,7 +21,7 @@
     };
   };
 
-  container-image = pkgs.dockerTools.buildImage {
+  satorictl-container-image = pkgs.dockerTools.buildImage {
     name = "satorictl";
     tag = "latest";
     created = "now";
@@ -33,7 +33,7 @@
     };
 
     config = {
-      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${package}/bin/satorictl" ];
+      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${satorictl}/bin/satorictl" ];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];

@@ -6,7 +6,7 @@
   buildInputs,
   nativeBuildInputs,
 } : rec {
-  package = naersk'.buildPackage {
+  satori-event-processor = naersk'.buildPackage {
     name = "satori-event-processor";
     version = version;
 
@@ -21,7 +21,7 @@
     };
   };
 
-  container-image = pkgs.dockerTools.buildImage {
+  satori-event-processor-container-image = pkgs.dockerTools.buildImage {
     name = "satori-event-processor";
     tag = "latest";
     created = "now";
@@ -33,7 +33,7 @@
     };
 
     config = {
-      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${package}/bin/satori-event-processor" ];
+      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${satori-event-processor}/bin/satori-event-processor" ];
       ExposedPorts = {
         "9090/tcp" = {};
       };

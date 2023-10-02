@@ -6,7 +6,7 @@
   buildInputs,
   nativeBuildInputs,
 } : rec {
-  package = naersk'.buildPackage {
+  satori-archiver = naersk'.buildPackage {
     name = "satori-archiver";
     version = version;
 
@@ -21,7 +21,7 @@
     };
   };
 
-  container-image = pkgs.dockerTools.buildImage {
+  satori-archiver-container-image = pkgs.dockerTools.buildImage {
     name = "satori-archiver";
     tag = "latest";
     created = "now";
@@ -33,7 +33,7 @@
     };
 
     config = {
-      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${package}/bin/satori-archiver" ];
+      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${satori-archiver}/bin/satori-archiver" ];
       ExposedPorts = {
         "9090/tcp" = {};
       };
