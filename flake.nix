@@ -62,13 +62,6 @@
 
         packages =
           {
-            fmt = naersk'.buildPackage {
-              src = ./.;
-              nativeBuildInputs = nativeBuildInputs;
-              buildInputs = buildInputs;
-              mode = "fmt";
-            };
-
             clippy = naersk'.buildPackage {
               src = ./.;
               nativeBuildInputs = nativeBuildInputs;
