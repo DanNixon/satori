@@ -13,9 +13,15 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix, naersk }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    fenix,
+    naersk,
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
         pkgs = (import nixpkgs) {
           inherit system;
         };
@@ -37,47 +43,55 @@
         version = ws_cargo.workspace.package.version;
         git_revision = self.shortRev or self.dirtyShortRev;
 
-        nativeBuildInputs = with pkgs; [ cmake pkg-config ];
-        buildInputs = with pkgs; [ openssl ];
-
+        nativeBuildInputs = with pkgs; [cmake pkg-config];
+        buildInputs = with pkgs; [openssl];
       in rec {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [ toolchain.toolchain ];
+          nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
           buildInputs = buildInputs;
-          packages = with pkgs; [ alejandra treefmt nix skopeo ];
+
+          packages = with pkgs; [
+            nix
+
+            skopeo
+
+            treefmt
+            alejandra
+          ];
         };
 
-        packages = {
-          fmt = naersk'.buildPackage {
-            src = ./.;
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs;
-            mode = "fmt";
-          };
+        packages =
+          {
+            fmt = naersk'.buildPackage {
+              src = ./.;
+              nativeBuildInputs = nativeBuildInputs;
+              buildInputs = buildInputs;
+              mode = "fmt";
+            };
 
-          clippy = naersk'.buildPackage {
-            src = ./.;
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs;
-            mode = "clippy";
-          };
+            clippy = naersk'.buildPackage {
+              src = ./.;
+              nativeBuildInputs = nativeBuildInputs;
+              buildInputs = buildInputs;
+              mode = "clippy";
+            };
 
-          test = naersk'.buildPackage {
-            src = ./.;
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs;
-            mode = "test";
-            # Ensure detailed test output appears in nix build log
-            cargoTestOptions = x: x ++ ["1>&2"];
+            test = naersk'.buildPackage {
+              src = ./.;
+              nativeBuildInputs = nativeBuildInputs;
+              buildInputs = buildInputs;
+              mode = "test";
+              # Ensure detailed test output appears in nix build log
+              cargoTestOptions = x: x ++ ["1>&2"];
 
-            AWS_ACCESS_KEY_ID = "minioadmin";
-            AWS_SECRET_ACCESS_KEY = "minioadmin";
-          };
-        } //
-        import ./agent { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
-        import ./archiver { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
-        import ./ctl { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
-        import ./event-processor { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
+              AWS_ACCESS_KEY_ID = "minioadmin";
+              AWS_SECRET_ACCESS_KEY = "minioadmin";
+            };
+          }
+          // import ./agent {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./ctl {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./event-processor {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
       }
     );
 }

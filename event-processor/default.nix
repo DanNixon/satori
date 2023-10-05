@@ -5,7 +5,7 @@
   git_revision,
   buildInputs,
   nativeBuildInputs,
-} : rec {
+}: rec {
   satori-event-processor = naersk'.buildPackage {
     name = "satori-event-processor";
     version = version;
@@ -28,12 +28,12 @@
 
     copyToRoot = pkgs.buildEnv {
       name = "image-root";
-      paths = [ pkgs.bashInteractive pkgs.coreutils ];
-      pathsToLink = [ "/bin" ];
+      paths = [pkgs.bashInteractive pkgs.coreutils];
+      pathsToLink = ["/bin"];
     };
 
     config = {
-      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${satori-event-processor}/bin/satori-event-processor" ];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${satori-event-processor}/bin/satori-event-processor"];
       ExposedPorts = {
         "9090/tcp" = {};
       };
