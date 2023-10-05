@@ -5,7 +5,7 @@
   git_revision,
   buildInputs,
   nativeBuildInputs,
-} : rec {
+}: rec {
   satori-archiver = naersk'.buildPackage {
     name = "satori-archiver";
     version = version;
@@ -28,12 +28,12 @@
 
     copyToRoot = pkgs.buildEnv {
       name = "image-root";
-      paths = [ pkgs.bashInteractive pkgs.coreutils ];
-      pathsToLink = [ "/bin" ];
+      paths = [pkgs.bashInteractive pkgs.coreutils];
+      pathsToLink = ["/bin"];
     };
 
     config = {
-      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${satori-archiver}/bin/satori-archiver" ];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${satori-archiver}/bin/satori-archiver"];
       ExposedPorts = {
         "9090/tcp" = {};
       };
