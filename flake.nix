@@ -44,7 +44,7 @@
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [ toolchain.toolchain ];
           buildInputs = buildInputs;
-          packages = with pkgs; [ nix skopeo ];
+          packages = with pkgs; [ alejandra treefmt nix skopeo ];
         };
 
         packages = {
