@@ -1,5 +1,6 @@
 [package]
 name = "satori-storage"
+license.workspace = true
 version.workspace = true
 edition.workspace = true
 
