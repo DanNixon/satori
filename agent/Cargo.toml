@@ -1,5 +1,6 @@
 [package]
 name = "satori-agent"
+license.workspace = true
 version.workspace = true
 edition.workspace = true
 
