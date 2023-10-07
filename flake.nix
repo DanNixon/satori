@@ -53,10 +53,12 @@
           packages = with pkgs; [
             nix
 
-            skopeo
-
             treefmt
             alejandra
+
+            cargo-deny
+
+            skopeo
           ];
         };
 
