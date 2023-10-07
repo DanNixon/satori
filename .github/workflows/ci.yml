@@ -21,6 +21,9 @@ jobs:
       - name: Format
         run: nix develop --command treefmt --fail-on-change
 
+      - name: cargo-deny
+        run: nix develop --command cargo-deny check
+
       - name: Clippy
         run: nix build -L .#clippy
 
