@@ -5,17 +5,16 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-satori-common = { path = "../common" }
-
 async-trait = "0.1.60"
 bytes = { version = "1.3.0", features = ["serde"] }
 chrono = { version = "0.4.23", features = ["serde"] }
+ciborium = "0.2.1"
 hpke = { version = "0.10.0", features = ["std", "serde_impls"] }
 pem-rfc7468 = { version = "0.7.0", features = ["alloc"] }
 rand = "0.8.5"
 rust-s3 = "0.33"
+satori-common = { path = "../common" }
 serde = { version = "1.0", features = ["derive"] }
-serde_cbor = "0.11.2"
 serde_json = "1.0.91"
 thiserror = "1.0.38"
 toml.workspace = true

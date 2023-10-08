@@ -51,7 +51,8 @@ impl KeyOperations for Hpke {
             ciphertext: ciphertext.into(),
         };
 
-        let data = serde_cbor::to_vec(&payload)?;
+        let mut data: Vec<u8> = Vec::new();
+        ciborium::into_writer(&payload, &mut data)?;
 
         Ok(data.into())
     }
@@ -60,7 +61,7 @@ impl KeyOperations for Hpke {
         match &self.private_key {
             None => Err(StorageError::KeyMissing),
             Some(private_key) => {
-                let payload: Payload = serde_cbor::from_slice(&data)?;
+                let payload: Payload = ciborium::from_reader(&*data)?;
 
                 let data = hpke::single_shot_open::<SelectedAead, SelectedKdf, SelectedKem>(
                     &hpke::OpModeR::Base,
