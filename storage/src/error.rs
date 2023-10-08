@@ -3,8 +3,11 @@ pub enum StorageError {
     #[error("serde_json error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
 
-    #[error("serde_cbor error: {0}")]
-    SerdeCborError(#[from] serde_cbor::Error),
+    #[error("ciborium serialisation error: {0}")]
+    CiboriumSerialisationError(#[from] ciborium::ser::Error<std::io::Error>),
+
+    #[error("ciborium deserialisation error: {0}")]
+    CiboriumDeserialisationError(#[from] ciborium::de::Error<std::io::Error>),
 
     #[error("toml serialization error: {0}")]
     SerdeTomlSerError(#[from] toml::ser::Error),
