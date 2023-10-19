@@ -2,7 +2,7 @@
   pkgs,
   naersk',
   version,
-  git_revision,
+  gitRevision,
   buildInputs,
   nativeBuildInputs,
 }: rec {
@@ -17,7 +17,7 @@
     buildInputs = buildInputs;
 
     overrideMain = p: {
-      GIT_REVISION = git_revision;
+      GIT_REVISION = gitRevision;
     };
   };
 
