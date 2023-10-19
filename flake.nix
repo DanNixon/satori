@@ -37,11 +37,10 @@
           rustc = toolchain.rust;
         };
 
-        ws_cargo_toml = builtins.readFile ./Cargo.toml;
-        ws_cargo = builtins.fromTOML ws_cargo_toml;
+        wsCargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
-        version = ws_cargo.workspace.package.version;
-        git_revision = self.shortRev or self.dirtyShortRev;
+        version = wsCargo.workspace.package.version;
+        gitRevision = self.shortRev or self.dirtyShortRev;
 
         nativeBuildInputs = with pkgs; [cmake pkg-config];
         buildInputs = with pkgs; [openssl];
@@ -83,10 +82,10 @@
               AWS_SECRET_ACCESS_KEY = "minioadmin";
             };
           }
-          // import ./agent {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./ctl {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./event-processor {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
+          // import ./agent {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./archiver {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./ctl {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./event-processor {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
       }
     );
 }

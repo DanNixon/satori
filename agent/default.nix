@@ -2,7 +2,7 @@
   pkgs,
   naersk',
   version,
-  git_revision,
+  gitRevision,
   buildInputs,
   nativeBuildInputs,
 }: rec {
@@ -21,7 +21,7 @@
       wrapProgram $out/bin/satori-agent --prefix PATH : ${pkgs.lib.makeBinPath [pkgs.ffmpeg]}
     '';
     overrideMain = p: {
-      GIT_REVISION = git_revision;
+      GIT_REVISION = gitRevision;
     };
   };
 
