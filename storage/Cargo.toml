@@ -9,7 +9,7 @@ async-trait = "0.1.60"
 bytes = { version = "1.3.0", features = ["serde"] }
 chrono = { version = "0.4.23", features = ["serde"] }
 ciborium = "0.2.1"
-hpke = { version = "0.10.0", features = ["std", "serde_impls"] }
+hpke = { version = "0.11.0", features = ["std", "serde_impls"] }
 pem-rfc7468 = { version = "0.7.0", features = ["alloc"] }
 rand = "0.8.5"
 rust-s3 = "0.33"
