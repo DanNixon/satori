@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v22
 
         # Evaluate the devshell here so that the time reported for subsequent
         # steps that use it reflect what is actually done there.
@@ -61,8 +61,8 @@ jobs:
           - satori-event-processor
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v22
 
       - name: Build
         run: nix build -L .#${{ matrix.package }}
