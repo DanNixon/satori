@@ -39,9 +39,9 @@
           rustc = toolchain.rust;
         };
 
-        wsCargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+        cargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
-        version = wsCargo.workspace.package.version;
+        version = cargo.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
         nativeBuildInputs = with pkgs; [cmake pkg-config];
