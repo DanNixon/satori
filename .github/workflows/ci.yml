@@ -67,11 +67,20 @@ jobs:
         run: |
           set -x
 
+          # Build image via Nix and take the resulting path as the local container registry
           local_cr="docker-archive://$(nix build .#${{ matrix.package }}-container-image --no-link --print-out-paths)"
+
+          # The container registry to push images to (GHCR)
           remote_cr="docker://ghcr.io/dannixon/${{ matrix.package }}"
 
+          # Push image using the Git ref name as the image tag (i.e. "main" or the tag name)
           skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.ref_name }}"
+
+          # Push image using the Git SHA as the image tag
           skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.sha }}"
+
+          # If the trigger was a tag (i.e. a release)
           if [[ "${{ github.ref_type }}" == 'tag' ]]; then
+            # Push image using the "latest" tag
             skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:latest"
           fi
