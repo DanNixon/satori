@@ -77,15 +77,16 @@ jobs:
 
           # The container registry to push images to (GHCR)
           remote_cr="docker://ghcr.io/dannixon/${{ matrix.package }}"
+          remote_cr_creds="${{ github.repository_owner }}:${{ github.token }}"
 
           # Push image using the Git ref name as the image tag (i.e. "main" or the tag name)
-          skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.ref_name }}"
+          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.ref_name }}"
 
           # Push image using the Git SHA as the image tag
-          skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.sha }}"
+          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.sha }}"
 
           # If the trigger was a tag (i.e. a release)
           if [[ "${{ github.ref_type }}" == 'tag' ]]; then
             # Push image using the "latest" tag
-            skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:latest"
+            skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:latest"
           fi
