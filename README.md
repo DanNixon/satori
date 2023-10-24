@@ -4,3 +4,5 @@
 [![dependency status](https://deps.rs/repo/github/DanNixon/satori/status.svg)](https://deps.rs/repo/github/DanNixon/satori)
 
 Very simple NVR for IP cameras.
+
+Documentation can be found [here](./docs).
