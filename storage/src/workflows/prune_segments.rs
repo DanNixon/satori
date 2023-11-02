@@ -1,4 +1,4 @@
-use crate::{Provider, StorageProvider, StorageResult};
+use crate::{Provider, StorageError, StorageProvider, StorageResult};
 use satori_common::Event;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,7 +7,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct UnreferencedSegments {
@@ -89,15 +89,70 @@ pub async fn calculate_unreferenced_segments(
 pub async fn delete_unreferenced_segments(
     storage: Provider,
     unreferenced_segments: UnreferencedSegments,
+    num_workers: usize,
 ) -> StorageResult<()> {
+    let mut results = Vec::new();
+
     for (camera, segments) in unreferenced_segments.inner {
+        info!("Pruning segments for \"{camera}\"");
+
+        let (tx, rx) = async_channel::unbounded();
+
         for s in segments {
-            info!("Pruning \"{camera}\" segment: {}", s.display());
-            storage.delete_segment(&camera, &s).await?;
+            tx.send(s).await.expect("task channel should not be closed");
         }
+        tx.close();
+
+        let mut workers = Vec::new();
+        for worker_idx in 0..num_workers {
+            let storage = storage.clone();
+            let camera = camera.clone();
+            let rx = rx.clone();
+
+            workers.push(tokio::spawn(async move {
+                let mut result = Ok(());
+
+                while let Ok(segment) = rx.recv().await {
+                    info!(
+                        "(worker {worker_idx}) Deleting segment {}",
+                        segment.display()
+                    );
+
+                    if let Err(err) = storage.delete_segment(&camera, &segment).await {
+                        result = Err(StorageError::WorkflowPartialError);
+                        warn!(
+                            "Failed to delete segment {}, error: {err}",
+                            segment.display()
+                        );
+                    }
+                }
+
+                result
+            }));
+        }
+
+        results.push(
+            if futures::future::join_all(workers)
+                .await
+                .iter()
+                .any(|r| match r {
+                    Err(_) => true,
+                    Ok(Err(_)) => true,
+                    Ok(_) => false,
+                })
+            {
+                Err(StorageError::WorkflowPartialError)
+            } else {
+                Ok(())
+            },
+        );
     }
 
-    Ok(())
+    if results.iter().any(|r| r.is_err()) {
+        Err(StorageError::WorkflowPartialError)
+    } else {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Default)]
@@ -238,7 +293,7 @@ mod test {
             .await
             .unwrap();
 
-        delete_unreferenced_segments(provider.clone(), unreferenced_segments)
+        delete_unreferenced_segments(provider.clone(), unreferenced_segments, 2)
             .await
             .unwrap();
 
@@ -323,7 +378,7 @@ mod test {
             .await
             .unwrap();
 
-        delete_unreferenced_segments(provider.clone(), unreferenced_segments)
+        delete_unreferenced_segments(provider.clone(), unreferenced_segments, 2)
             .await
             .unwrap();
 

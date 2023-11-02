@@ -7,6 +7,10 @@ use tracing::error;
 /// Removes segments that are not referenced by any event.
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct PruneSegmentsCommand {
+    /// Number of parallel jobs to run in appropriate places in the selected workflow
+    #[arg(short, long, default_value_t = 8)]
+    jobs: usize,
+
     #[command(subcommand)]
     command: PruneSegmentsAction,
 }
@@ -36,7 +40,7 @@ impl PruneSegmentsCommand {
                 let unreferenced_segments =
                     calculate_unrefeferenced_segments(storage.clone()).await?;
 
-                delete_unreferenced_segments(storage, unreferenced_segments).await
+                delete_unreferenced_segments(storage, unreferenced_segments, self.jobs).await
             }
             PruneSegmentsAction::Report { report } => {
                 let unreferenced_segments =
@@ -52,7 +56,7 @@ impl PruneSegmentsCommand {
                         error!("{}", err);
                     })?;
 
-                delete_unreferenced_segments(storage, unreferenced_segments).await
+                delete_unreferenced_segments(storage, unreferenced_segments, self.jobs).await
             }
         }
     }
@@ -71,8 +75,9 @@ async fn calculate_unrefeferenced_segments(
 async fn delete_unreferenced_segments(
     storage: Provider,
     segments: workflows::UnreferencedSegments,
+    jobs: usize,
 ) -> CliResult {
-    workflows::delete_unreferenced_segments(storage, segments)
+    workflows::delete_unreferenced_segments(storage, segments, jobs)
         .await
         .map_err(|err| {
             error!("{}", err);
