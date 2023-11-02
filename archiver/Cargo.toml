@@ -13,7 +13,6 @@ clap = { version = "4.0", features = ["derive", "env"] }
 mqtt-channel-client.workspace = true
 kagiyama = "0.3.0"
 reqwest = "0.11.13"
-rust-s3 = "0.33"
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "3.0"
 serde_json = "1.0.91"
