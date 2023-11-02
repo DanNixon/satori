@@ -38,13 +38,13 @@ impl PruneSegmentsCommand {
         match &self.command {
             PruneSegmentsAction::Prune => {
                 let unreferenced_segments =
-                    calculate_unrefeferenced_segments(storage.clone()).await?;
+                    calculate_unrefeferenced_segments(storage.clone(), self.jobs).await?;
 
                 delete_unreferenced_segments(storage, unreferenced_segments, self.jobs).await
             }
             PruneSegmentsAction::Report { report } => {
                 let unreferenced_segments =
-                    calculate_unrefeferenced_segments(storage.clone()).await?;
+                    calculate_unrefeferenced_segments(storage.clone(), self.jobs).await?;
 
                 unreferenced_segments.save(report).map_err(|err| {
                     error!("{}", err);
@@ -64,8 +64,9 @@ impl PruneSegmentsCommand {
 
 async fn calculate_unrefeferenced_segments(
     storage: Provider,
+    jobs: usize,
 ) -> CliResultWithValue<workflows::UnreferencedSegments> {
-    workflows::calculate_unreferenced_segments(storage)
+    workflows::calculate_unreferenced_segments(storage, jobs)
         .await
         .map_err(|err| {
             error!("{}", err);
