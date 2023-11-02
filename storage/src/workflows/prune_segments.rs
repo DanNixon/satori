@@ -6,6 +6,7 @@ use std::{
     fs::File,
     io::Write,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 use tracing::{info, warn};
 
@@ -27,8 +28,91 @@ impl UnreferencedSegments {
     }
 }
 
+/// Retrieves a list of segments that are referred to by any event in a given storage provider.
+///
+/// 1. Retrieves the list of all events
+/// 2. For each event
+///     1. Retrieve the full event data
+///     2. For each camera in the event
+///         1. Extend the set of referenced segments for this camera
+async fn get_referenced_segments(
+    storage: Provider,
+    num_workers: usize,
+) -> StorageResult<UniqueCameraSegmentCollection> {
+    info!("Getting event list");
+    let event_filenames = storage.list_events().await?;
+
+    info!(
+        "Calculating referenced segments (from {} events)",
+        event_filenames.len()
+    );
+    let referenced_segments = UniqueCameraSegmentCollection::default();
+
+    // Channel that forms the job queue for workers
+    let (tx, rx) = async_channel::unbounded();
+
+    // Fill the channel with the event filenames then immediately close it
+    // Workers will terminate when the channel is empty and closed
+    for filename in event_filenames {
+        tx.send(filename)
+            .await
+            .expect("task channel should be open");
+    }
+    tx.close();
+
+    // Start as many workers as were requested
+    let mut workers = Vec::new();
+    for worker_idx in 0..num_workers {
+        let storage = storage.clone();
+        let rx = rx.clone();
+        let referenced_segments = referenced_segments.clone();
+
+        workers.push(tokio::spawn(async move {
+            while let Ok(filename) = rx.recv().await {
+                info!(
+                    "(worker {worker_idx}) Processing event {}",
+                    filename.display()
+                );
+
+                // Attempt to get event data
+                match storage.get_event(&filename).await {
+                    Ok(event) => {
+                        referenced_segments.add_from_event(event);
+                    }
+                    Err(err) => {
+                        warn!(
+                            "Failed to retrieve event {}, error: {err}",
+                            filename.display()
+                        );
+                        return Err(StorageError::WorkflowPartialError);
+                    }
+                };
+            }
+
+            Ok(())
+        }));
+    }
+
+    // Wait for all workers to terminate, collecting results and returning an error if any one job
+    // failed
+    if futures::future::join_all(workers)
+        .await
+        .iter()
+        .any(|r| match r {
+            Err(_) => true,
+            Ok(Err(_)) => true,
+            Ok(_) => false,
+        })
+    {
+        Err(StorageError::WorkflowPartialError)
+    } else {
+        Ok(referenced_segments)
+    }
+}
+
 pub async fn calculate_unreferenced_segments(
     storage: Provider,
+    num_workers: usize,
 ) -> StorageResult<UnreferencedSegments> {
     info!("Getting camera list");
     let cameras = storage.list_cameras().await?;
@@ -42,19 +126,7 @@ pub async fn calculate_unreferenced_segments(
         camera_segment_cache.insert(camera.clone(), storage.list_segments(camera).await?);
     }
 
-    info!("Getting event list");
-    let event_filenames = storage.list_events().await?;
-
-    info!(
-        "Calculating referenced segments (from {} events)",
-        event_filenames.len()
-    );
-    let mut referenced_segments = UniqueCameraSegmentCollection::default();
-    for filename in event_filenames {
-        info!("Processing event {}", filename.display());
-        let event = storage.get_event(&filename).await?;
-        referenced_segments.add_from_event(event);
-    }
+    let referenced_segments = get_referenced_segments(storage, num_workers).await?;
 
     let mut all_unreferenced_segments = UnreferencedSegments::default();
 
@@ -67,7 +139,7 @@ pub async fn calculate_unreferenced_segments(
 
         // Get referenced segments for camera
         info!("Calculating unreferenced segments for camera \"{camera}\"");
-        let unreferenced_segments = match referenced_segments.get_segments_for_camera(&camera) {
+        let unreferenced_segments = match referenced_segments.inner.lock().unwrap().get(&camera) {
             // Remove referenced segments from the list of stored segments
             Some(referenced_segments) => camera_segments
                 .into_iter()
@@ -99,7 +171,7 @@ pub async fn delete_unreferenced_segments(
         let (tx, rx) = async_channel::unbounded();
 
         for s in segments {
-            tx.send(s).await.expect("task channel should not be closed");
+            tx.send(s).await.expect("task channel should be open");
         }
         tx.close();
 
@@ -155,27 +227,25 @@ pub async fn delete_unreferenced_segments(
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct UniqueCameraSegmentCollection {
-    inner: HashMap<String, HashSet<PathBuf>>,
+    inner: Arc<Mutex<HashMap<String, HashSet<PathBuf>>>>,
 }
 
 impl UniqueCameraSegmentCollection {
-    fn add_from_event(&mut self, event: Event) {
+    fn add_from_event(&self, event: Event) {
+        let mut inner = self.inner.lock().unwrap();
+
         for camera in event.cameras {
-            if !self.inner.contains_key(&camera.name) {
-                self.inner.insert(camera.name.clone(), HashSet::new());
+            if !inner.contains_key(&camera.name) {
+                inner.insert(camera.name.clone(), HashSet::new());
             }
 
-            let segments = self.inner.get_mut(&camera.name).unwrap();
+            let segments = inner.get_mut(&camera.name).unwrap();
             for segment in camera.segment_list {
                 segments.insert(segment);
             }
         }
-    }
-
-    fn get_segments_for_camera(&self, camera_name: &str) -> Option<&HashSet<PathBuf>> {
-        self.inner.get(camera_name)
     }
 }
 
@@ -289,7 +359,7 @@ mod test {
             .await
             .unwrap();
 
-        let unreferenced_segments = calculate_unreferenced_segments(provider.clone())
+        let unreferenced_segments = calculate_unreferenced_segments(provider.clone(), 2)
             .await
             .unwrap();
 
@@ -374,7 +444,7 @@ mod test {
             .await
             .unwrap();
 
-        let unreferenced_segments = calculate_unreferenced_segments(provider.clone())
+        let unreferenced_segments = calculate_unreferenced_segments(provider.clone(), 2)
             .await
             .unwrap();
 
