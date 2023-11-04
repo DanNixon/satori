@@ -1,7 +1,7 @@
 use crate::{error::ArchiverResult, task::ArchiveTask, Context};
 use futures::StreamExt;
 use kagiyama::prometheus::registry::Registry;
-use satori_common::{mqtt::PublishExt, ArchiveCommand, CameraSegments, Event};
+use satori_common::{mqtt::PublishExt, ArchiveCommand, ArchiveSegmentsCommand, Event};
 use std::{
     collections::VecDeque,
     fs::File,
@@ -141,13 +141,14 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    fn handle_archive_segments_message(&mut self, segments: CameraSegments) {
+    fn handle_archive_segments_message(&mut self, msg: ArchiveSegmentsCommand) {
         info!("Queueing archive video segments command");
-        for segment in segments.segment_list {
+        for segment in msg.segment_list {
             debug!("Adding video segment to queue: {}", segment.display());
             self.queue
                 .push_back(ArchiveTask::CameraSegment(crate::task::CameraSegment {
-                    camera_name: segments.name.clone(),
+                    camera_name: msg.camera_name.clone(),
+                    camera_url: msg.camera_url.clone(),
                     filename: segment,
                 }));
         }
@@ -265,7 +266,8 @@ mod test {
     use super::*;
     use chrono::Utc;
     use rumqttc::{Publish, QoS};
-    use satori_common::EventMetadata;
+    use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, EventMetadata, Message};
+    use url::Url;
 
     #[test]
     fn test_load_bad_file_gives_empty_queue() {
@@ -279,12 +281,11 @@ mod test {
         let mut queue = ArchiveTaskQueue::default();
         assert!(queue.queue.is_empty());
 
-        let msg = satori_common::Message::ArchiveCommand(satori_common::ArchiveCommand::Segments(
-            satori_common::CameraSegments {
-                name: "camera-1".into(),
-                segment_list: vec![],
-            },
-        ));
+        let msg = Message::ArchiveCommand(ArchiveCommand::Segments(ArchiveSegmentsCommand {
+            camera_name: "camera-1".into(),
+            camera_url: Url::parse("http://localhost:8080/stream.m3u8").unwrap(),
+            segment_list: vec![],
+        }));
         let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
         assert!(queue.queue.is_empty());
@@ -295,12 +296,11 @@ mod test {
         let mut queue = ArchiveTaskQueue::default();
         assert!(queue.queue.is_empty());
 
-        let msg = satori_common::Message::ArchiveCommand(satori_common::ArchiveCommand::Segments(
-            satori_common::CameraSegments {
-                name: "camera-1".into(),
-                segment_list: vec!["one.ts".into(), "two.ts".into()],
-            },
-        ));
+        let msg = Message::ArchiveCommand(ArchiveCommand::Segments(ArchiveSegmentsCommand {
+            camera_name: "camera-1".into(),
+            camera_url: Url::parse("http://localhost:8080/stream.m3u8").unwrap(),
+            segment_list: vec!["one.ts".into(), "two.ts".into()],
+        }));
         let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
         assert_eq!(queue.queue.len(), 2);
@@ -330,28 +330,25 @@ mod test {
         let mut queue = ArchiveTaskQueue::default();
 
         // Add an event to the queue
-        let msg = satori_common::Message::ArchiveCommand(
-            satori_common::ArchiveCommand::EventMetadata(Event {
-                metadata: EventMetadata {
-                    id: "test-1".into(),
-                    timestamp: Utc::now().into(),
-                },
-                start: Utc::now().into(),
-                end: Utc::now().into(),
-                reasons: Default::default(),
-                cameras: Default::default(),
-            }),
-        );
+        let msg = Message::ArchiveCommand(ArchiveCommand::EventMetadata(Event {
+            metadata: EventMetadata {
+                id: "test-1".into(),
+                timestamp: Utc::now().into(),
+            },
+            start: Utc::now().into(),
+            end: Utc::now().into(),
+            reasons: Default::default(),
+            cameras: Default::default(),
+        }));
         let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
 
         // Add two segments to the queue
-        let msg = satori_common::Message::ArchiveCommand(satori_common::ArchiveCommand::Segments(
-            satori_common::CameraSegments {
-                name: "camera-1".into(),
-                segment_list: vec!["one.ts".into(), "two.ts".into()],
-            },
-        ));
+        let msg = Message::ArchiveCommand(ArchiveCommand::Segments(ArchiveSegmentsCommand {
+            camera_name: "camera-1".into(),
+            camera_url: Url::parse("http://localhost:8080/stream.m3u8").unwrap(),
+            segment_list: vec!["one.ts".into(), "two.ts".into()],
+        }));
         let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
 

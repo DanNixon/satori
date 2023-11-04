@@ -58,12 +58,12 @@ async fn two() {
 
                 [[cameras]]
                 name = "camera1"
-                url = "{}/stream.m3u8"
+                url = "{}"
                 "#
             ),
             event_processor_events_file.path().display(),
             mosquitto.port(),
-            stream_1.address(),
+            stream_1.stream_address(),
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -109,16 +109,11 @@ async fn two() {
                 username = "test"
                 password = ""
                 topic = "satori"
-
-                [[cameras]]
-                name = "camera1"
-                url = "{}/stream.m3u8"
                 "#
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
             mosquitto.port(),
-            stream_1.address(),
         );
 
         let file = NamedTempFile::new().unwrap();

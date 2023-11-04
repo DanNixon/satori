@@ -45,17 +45,14 @@ impl ArchiveTask {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct CameraSegment {
     pub(crate) camera_name: String,
+    pub(crate) camera_url: Url,
     pub(crate) filename: PathBuf,
 }
 
 impl CameraSegment {
     #[tracing::instrument(skip_all)]
     pub(crate) async fn get(&self, context: &Context) -> ArchiverResult<Bytes> {
-        let url = context
-            .cameras
-            .get_url(&self.camera_name)
-            .ok_or(ArchiverError::CameraNotFound)?;
-        let url = get_segment_url(url, &self.filename)?;
+        let url = get_segment_url(self.camera_url.clone(), &self.filename)?;
         debug!("Segment URL: {url}");
 
         let req = context.http_client.get(url).send().await?;
@@ -66,9 +63,9 @@ impl CameraSegment {
 fn get_segment_url(hls_url: Url, segment_filename: &Path) -> ArchiverResult<Url> {
     let mut url = hls_url;
     url.path_segments_mut()
-        .map_err(|_| ArchiverError::UrlError)?
+        .map_err(|_| ArchiverError::Url)?
         .pop()
-        .push(segment_filename.to_str().ok_or(ArchiverError::UrlError)?);
+        .push(segment_filename.to_str().ok_or(ArchiverError::Url)?);
     Ok(url)
 }
 

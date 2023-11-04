@@ -4,7 +4,7 @@ mod event;
 pub use self::event::{CameraSegments, Event, EventMetadata, EventReason};
 
 mod message_schema;
-pub use self::message_schema::{ArchiveCommand, Message, TriggerCommand};
+pub use self::message_schema::{ArchiveCommand, ArchiveSegmentsCommand, Message, TriggerCommand};
 
 pub mod mqtt;
 
