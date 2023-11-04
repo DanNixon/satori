@@ -5,7 +5,7 @@ mod task;
 
 use crate::config::Config;
 use clap::Parser;
-use satori_common::{camera_config::CamerasConfig, mqtt::MqttClient};
+use satori_common::mqtt::MqttClient;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::{debug, info};
 
@@ -24,7 +24,6 @@ pub(crate) struct Cli {
 
 struct Context {
     storage: satori_storage::Provider,
-    cameras: CamerasConfig,
     http_client: reqwest::Client,
 }
 
@@ -39,7 +38,6 @@ async fn main() -> Result<(), ()> {
 
     let context = Context {
         storage: config.storage.create_provider(),
-        cameras: config.cameras,
         http_client: reqwest::Client::new(),
     };
 

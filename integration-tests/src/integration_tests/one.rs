@@ -71,22 +71,22 @@ async fn one() {
 
                 [[cameras]]
                 name = "camera1"
-                url = "{}/stream.m3u8"
+                url = "{}"
 
                 [[cameras]]
                 name = "camera2"
-                url = "{}/stream.m3u8"
+                url = "{}"
 
                 [[cameras]]
                 name = "camera3"
-                url = "{}/stream.m3u8"
+                url = "{}"
                 "#
             ),
             event_processor_events_file.path().display(),
             mosquitto.port(),
-            stream_1.address(),
-            stream_2.address(),
-            stream_3.address(),
+            stream_1.stream_address(),
+            stream_2.stream_address(),
+            stream_3.stream_address(),
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -132,26 +132,11 @@ async fn one() {
                 username = "test"
                 password = ""
                 topic = "satori"
-
-                [[cameras]]
-                name = "camera1"
-                url = "{}/stream.m3u8"
-
-                [[cameras]]
-                name = "camera2"
-                url = "{}/stream.m3u8"
-
-                [[cameras]]
-                name = "camera3"
-                url = "{}/stream.m3u8"
                 "#
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
             mosquitto.port(),
-            stream_1.address(),
-            stream_2.address(),
-            stream_3.address(),
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -212,7 +197,10 @@ async fn one() {
             .unwrap()
             .try_payload_str()
             .unwrap(),
-        r#"{"kind":"archive_command","data":{"kind":"segments","data":{"name":"camera1","segment_list":["2023-01-01T00_01_24+0000.ts","2023-01-01T00_01_30+0000.ts","2023-01-01T00_01_36+0000.ts","2023-01-01T00_01_42+0000.ts","2023-01-01T00_01_48+0000.ts","2023-01-01T00_01_54+0000.ts","2023-01-01T00_02_00+0000.ts","2023-01-01T00_02_06+0000.ts","2023-01-01T00_02_12+0000.ts","2023-01-01T00_02_18+0000.ts","2023-01-01T00_02_24+0000.ts","2023-01-01T00_02_30+0000.ts","2023-01-01T00_02_36+0000.ts","2023-01-01T00_02_42+0000.ts"]}}}"#
+        format!(
+            r#"{{"kind":"archive_command","data":{{"kind":"segments","data":{{"camera_name":"camera1","camera_url":"{}","segment_list":["2023-01-01T00_01_24+0000.ts","2023-01-01T00_01_30+0000.ts","2023-01-01T00_01_36+0000.ts","2023-01-01T00_01_42+0000.ts","2023-01-01T00_01_48+0000.ts","2023-01-01T00_01_54+0000.ts","2023-01-01T00_02_00+0000.ts","2023-01-01T00_02_06+0000.ts","2023-01-01T00_02_12+0000.ts","2023-01-01T00_02_18+0000.ts","2023-01-01T00_02_24+0000.ts","2023-01-01T00_02_30+0000.ts","2023-01-01T00_02_36+0000.ts","2023-01-01T00_02_42+0000.ts"]}}}}}}"#,
+            stream_1.stream_address()
+        )
     );
 
     // Segment archive command for camera3 should be sent
@@ -223,7 +211,10 @@ async fn one() {
             .unwrap()
             .try_payload_str()
             .unwrap(),
-        r#"{"kind":"archive_command","data":{"kind":"segments","data":{"name":"camera3","segment_list":["2023-01-01T00_01_20+0000.ts","2023-01-01T00_01_26+0000.ts","2023-01-01T00_01_32+0000.ts","2023-01-01T00_01_38+0000.ts","2023-01-01T00_01_44+0000.ts","2023-01-01T00_01_50+0000.ts","2023-01-01T00_01_56+0000.ts","2023-01-01T00_02_02+0000.ts","2023-01-01T00_02_08+0000.ts","2023-01-01T00_02_14+0000.ts","2023-01-01T00_02_20+0000.ts","2023-01-01T00_02_26+0000.ts","2023-01-01T00_02_32+0000.ts","2023-01-01T00_02_38+0000.ts","2023-01-01T00_02_44+0000.ts"]}}}"#
+        format!(
+            r#"{{"kind":"archive_command","data":{{"kind":"segments","data":{{"camera_name":"camera3","camera_url":"{}","segment_list":["2023-01-01T00_01_20+0000.ts","2023-01-01T00_01_26+0000.ts","2023-01-01T00_01_32+0000.ts","2023-01-01T00_01_38+0000.ts","2023-01-01T00_01_44+0000.ts","2023-01-01T00_01_50+0000.ts","2023-01-01T00_01_56+0000.ts","2023-01-01T00_02_02+0000.ts","2023-01-01T00_02_08+0000.ts","2023-01-01T00_02_14+0000.ts","2023-01-01T00_02_20+0000.ts","2023-01-01T00_02_26+0000.ts","2023-01-01T00_02_32+0000.ts","2023-01-01T00_02_38+0000.ts","2023-01-01T00_02_44+0000.ts"]}}}}}}"#,
+            stream_3.stream_address()
+        ),
     );
 
     // Event metadata archive command should be sent

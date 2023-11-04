@@ -69,7 +69,7 @@ impl From<DummyStreamParams> for MediaPlaylist {
 
 pub struct DummyHlsServer {
     handle: Option<JoinHandle<()>>,
-    address: String,
+    stream_address: String,
 }
 
 impl DummyHlsServer {
@@ -90,9 +90,12 @@ impl DummyHlsServer {
             axum::serve(listener, app).await.unwrap();
         }));
 
-        let address = format!("http://localhost:{}", port);
+        let stream_address = format!("http://localhost:{}/stream.m3u8", port);
 
-        Self { handle, address }
+        Self {
+            handle,
+            stream_address,
+        }
     }
 
     pub async fn stop(&mut self) {
@@ -102,8 +105,8 @@ impl DummyHlsServer {
         }
     }
 
-    pub fn address(&self) -> String {
-        self.address.clone()
+    pub fn stream_address(&self) -> String {
+        self.stream_address.clone()
     }
 }
 

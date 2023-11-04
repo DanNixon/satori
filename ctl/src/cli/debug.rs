@@ -3,10 +3,11 @@ use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use satori_common::{
     mqtt::{AsyncClientExt, MqttClient, MqttConfig, PublishExt},
-    ArchiveCommand, CameraSegments, Event, EventMetadata, Message, Trigger,
+    ArchiveCommand, ArchiveSegmentsCommand, Event, EventMetadata, Message, Trigger,
 };
 use std::{path::PathBuf, time::Duration};
 use tracing::{info, warn};
+use url::Url;
 
 /// Debugging operations.
 #[derive(Debug, Clone, Parser)]
@@ -70,11 +71,12 @@ impl CliExecute for DebugCommand {
                 mqtt_client.poll_until_message_is_sent().await;
             }
             DebugSubcommand::ArchiveSegments(cmd) => {
-                let segments = CameraSegments {
-                    name: cmd.camera.clone(),
-                    segment_list: cmd.filename.clone(),
-                };
-                let message = Message::ArchiveCommand(ArchiveCommand::Segments(segments));
+                let message =
+                    Message::ArchiveCommand(ArchiveCommand::Segments(ArchiveSegmentsCommand {
+                        camera_name: cmd.camera.clone(),
+                        camera_url: cmd.url.clone(),
+                        segment_list: cmd.filename.clone(),
+                    }));
 
                 let mut client = mqtt_client.client();
                 let topic = mqtt_client.topic();
@@ -110,6 +112,10 @@ pub(crate) struct DebugArchiveSegmentsCommand {
     /// Name of the camera to retrieve segments from.
     #[arg(long)]
     camera: String,
+
+    /// URL of the camera's HLS stream.
+    #[arg(long)]
+    url: Url,
 
     /// Filenames of segments to archive.
     filename: Vec<PathBuf>,

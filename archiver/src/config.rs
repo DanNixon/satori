@@ -1,4 +1,4 @@
-use satori_common::{camera_config::CamerasConfig, mqtt::MqttConfig};
+use satori_common::mqtt::MqttConfig;
 use satori_storage::StorageConfig;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
@@ -13,9 +13,6 @@ pub(crate) struct Config {
     pub(crate) interval: Duration,
 
     pub(crate) mqtt: MqttConfig,
-
-    #[serde(flatten)]
-    pub(crate) cameras: CamerasConfig,
 
     pub(crate) storage: StorageConfig,
 }

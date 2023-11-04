@@ -2,7 +2,7 @@ use crate::{error::EventProcessorResult, hls_client::HlsClient, segments::Playli
 use kagiyama::prometheus::registry::Registry;
 use satori_common::{
     mqtt::{AsyncClientExt, MqttClient},
-    ArchiveCommand, CameraSegments, Event, EventReason, Message, Trigger,
+    ArchiveCommand, ArchiveSegmentsCommand, CameraSegments, Event, EventReason, Message, Trigger,
 };
 use std::{
     fs::File,
@@ -163,10 +163,13 @@ impl EventSet {
                         .client()
                         .publish_json(
                             mqtt_client.topic(),
-                            &Message::ArchiveCommand(ArchiveCommand::Segments(CameraSegments {
-                                name: camera.name.clone(),
-                                segment_list: new_segments.clone(),
-                            })),
+                            &Message::ArchiveCommand(ArchiveCommand::Segments(
+                                ArchiveSegmentsCommand {
+                                    camera_name: camera.name.clone(),
+                                    camera_url: camera_client.get_camera_url(&camera.name).unwrap(),
+                                    segment_list: new_segments.clone(),
+                                },
+                            )),
                         )
                         .await;
                 }

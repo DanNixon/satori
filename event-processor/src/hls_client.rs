@@ -23,23 +23,20 @@ impl HlsClient {
     }
 
     #[tracing::instrument(skip(self))]
+    pub(crate) fn get_camera_url(&self, camera: &str) -> EventProcessorResult<Url> {
+        self.camera_urls
+            .get(camera)
+            .ok_or_else(|| EventProcessorError::NoSuchCamera(camera.into()))
+            .cloned()
+    }
+
+    #[tracing::instrument(skip(self))]
     pub(crate) async fn get_playlist(
         &self,
         camera: &str,
     ) -> EventProcessorResult<m3u8_rs::MediaPlaylist> {
-        let url = self
-            .camera_urls
-            .get(camera)
-            .ok_or_else(|| EventProcessorError::NoSuchCamera(camera.into()))?;
-
-        let body = self
-            .http_client
-            .get(url.clone())
-            .send()
-            .await?
-            .bytes()
-            .await?;
-
+        let url = self.get_camera_url(camera)?;
+        let body = self.http_client.get(url).send().await?.bytes().await?;
         parse_playlist(body)
     }
 }
