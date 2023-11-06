@@ -1,0 +1,15 @@
+[package]
+name = "satori-integration-tests"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dev-dependencies]
+ctor.workspace = true
+indoc.workspace = true
+rumqttc.workspace = true
+satori-testing-utils.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

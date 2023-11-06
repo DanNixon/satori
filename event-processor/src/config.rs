@@ -28,6 +28,7 @@ pub(crate) struct Config {
 #[derive(Debug, Deserialize)]
 pub(crate) struct TriggersConfig {
     /// Trigger configs that are used when a trigger with a specific ID are issued
+    #[serde(default)]
     pub(crate) templates: HashMap<String, TriggerTemplate>,
 
     /// Trigger defaults that are used when no matching template is found

@@ -33,8 +33,11 @@ jobs:
       - name: Clippy
         run: nix develop --command cargo clippy --all-targets -- -D warnings
 
-      - name: Test
+      - name: Tests
         run: nix develop --command cargo test
+
+      - name: Integration tests
+        run: nix develop --command cargo test integration_tests -- --ignored --test-threads=1
 
   build:
     name: Build
