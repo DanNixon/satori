@@ -249,9 +249,9 @@ impl StorageProvider for S3Storage {
 mod test {
     use super::*;
     use rand::Rng;
-    use s3::BucketConfiguration;
     use satori_testing_utils::MinioDriver;
-    use std::sync::{Arc, Mutex};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
     lazy_static::lazy_static! {
         static ref MINIO: Arc<Mutex<Option<MinioDriver>>> = Arc::new(Mutex::new(None));
@@ -259,15 +259,9 @@ mod test {
 
     #[ctor::ctor]
     fn init_minio() {
-        MINIO.lock().unwrap().replace(MinioDriver::default());
-
-        std::env::set_var("AWS_ACCESS_KEY_ID", "minioadmin");
-        std::env::set_var("AWS_SECRET_ACCESS_KEY", "minioadmin");
-    }
-
-    #[ctor::dtor]
-    fn shutdown_minio() {
-        MINIO.lock().unwrap().as_ref().unwrap().stop();
+        let minio = MinioDriver::default();
+        minio.set_credential_env_vars();
+        MINIO.blocking_lock().replace(minio);
     }
 
     fn generate_random_bucket_name() -> String {
@@ -288,26 +282,18 @@ mod test {
             ( $test:ident ) => {
                 #[tokio::test]
                 async fn $test() {
-                    let endpoint = MINIO.lock().unwrap().as_ref().unwrap().endpoint();
+                    let minio = MINIO.lock().await;
+                    let minio = minio.as_ref().unwrap();
+
+                    minio.wait_for_ready().await;
 
                     let bucket = super::generate_random_bucket_name();
-
-                    Bucket::create_with_path_style(
-                        &bucket,
-                        Region::Custom {
-                            region: "".into(),
-                            endpoint: endpoint.clone(),
-                        },
-                        Credentials::default().unwrap(),
-                        BucketConfiguration::default(),
-                    )
-                    .await
-                    .unwrap();
+                    minio.create_bucket(&bucket).await;
 
                     let provider = crate::StorageConfig::S3(S3Config {
                         bucket,
                         region: "".into(),
-                        endpoint,
+                        endpoint: minio.endpoint(),
                         encryption: EncryptionConfig::default(),
                     })
                     .create_provider();
@@ -327,26 +313,18 @@ mod test {
             ( $test:ident ) => {
                 #[tokio::test]
                 async fn $test() {
-                    let endpoint = MINIO.lock().unwrap().as_ref().unwrap().endpoint();
+                    let minio = MINIO.lock().await;
+                    let minio = minio.as_ref().unwrap();
+
+                    minio.wait_for_ready().await;
 
                     let bucket = super::generate_random_bucket_name();
-
-                    Bucket::create_with_path_style(
-                        &bucket,
-                        Region::Custom {
-                            region: "".into(),
-                            endpoint: endpoint.clone(),
-                        },
-                        Credentials::default().unwrap(),
-                        BucketConfiguration::default(),
-                    )
-                    .await
-                    .unwrap();
+                    minio.create_bucket(&bucket).await;
 
                     let provider = crate::StorageConfig::S3(S3Config {
                         bucket,
                         region: "".into(),
-                        endpoint,
+                        endpoint: minio.endpoint(),
                         encryption: toml::from_str(
                             "
 [event]
