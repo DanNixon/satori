@@ -73,16 +73,6 @@
 
         packages =
           {
-            clippy = naersk'.buildPackage {
-              mode = "clippy";
-              src = ./.;
-
-              nativeBuildInputs = nativeBuildInputs;
-              buildInputs = buildInputs;
-
-              RUSTFLAGS = lintingRustFlags;
-            };
-
             test = naersk'.buildPackage {
               mode = "test";
               src = ./.;
