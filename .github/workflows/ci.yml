@@ -30,7 +30,7 @@ jobs:
         run: nix develop --command cargo-deny check
 
       - name: Clippy
-        run: nix build -L .#clippy
+        run: nix develop --command cargo clippy --all-targets
 
       - name: Start MinIO
         run: |

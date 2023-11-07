@@ -46,6 +46,8 @@
 
         nativeBuildInputs = with pkgs; [cmake pkg-config];
         buildInputs = with pkgs; [openssl];
+
+        lintingRustFlags = "-D unused-crate-dependencies";
       in rec {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
@@ -65,22 +67,19 @@
             # Container image management tool
             skopeo
           ];
+
+          RUSTFLAGS = lintingRustFlags;
         };
 
         packages =
           {
-            clippy = naersk'.buildPackage {
-              src = ./.;
-              nativeBuildInputs = nativeBuildInputs;
-              buildInputs = buildInputs;
-              mode = "clippy";
-            };
-
             test = naersk'.buildPackage {
+              mode = "test";
               src = ./.;
+
               nativeBuildInputs = nativeBuildInputs;
               buildInputs = buildInputs;
-              mode = "test";
+
               # Ensure detailed test output appears in nix build log
               cargoTestOptions = x: x ++ ["1>&2"];
 
