@@ -10,7 +10,7 @@ satori-storage = { path = "../storage" }
 
 async-trait = "0.1.68"
 chrono = "0.4.23"
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["cargo", "derive", "env", "string"] }
 crossterm = "0.27"
 mqtt-channel-client.workspace = true
 ratatui = { version = "0.23.0", features = ["all-widgets"]}
