@@ -9,7 +9,7 @@ satori-common = { path = "../common" }
 satori-storage = { path = "../storage" }
 
 bytes = "1.3.0"
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.0", features = ["cargo", "derive", "env", "string"] }
 mqtt-channel-client.workspace = true
 kagiyama = "0.3.0"
 reqwest = "0.11.13"
