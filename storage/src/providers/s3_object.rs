@@ -250,6 +250,36 @@ mod test {
     use super::*;
     use rand::Rng;
     use s3::BucketConfiguration;
+    use satori_testing_utils::MinioDriver;
+    use std::sync::{Arc, Mutex};
+
+    lazy_static::lazy_static! {
+        static ref MINIO: Arc<Mutex<Option<MinioDriver>>> = Arc::new(Mutex::new(None));
+    }
+
+    #[ctor::ctor]
+    fn init_minio() {
+        MINIO.lock().unwrap().replace(MinioDriver::default());
+
+        std::env::set_var("AWS_ACCESS_KEY_ID", "minioadmin");
+        std::env::set_var("AWS_SECRET_ACCESS_KEY", "minioadmin");
+    }
+
+    #[ctor::dtor]
+    fn shutdown_minio() {
+        MINIO.lock().unwrap().as_ref().unwrap().stop();
+    }
+
+    fn generate_random_bucket_name() -> String {
+        let id = rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(8)
+            .map(char::from)
+            .collect::<String>()
+            .to_lowercase();
+
+        format!("satori-storage-test-{id}")
+    }
 
     mod no_encryption {
         use super::*;
@@ -258,19 +288,15 @@ mod test {
             ( $test:ident ) => {
                 #[tokio::test]
                 async fn $test() {
-                    let id = rand::thread_rng()
-                        .sample_iter(&rand::distributions::Alphanumeric)
-                        .take(8)
-                        .map(char::from)
-                        .collect::<String>()
-                        .to_lowercase();
-                    let bucket_name = format!("satori-storage-test-{id}");
+                    let endpoint = MINIO.lock().unwrap().as_ref().unwrap().endpoint();
+
+                    let bucket = super::generate_random_bucket_name();
 
                     Bucket::create_with_path_style(
-                        &bucket_name,
+                        &bucket,
                         Region::Custom {
                             region: "".into(),
-                            endpoint: "http://localhost:9000".into(),
+                            endpoint: endpoint.clone(),
                         },
                         Credentials::default().unwrap(),
                         BucketConfiguration::default(),
@@ -279,9 +305,9 @@ mod test {
                     .unwrap();
 
                     let provider = crate::StorageConfig::S3(S3Config {
-                        bucket: bucket_name,
+                        bucket,
                         region: "".into(),
-                        endpoint: "http://localhost:9000".into(),
+                        endpoint,
                         encryption: EncryptionConfig::default(),
                     })
                     .create_provider();
@@ -301,19 +327,15 @@ mod test {
             ( $test:ident ) => {
                 #[tokio::test]
                 async fn $test() {
-                    let id = rand::thread_rng()
-                        .sample_iter(&rand::distributions::Alphanumeric)
-                        .take(8)
-                        .map(char::from)
-                        .collect::<String>()
-                        .to_lowercase();
-                    let bucket_name = format!("satori-storage-test-{id}");
+                    let endpoint = MINIO.lock().unwrap().as_ref().unwrap().endpoint();
+
+                    let bucket = super::generate_random_bucket_name();
 
                     Bucket::create_with_path_style(
-                        &bucket_name,
+                        &bucket,
                         Region::Custom {
                             region: "".into(),
-                            endpoint: "http://localhost:9000".into(),
+                            endpoint: endpoint.clone(),
                         },
                         Credentials::default().unwrap(),
                         BucketConfiguration::default(),
@@ -322,9 +344,9 @@ mod test {
                     .unwrap();
 
                     let provider = crate::StorageConfig::S3(S3Config {
-                        bucket: bucket_name,
+                        bucket,
                         region: "".into(),
-                        endpoint: "http://localhost:9000".into(),
+                        endpoint,
                         encryption: toml::from_str(
                             "
 [event]

@@ -1,0 +1,8 @@
+[package]
+name = "satori-testing-utils"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rand = "0.8.5"

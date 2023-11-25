@@ -72,22 +72,7 @@
         };
 
         packages =
-          {
-            test = naersk'.buildPackage {
-              mode = "test";
-              src = ./.;
-
-              nativeBuildInputs = nativeBuildInputs;
-              buildInputs = buildInputs;
-
-              # Ensure detailed test output appears in nix build log
-              cargoTestOptions = x: x ++ ["1>&2"];
-
-              AWS_ACCESS_KEY_ID = "minioadmin";
-              AWS_SECRET_ACCESS_KEY = "minioadmin";
-            };
-          }
-          // import ./agent {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          import ./agent {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./archiver {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./ctl {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./event-processor {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};

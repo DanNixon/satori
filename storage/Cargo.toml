@@ -24,6 +24,9 @@ toml.workspace = true
 tracing = "0.1"
 
 [dev-dependencies]
+ctor = "0.2.5"
 hex = "0.4.3"
+lazy_static = "1.4.0"
 rand = "0.8.5"
+satori-testing-utils = { path = "../testing-utils" }
 tempfile = "3.4.0"
