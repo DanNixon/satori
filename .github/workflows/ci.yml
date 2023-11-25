@@ -31,21 +31,10 @@ jobs:
         run: nix develop --command cargo-deny check
 
       - name: Clippy
-        run: nix develop --command cargo clippy --all-targets
-
-      - name: Start MinIO
-        run: |
-          podman run \
-            -d \
-            -p 9000:9000 \
-            -e "MINIO_ACCESS_KEY=minioadmin" \
-            -e "MINIO_SECRET_KEY=minioadmin" \
-            minio/minio \
-            server \
-            /data
+        run: nix develop --command cargo clippy --all-targets -- -D warnings
 
       - name: Test
-        run: nix build -L --no-sandbox .#test
+        run: nix develop --command cargo test
 
   build:
     name: Build

@@ -4,6 +4,8 @@ members = [
   "common",
   "storage",
 
+  "testing-utils",
+
   "agent",
   "archiver",
   "ctl",
