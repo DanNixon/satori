@@ -5,19 +5,18 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-satori-common = { path = "../common" }
-
-axum = "0.6.1"
-byte-unit = { version = "4.0", features = ["serde"] }
-clap = { version = "4.0", features = ["cargo", "derive", "env", "string"] }
-kagiyama = "0.3.0"
-nix = { version = "0.27.0", features = ["process", "signal"] }
-regex = "1.7.0"
-semver = "1.0.14"
-serde = { version = "1.0", features = ["derive"] }
-tempfile = "3.3.0"
-tokio = { version = "1.26", features = ["macros", "rt-multi-thread", "signal", "process"] }
-tower-http = { version = "0.3.0", features = ["fs"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-url = { version = "2.3", features = ["serde"] }
+axum.workspace = true
+byte-unit.workspace = true
+clap.workspace = true
+kagiyama.workspace = true
+nix.workspace = true
+regex.workspace = true
+satori-common.workspace = true
+semver.workspace = true
+serde.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["process"] }
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
