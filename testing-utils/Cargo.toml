@@ -5,4 +5,4 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rand = "0.8.5"
+rand.workspace = true
