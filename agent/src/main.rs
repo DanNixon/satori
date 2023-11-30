@@ -7,11 +7,6 @@ use kagiyama::prometheus::{metrics::gauge::Gauge, registry::Unit};
 use std::{fs, net::SocketAddr, path::PathBuf, time::Duration};
 use tracing::{debug, info, warn};
 
-#[derive(Debug, Clone)]
-enum Event {
-    Shutdown(Result<(), ()>),
-}
-
 /// Run the camera agent.
 ///
 /// Handles restreaming a single camera as HLS with history.
@@ -32,7 +27,7 @@ pub(crate) struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ()> {
+async fn main() {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
@@ -47,6 +42,7 @@ async fn main() -> Result<(), ()> {
     // Counter for number of files processed
     let segments_metric: Gauge = Gauge::default();
     let disk_usage_metric: Gauge = Gauge::default();
+    let ffmpeg_invocations_metric: Gauge = Gauge::default();
 
     // Register metrics
     {
@@ -65,12 +61,16 @@ async fn main() -> Result<(), ()> {
             Unit::Bytes,
             disk_usage_metric.clone(),
         );
+
+        registry.register(
+            "ffmpeg_invocations",
+            "Number of times ffmpeg has been invoked",
+            ffmpeg_invocations_metric.clone(),
+        );
     }
 
     // Create video output directory
     fs::create_dir_all(&config.video_directory).expect("should be able to create output directory");
-
-    let (events_tx, mut events_rx) = tokio::sync::broadcast::channel::<Event>(32);
 
     // Generate a random filename for the frame JPEG
     let frame_file = tempfile::Builder::new()
@@ -87,35 +87,21 @@ async fn main() -> Result<(), ()> {
     );
 
     // Start streamer
-    let streamer = ffmpeg::Streamer::new(
-        events_tx.clone(),
-        config.stream.clone(),
-        &config.video_directory,
-        frame_file.path(),
-    );
+    let streamer =
+        ffmpeg::Streamer::new(config.clone(), frame_file.path(), ffmpeg_invocations_metric);
     let streamer_handle = streamer.start().await;
 
     let mut metrics_interval = tokio::time::interval(Duration::from_secs(30));
 
-    let result;
     loop {
         tokio::select! {
             _ = metrics_interval.tick() => {
                 update_segment_count_metric(&segments_metric, &config);
                 update_disk_usage_metric(&disk_usage_metric, &config);
             }
-            event = events_rx.recv() => {
-                match event.unwrap() {
-                    Event:: Shutdown(r) => {
-                        info!("Exiting");
-                        result = r;
-                        break;
-                    }
-                }
-            }
             _ = tokio::signal::ctrl_c() => {
-                info!("Got ctrl-c");
-                events_tx.send(Event::Shutdown(Ok(()))).unwrap();
+                info!("Exiting");
+                break;
             }
         }
     }
@@ -130,8 +116,6 @@ async fn main() -> Result<(), ()> {
 
     // Stop observability server
     app_watcher.stop_server().unwrap();
-
-    result
 }
 
 #[tracing::instrument(skip_all)]
