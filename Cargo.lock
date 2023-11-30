@@ -2225,6 +2225,7 @@ dependencies = [
  "satori-common",
  "semver",
  "serde",
+ "serde_with",
  "tempfile",
  "tokio",
  "tower-http",

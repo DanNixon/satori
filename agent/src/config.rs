@@ -1,16 +1,22 @@
-use crate::ffmpeg::StreamerConfig;
 use byte_unit::Byte;
 use serde::Deserialize;
+use serde_with::{serde_as, DurationSeconds};
 use std::{
     fs,
     path::{Path, PathBuf},
+    time::Duration,
 };
+use url::Url;
 
+#[serde_as]
 #[derive(Clone, Deserialize)]
 pub(crate) struct Config {
     pub(crate) video_directory: PathBuf,
 
-    pub(crate) stream: StreamerConfig,
+    pub(crate) stream: StreamConfig,
+
+    #[serde_as(as = "DurationSeconds<u64>")]
+    pub(crate) ffmpeg_restart_delay: Duration,
 }
 
 impl Config {
@@ -36,4 +42,14 @@ where
     }
 
     Ok(Byte::from_bytes(result))
+}
+
+#[derive(Clone, Deserialize)]
+pub(crate) struct StreamConfig {
+    pub(crate) url: Url,
+
+    pub(crate) ffmpeg_input_args: Vec<String>,
+
+    pub(crate) hls_segment_time: i32,
+    pub(crate) hls_retained_segment_count: i32,
 }
