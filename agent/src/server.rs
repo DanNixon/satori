@@ -1,11 +1,6 @@
 use crate::config::Config;
-use axum::{
-    http::StatusCode,
-    response::{Html, IntoResponse},
-    routing::{get, get_service},
-    Router,
-};
-use std::{io, net::SocketAddr, path::PathBuf};
+use axum::{response::Html, routing::get, Router};
+use std::{net::SocketAddr, path::PathBuf};
 use tokio::task::JoinHandle;
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -14,27 +9,21 @@ pub(super) fn run(address: SocketAddr, config: Config, frame_file: PathBuf) -> J
     tokio::spawn(async move {
         info!("Starting HTTP server on {}", address);
 
-        let frame_svc = get_service(ServeFile::new(frame_file)).handle_error(handle_error);
+        let frame_svc = ServeFile::new(frame_file);
 
-        let stream_svc =
-            get_service(ServeDir::new(config.video_directory)).handle_error(handle_error);
+        let stream_svc = ServeDir::new(config.video_directory);
+
+        let player = { Html(include_str!("player.html")) };
 
         let app = Router::new()
             .route("/player", get(player))
-            .nest_service("/frame.jpg", frame_svc.clone())
-            .nest_service("/", stream_svc.clone());
+            .nest_service("/frame.jpg", frame_svc)
+            .nest_service("/", stream_svc);
 
-        axum::Server::bind(&address)
-            .serve(app.into_make_service())
+        let listener = tokio::net::TcpListener::bind(&address)
             .await
-            .unwrap();
+            .unwrap_or_else(|_| panic!("tcp listener should bind to {address}"));
+
+        axum::serve(listener, app).await.unwrap();
     })
-}
-
-async fn player() -> Html<&'static str> {
-    Html(include_str!("player.html"))
-}
-
-async fn handle_error(_err: io::Error) -> impl IntoResponse {
-    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
 }
