@@ -1,6 +1,7 @@
 mod config;
 mod ffmpeg;
 mod server;
+mod utils;
 
 use clap::Parser;
 use kagiyama::prometheus::{metrics::gauge::Gauge, registry::Unit};
@@ -120,9 +121,10 @@ async fn main() {
 #[tracing::instrument(skip_all)]
 fn update_segment_count_metric(metric: &Gauge, config: &config::Config) {
     debug!("Updating segment count metric");
+
     match std::fs::read_dir(&config.video_directory) {
-        Ok(doot) => {
-            let num = doot
+        Ok(contents) => {
+            let ts_file_count = contents
                 .filter_map(|i| i.ok())
                 .map(|i| i.path())
                 .filter(|i| {
@@ -137,7 +139,8 @@ fn update_segment_count_metric(metric: &Gauge, config: &config::Config) {
                     }
                 })
                 .count();
-            metric.set(num as i64);
+
+            metric.set(ts_file_count as i64);
         }
         Err(e) => {
             warn!("Failed to read video directory, err={}", e);
@@ -148,6 +151,7 @@ fn update_segment_count_metric(metric: &Gauge, config: &config::Config) {
 #[tracing::instrument(skip_all)]
 fn update_disk_usage_metric(metric: &Gauge, config: &config::Config) {
     debug!("Updating disk usage metric");
+
     match config.get_disk_usage() {
         Ok(disk_usage) => {
             metric.set(disk_usage.get_bytes() as i64);
