@@ -1,29 +1,37 @@
 use crate::config::Config;
 use axum::{response::Html, routing::get, Router};
 use std::{net::SocketAddr, path::PathBuf};
-use tokio::task::JoinHandle;
+use tokio::{net::TcpListener, task::JoinHandle};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 
-pub(super) fn run(address: SocketAddr, config: Config, frame_file: PathBuf) -> JoinHandle<()> {
-    tokio::spawn(async move {
-        info!("Starting HTTP server on {}", address);
+pub(super) struct Server {
+    handle: Option<JoinHandle<()>>,
+}
 
-        let frame_svc = ServeFile::new(frame_file);
-
-        let stream_svc = ServeDir::new(config.video_directory);
-
-        let player = { Html(include_str!("player.html")) };
-
-        let app = Router::new()
-            .route("/player", get(player))
-            .nest_service("/frame.jpg", frame_svc)
-            .nest_service("/", stream_svc);
-
-        let listener = tokio::net::TcpListener::bind(&address)
+impl Server {
+    pub(super) async fn new(address: SocketAddr, config: Config, frame_file: PathBuf) -> Self {
+        let listener = TcpListener::bind(&address)
             .await
             .unwrap_or_else(|_| panic!("tcp listener should bind to {address}"));
 
-        axum::serve(listener, app).await.unwrap();
-    })
+        let app = Router::new()
+            .route("/player", get(Html(include_str!("player.html"))))
+            .nest_service("/frame.jpg", ServeFile::new(frame_file))
+            .nest_service("/", ServeDir::new(config.video_directory));
+
+        info!("Starting HTTP server on {}", address);
+        let handle = Some(tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        }));
+
+        Self { handle }
+    }
+
+    pub(super) async fn stop(&mut self) {
+        info!("Stopping HTTP server");
+        let handle = self.handle.take().unwrap();
+        handle.abort();
+        let _ = handle.await;
+    }
 }
