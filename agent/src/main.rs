@@ -80,11 +80,12 @@ async fn main() {
         .unwrap();
 
     // Start HTTP server
-    let server_handle = server::run(
+    let mut server = server::Server::new(
         cli.http_server_address,
         config.clone(),
         frame_file.path().to_owned(),
-    );
+    )
+    .await;
 
     // Start streamer
     let mut streamer =
@@ -109,9 +110,8 @@ async fn main() {
     // Stop streamer
     streamer.stop().await;
 
-    // Terminate HTTP server
-    server_handle.abort();
-    let _ = server_handle.await;
+    // Stop HTTP server
+    server.stop().await;
 
     // Stop observability server
     app_watcher.stop_server().unwrap();
