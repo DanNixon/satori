@@ -87,9 +87,9 @@ async fn main() {
     );
 
     // Start streamer
-    let streamer =
+    let mut streamer =
         ffmpeg::Streamer::new(config.clone(), frame_file.path(), ffmpeg_invocations_metric);
-    let streamer_handle = streamer.start().await;
+    streamer.start().await;
 
     let mut metrics_interval = tokio::time::interval(Duration::from_secs(30));
 
@@ -108,7 +108,6 @@ async fn main() {
 
     // Stop streamer
     streamer.stop().await;
-    streamer_handle.await.unwrap();
 
     // Terminate HTTP server
     server_handle.abort();

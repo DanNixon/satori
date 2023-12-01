@@ -20,6 +20,7 @@ pub(crate) struct Streamer {
     terminate: Arc<Mutex<bool>>,
     ffmpeg_pid: Arc<Mutex<Option<Pid>>>,
     ffmpeg_invocations_metric: Gauge,
+    handle: Option<JoinHandle<()>>,
 }
 
 impl Streamer {
@@ -30,19 +31,19 @@ impl Streamer {
             terminate: Arc::new(Mutex::new(false)),
             ffmpeg_pid: Default::default(),
             ffmpeg_invocations_metric,
+            handle: None,
         }
     }
 
-    #[allow(clippy::async_yields_async)]
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn start(&self) -> JoinHandle<()> {
+    pub(crate) async fn start(&mut self) {
         let config = self.config.clone();
         let frame_file = self.frame_file.clone();
         let ffmpeg_pid = self.ffmpeg_pid.clone();
         let terminate = self.terminate.clone();
         let ffmpeg_invocations_metric = self.ffmpeg_invocations_metric.clone();
 
-        tokio::spawn(async move {
+        self.handle = Some(tokio::spawn(async move {
             loop {
                 // Start ffmpeg as a child process
                 let mut ffmpeg_process = unsafe {
@@ -109,9 +110,7 @@ impl Streamer {
                 // Wait for ffmpeg process to exit
                 let result = ffmpeg_process.wait().await;
                 info!("ffmpeg exited, ok={}", result.is_ok());
-                *ffmpeg_pid
-                    .lock()
-                    .expect("ffmpeg PID lock acquire should not fail") = None;
+                *ffmpeg_pid.lock().unwrap() = None;
 
                 let expected_shutdown = *terminate.lock().unwrap();
                 if expected_shutdown {
@@ -125,11 +124,11 @@ impl Streamer {
                     tokio::time::sleep(config.ffmpeg_restart_delay).await;
                 }
             }
-        })
+        }));
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn stop(&self) {
+    pub(crate) async fn stop(&mut self) {
         const FFMPEG_EXIT_SIGNAL: Signal = Signal::SIGINT;
 
         // Set terminate flag to ensure ffmpeg is not restarted
@@ -137,12 +136,13 @@ impl Streamer {
 
         // Request ffmpeg to terminate
         info!("Sending {} to ffmpeg process", FFMPEG_EXIT_SIGNAL);
-        if let Some(ffmpeg_pid) = *self
-            .ffmpeg_pid
-            .lock()
-            .expect("ffmpeg PID lock acquire should not fail")
-        {
+        if let Some(ffmpeg_pid) = *self.ffmpeg_pid.lock().unwrap() {
             signal::kill(ffmpeg_pid, FFMPEG_EXIT_SIGNAL).unwrap();
+        }
+
+        // Wait for ffmpeg to exit
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.await;
         }
     }
 }
