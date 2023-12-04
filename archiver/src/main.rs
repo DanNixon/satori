@@ -9,7 +9,7 @@ use satori_common::camera_config::CamerasConfig;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::{debug, info};
 
-/// Run the event processor.
+/// Run the archiver.
 #[derive(Clone, Parser)]
 #[command(author, version = satori_common::version!(), about, long_about = None)]
 pub(crate) struct Cli {
