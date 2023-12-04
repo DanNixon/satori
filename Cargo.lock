@@ -2319,7 +2319,6 @@ dependencies = [
  "nix",
  "regex",
  "satori-common",
- "semver",
  "serde",
  "serde_with",
  "tempfile",

@@ -12,7 +12,6 @@ kagiyama.workspace = true
 nix.workspace = true
 regex.workspace = true
 satori-common.workspace = true
-semver.workspace = true
 serde.workspace = true
 serde_with.workspace = true
 tempfile.workspace = true
