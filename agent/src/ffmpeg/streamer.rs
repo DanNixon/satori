@@ -9,7 +9,11 @@ use std::{
     process::Stdio,
     sync::{Arc, Mutex},
 };
-use tokio::{process::Command, task::JoinHandle};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+    task::JoinHandle,
+};
 use tracing::{debug, info, warn};
 
 const HLS_PLAYLIST_FILENAME: &str = "stream.m3u8";
@@ -84,6 +88,9 @@ impl Streamer {
                         .arg(&frame_file)
                         // Do nothing with stdin
                         .stdin(Stdio::null())
+                        // Capture stdout and stderr
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped())
                         // Call setsid, required for correct exit signal handling
                         .pre_exec(|| {
                             unistd::setsid()?;
@@ -95,22 +102,52 @@ impl Streamer {
                 debug!("ffmpeg process: {:?}", ffmpeg_process);
 
                 // Get and store the ffmpeg PID
-                *ffmpeg_pid
-                    .lock()
-                    .expect("ffmpeg PID lock acquire should not fail") = Some(Pid::from_raw(
-                    ffmpeg_process
-                        .id()
-                        .expect("ffmpeg process should have a PID") as i32,
-                ));
-                info!("ffmpeg PID: {:?}", ffmpeg_pid);
+                *ffmpeg_pid.lock().unwrap() = {
+                    let pid = Pid::from_raw(
+                        ffmpeg_process
+                            .id()
+                            .expect("ffmpeg process should have a PID")
+                            as i32,
+                    );
+                    info!("ffmpeg PID: {:?}", pid);
+                    Some(pid)
+                };
 
                 // Increment ffmpeg invocation count
                 ffmpeg_invocations_metric.inc();
 
-                // Wait for ffmpeg process to exit
-                let result = ffmpeg_process.wait().await;
-                info!("ffmpeg exited, ok={}", result.is_ok());
-                *ffmpeg_pid.lock().unwrap() = None;
+                let stdout = ffmpeg_process.stdout.take().unwrap();
+                let stderr = ffmpeg_process.stderr.take().unwrap();
+
+                let mut stdout_reader = BufReader::new(stdout).lines();
+                let mut stderr_reader = BufReader::new(stderr).lines();
+
+                loop {
+                    tokio::select! {
+                        // Output stdout to log with prefix
+                        line = stdout_reader.next_line() => {
+                            match line {
+                                Ok(Some(line)) => info!("ffmpeg stdout: {line}"),
+                                Err(_) => break,
+                                _ => (),
+                            }
+                        }
+                        // Output stderr to log with prefix
+                        line = stderr_reader.next_line() => {
+                            match line {
+                                Ok(Some(line)) => info!("ffmpeg stderr: {line}"),
+                                Err(_) => break,
+                                _ => (),
+                            }
+                        }
+                        // Wait for ffmpeg process to exit
+                        result = ffmpeg_process.wait() => {
+                            info!("ffmpeg exited, ok={}", result.is_ok());
+                            *ffmpeg_pid.lock().unwrap() = None;
+                            break;
+                        }
+                    }
+                }
 
                 let expected_shutdown = *terminate.lock().unwrap();
                 if expected_shutdown {
