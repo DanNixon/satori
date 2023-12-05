@@ -60,6 +60,7 @@
             # Code formatting tools
             treefmt
             alejandra
+            mdl
 
             # Rust dependency linting
             cargo-deny
