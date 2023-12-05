@@ -18,6 +18,7 @@ It has the following responsibilities:
 There should be one instance of the agent for every camera in the system.
 
 An example config file is shown below:
+
 ```toml
 # The directory in which recorded video will be saved.
 # This can either be persistent storage if you want resilience in the event of

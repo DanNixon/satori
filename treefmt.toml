@@ -1,3 +1,7 @@
+[formatter.markdown]
+command = "mdl"
+includes = [ "*.md" ]
+
 [formatter.nix]
 command = "alejandra"
 includes = [ "*.nix" ]
