@@ -2,7 +2,7 @@ use crate::PodmanDriver;
 use std::io::Write;
 
 pub struct MosquittoDriver {
-    podman: PodmanDriver,
+    _podman: PodmanDriver,
     port: u16,
 }
 
@@ -31,15 +31,14 @@ impl Default for MosquittoDriver {
             &[],
         );
 
-        Self { podman, port }
+        Self {
+            _podman: podman,
+            port,
+        }
     }
 }
 
 impl MosquittoDriver {
-    pub fn stop(&self) {
-        self.podman.stop();
-    }
-
     pub fn port(&self) -> u16 {
         self.port
     }
