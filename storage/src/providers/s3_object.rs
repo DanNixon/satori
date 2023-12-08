@@ -261,7 +261,13 @@ mod test {
     fn init_minio() {
         let minio = MinioDriver::default();
         minio.set_credential_env_vars();
-        MINIO.blocking_lock().replace(minio);
+        MINIO.try_lock().unwrap().replace(minio);
+    }
+
+    #[ctor::dtor]
+    fn cleanup_minio() {
+        let minio = MINIO.try_lock().unwrap().take().unwrap();
+        drop(minio);
     }
 
     fn generate_random_bucket_name() -> String {
