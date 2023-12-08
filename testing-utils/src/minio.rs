@@ -3,7 +3,7 @@ use s3::{creds::Credentials, Bucket, BucketConfiguration, Region};
 use std::time::Duration;
 
 pub struct MinioDriver {
-    podman: PodmanDriver,
+    _podman: PodmanDriver,
 
     endpoint: String,
 
@@ -32,7 +32,7 @@ impl Default for MinioDriver {
         let endpoint = format!("http://localhost:{}", port);
 
         Self {
-            podman,
+            _podman: podman,
             endpoint,
             key_id,
             secret_key,
@@ -41,10 +41,6 @@ impl Default for MinioDriver {
 }
 
 impl MinioDriver {
-    pub fn stop(&self) {
-        self.podman.stop();
-    }
-
     pub fn endpoint(&self) -> String {
         self.endpoint.clone()
     }

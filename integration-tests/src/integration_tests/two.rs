@@ -195,8 +195,5 @@ async fn two() {
     satori_event_processor.stop();
     satori_archiver.stop();
 
-    minio.stop();
-    mosquitto.stop();
-
     stream_1.stop().await;
 }

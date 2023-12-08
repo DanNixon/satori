@@ -169,6 +169,5 @@ mod test {
         tokio::time::sleep(Duration::from_millis(100)).await;
 
         client.stop().await;
-        mosquitto.stop();
     }
 }

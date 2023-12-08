@@ -58,7 +58,7 @@ impl PodmanDriver {
         }
     }
 
-    pub fn stop(&self) {
+    fn stop(&self) {
         // Stop the container
         let container_stop = Command::new("podman")
             .args(vec!["stop", &self.container_id])
