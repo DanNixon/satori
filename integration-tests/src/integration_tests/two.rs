@@ -70,7 +70,7 @@ async fn two() {
         file
     };
 
-    let satori_event_processor = satori_testing_utils::cargo::CargoBinaryRunner::new(
+    let satori_event_processor = satori_testing_utils::CargoBinaryRunner::new(
         "satori-event-processor".to_string(),
         vec![
             "--config".to_string(),
@@ -124,7 +124,7 @@ async fn two() {
         file
     };
 
-    let satori_archiver = satori_testing_utils::cargo::CargoBinaryRunner::new(
+    let satori_archiver = satori_testing_utils::CargoBinaryRunner::new(
         "satori-archiver".to_string(),
         vec![
             "--config".to_string(),
