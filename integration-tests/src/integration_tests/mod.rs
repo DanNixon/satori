@@ -6,5 +6,6 @@ fn init() {
         .init();
 }
 
+mod mqtt_reconnect;
 mod one;
 mod two;

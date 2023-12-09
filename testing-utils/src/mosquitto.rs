@@ -8,6 +8,13 @@ pub struct MosquittoDriver {
 
 impl Default for MosquittoDriver {
     fn default() -> Self {
+        let port = rand::random::<u16>() % 1000 + 8000;
+        Self::with_port(port)
+    }
+}
+
+impl MosquittoDriver {
+    pub fn with_port(port: u16) -> Self {
         let temp_config_file = tempfile::NamedTempFile::new().unwrap();
         temp_config_file
             .as_file()
@@ -17,8 +24,6 @@ impl Default for MosquittoDriver {
                 ",
             )
             .unwrap();
-
-        let port = rand::random::<u16>() % 1000 + 8000;
 
         let podman = PodmanDriver::new(
             "docker.io/library/eclipse-mosquitto",
@@ -36,9 +41,7 @@ impl Default for MosquittoDriver {
             port,
         }
     }
-}
 
-impl MosquittoDriver {
     pub fn port(&self) -> u16 {
         self.port
     }
