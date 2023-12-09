@@ -1,5 +1,6 @@
+use satori_common::mqtt::PublishExt;
 use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, PublishExt, TestMqttClient,
+    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
 };
 use std::{
     io::{Read, Write},
@@ -55,7 +56,8 @@ async fn one() {
                 event_ttl = 5
 
                 [mqtt]
-                broker = "{}"
+                broker = "localhost"
+                port = {}
                 client_id = "satori-event-processor"
                 username = "test"
                 password = ""
@@ -81,7 +83,7 @@ async fn one() {
                 "#
             ),
             event_processor_events_file.path().display(),
-            mosquitto.address(),
+            mosquitto.port(),
             stream_1.address(),
             stream_2.address(),
             stream_3.address(),
@@ -124,7 +126,8 @@ async fn one() {
                 endpoint = "{}"
 
                 [mqtt]
-                broker = "{}"
+                broker = "localhost"
+                port = {}
                 client_id = "satori-archiver-s3"
                 username = "test"
                 password = ""
@@ -145,7 +148,7 @@ async fn one() {
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
-            mosquitto.address(),
+            mosquitto.port(),
             stream_1.address(),
             stream_2.address(),
             stream_3.address(),

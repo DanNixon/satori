@@ -9,6 +9,7 @@ use crate::{
     event_set::EventSet,
 };
 use clap::Parser;
+use satori_common::mqtt::{MqttClient, PublishExt};
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::{debug, error, info};
 
@@ -32,23 +33,25 @@ async fn main() -> Result<(), ()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config);
 
-    let mqtt_control_topic = config.mqtt.topic();
-    let mqtt_client = config.mqtt.build_client(false).await;
+    // Set up and connect MQTT client
+    let mut mqtt_client: MqttClient = config.mqtt.into();
 
+    // Set up camera stream client
     let camera_client = self::hls_client::HlsClient::new(config.cameras);
 
+    // Load existing or create new event state
     let mut events = EventSet::load_or_new(&config.event_file, config.event_ttl);
 
+    // Set up observability
     let mut app_watcher = kagiyama::Watcher::<kagiyama::AlwaysReady>::default();
     {
         let mut registry = app_watcher.metrics_registry();
         let registry = registry.sub_registry_with_prefix("satori_eventprocessor");
-        mqtt_client.register_metrics(registry);
         events.register_metrics(registry);
     }
     app_watcher.start_server(cli.observability_address).await;
 
-    let mut mqtt_rx = mqtt_client.rx_channel();
+    // Run event loop
     let mut process_interval = tokio::time::interval(config.interval);
     loop {
         tokio::select! {
@@ -56,37 +59,34 @@ async fn main() -> Result<(), ()> {
                 info!("Exiting.");
                 break;
             }
-            event = mqtt_rx.recv() => {
-                match event {
-                    Ok(mqtt_channel_client::Event::Rx(msg)) => {
-                        if handle_mqtt_message(msg, &mut events, &config.triggers) {
-                            // Immediately process events
-                            events.process(&camera_client, &mqtt_client, mqtt_control_topic).await;
-                        }
-                    }
-                    Ok(_) => {}
-                    Err(err) => {
-                        error!("MQTT channel error: {}", err);
+            msg = mqtt_client.poll() => {
+                if let Some(msg) = msg {
+                    if handle_mqtt_message(msg, &mut events, &config.triggers) {
+                        // Immediately process events
+                        events.process(&camera_client, &mqtt_client).await;
                     }
                 }
             }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");
-                events.process(&camera_client, &mqtt_client, mqtt_control_topic).await;
+                events.process(&camera_client, &mqtt_client).await;
             }
         }
     }
+
+    // Disconnect MQTT client
+    mqtt_client.disconnect().await;
 
     Ok(())
 }
 
 #[tracing::instrument(skip_all)]
 fn handle_mqtt_message(
-    msg: mqtt_channel_client::paho_mqtt::Message,
+    msg: rumqttc::Publish,
     events: &mut EventSet,
     trigger_config: &TriggersConfig,
 ) -> bool {
-    let msg = serde_json::from_str::<satori_common::Message>(&msg.payload_str());
+    let msg = msg.try_payload_from_json::<satori_common::Message>();
     if let Err(err) = msg {
         error!("Failed to parse MQTT message ({})", err);
         return false;

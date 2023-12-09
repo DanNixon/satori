@@ -2,7 +2,8 @@ use super::{CliExecute, CliResult};
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use satori_common::{
-    mqtt::MqttConfig, ArchiveCommand, CameraSegments, Event, EventMetadata, Message, Trigger,
+    mqtt::{AsyncClientExt, MqttClient, MqttConfig, PublishExt},
+    ArchiveCommand, CameraSegments, Event, EventMetadata, Message, Trigger,
 };
 use std::{path::PathBuf, time::Duration};
 use tracing::{info, warn};
@@ -22,23 +23,29 @@ pub(crate) struct DebugCommand {
 impl CliExecute for DebugCommand {
     async fn execute(&self) -> CliResult {
         let mqtt_config: MqttConfig = satori_common::load_config_file(&self.mqtt);
-        let mqtt = mqtt_config.build_client(true).await;
+        let mut mqtt_client: MqttClient = mqtt_config.into();
 
-        let result = match &self.command {
-            DebugSubcommand::DumpMessages => {
-                let mut rx = mqtt.rx_channel();
-                while let Ok(mqtt_channel_client::Event::Rx(msg)) = rx.recv().await {
-                    match serde_json::from_slice::<Message>(msg.payload()) {
-                        Ok(msg) => {
-                            info!("{:#?}", msg);
-                        }
-                        Err(_) => {
-                            warn!("Message of unknown type: \"{}\"", msg.payload_str());
+        match &self.command {
+            DebugSubcommand::DumpMessages => loop {
+                tokio::select! {
+                    _ = tokio::signal::ctrl_c() => {
+                        info!("Exiting.");
+                        break;
+                    }
+                    msg = mqtt_client.poll() => {
+                        if let Some(msg) = msg {
+                            match msg.try_payload_from_json::<satori_common::Message>() {
+                                Ok(msg) => {
+                                    info!("{:#?}", msg);
+                                }
+                                Err(_) => {
+                                    warn!("Failed to parse message");
+                                }
+                            }
                         }
                     }
                 }
-                Ok(())
-            }
+            },
             DebugSubcommand::ArchiveEvent(cmd) => {
                 let trigger = Trigger {
                     metadata: EventMetadata {
@@ -56,7 +63,11 @@ impl CliExecute for DebugCommand {
                 event.cameras[1].segment_list =
                     vec!["four.ts".into(), "five.ts".into(), "six.ts".into()];
                 let message = Message::ArchiveCommand(ArchiveCommand::EventMetadata(event));
-                satori_common::mqtt::send_json(&mqtt, mqtt_config.topic(), &message).map_err(|_| ())
+
+                let mut client = mqtt_client.client();
+                let topic = mqtt_client.topic();
+                client.publish_json(topic, &message).await;
+                mqtt_client.poll_until_message_is_sent().await;
             }
             DebugSubcommand::ArchiveSegments(cmd) => {
                 let segments = CameraSegments {
@@ -64,13 +75,17 @@ impl CliExecute for DebugCommand {
                     segment_list: cmd.filename.clone(),
                 };
                 let message = Message::ArchiveCommand(ArchiveCommand::Segments(segments));
-                satori_common::mqtt::send_json(&mqtt, mqtt_config.topic(), &message).map_err(|_| ())
-            }
-        };
 
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        let _ = mqtt.stop().await;
-        result
+                let mut client = mqtt_client.client();
+                let topic = mqtt_client.topic();
+                client.publish_json(topic, &message).await;
+                mqtt_client.poll_until_message_is_sent().await;
+            }
+        }
+
+        mqtt_client.disconnect().await;
+
+        Ok(())
     }
 }
 

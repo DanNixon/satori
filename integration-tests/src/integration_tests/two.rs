@@ -43,7 +43,8 @@ async fn two() {
                 event_ttl = 5
 
                 [mqtt]
-                broker = "{}"
+                broker = "localhost"
+                port = {}
                 client_id = "satori-event-processor"
                 username = "test"
                 password = ""
@@ -61,7 +62,7 @@ async fn two() {
                 "#
             ),
             event_processor_events_file.path().display(),
-            mosquitto.address(),
+            mosquitto.port(),
             stream_1.address(),
         );
 
@@ -102,7 +103,8 @@ async fn two() {
                 endpoint = "{}"
 
                 [mqtt]
-                broker = "{}"
+                broker = "localhost"
+                port = {}
                 client_id = "satori-archiver-s3"
                 username = "test"
                 password = ""
@@ -115,7 +117,7 @@ async fn two() {
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
-            mosquitto.address(),
+            mosquitto.port(),
             stream_1.address(),
         );
 

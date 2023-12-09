@@ -5,7 +5,7 @@ mod task;
 
 use crate::config::Config;
 use clap::Parser;
-use satori_common::camera_config::CamerasConfig;
+use satori_common::{camera_config::CamerasConfig, mqtt::MqttClient};
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::{debug, info};
 
@@ -35,7 +35,7 @@ async fn main() -> Result<(), ()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config);
 
-    let mqtt_client = config.mqtt.build_client(false).await;
+    let mut mqtt_client: MqttClient = config.mqtt.into();
 
     let context = Context {
         storage: config.storage.create_provider(),
@@ -50,22 +50,23 @@ async fn main() -> Result<(), ()> {
     {
         let mut registry = app_watcher.metrics_registry();
         let registry = registry.sub_registry_with_prefix("satori_archiver");
-        mqtt_client.register_metrics(registry);
         queue.register_metrics(registry);
     }
 
     app_watcher.start_server(cli.observability_address).await;
-    let mut mqtt_rx = mqtt_client.rx_channel();
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
                 info!("Exiting");
                 break;
             }
-            Ok(mqtt_channel_client::Event::Rx(msg)) = mqtt_rx.recv() => {
-                queue.handle_mqtt_message(msg);
-                // Immediately process the queue
-                queue.process(&context).await;
+            msg = mqtt_client.poll() => {
+                if let Some(msg) = msg {
+                    queue.handle_mqtt_message(msg);
+                    // Immediately process the queue
+                    queue.process(&context).await;
+                }
             }
             _ = queue_process_interval.tick() => {
                 debug!("Processing queue at interval");
@@ -73,6 +74,9 @@ async fn main() -> Result<(), ()> {
             }
         }
     }
+
+    // Disconnect MQTT client
+    mqtt_client.disconnect().await;
 
     Ok(())
 }

@@ -1,7 +1,10 @@
 use super::{CliExecute, CliResult};
 use async_trait::async_trait;
 use clap::Parser;
-use satori_common::{mqtt::MqttConfig, Message};
+use satori_common::{
+    mqtt::{AsyncClientExt, MqttClient, MqttConfig},
+    Message,
+};
 use std::{path::PathBuf, time::Duration};
 
 /// Manually send a trigger command.
@@ -36,7 +39,7 @@ pub(crate) struct TriggerCommand {
 impl CliExecute for TriggerCommand {
     async fn execute(&self) -> CliResult {
         let mqtt_config: MqttConfig = satori_common::load_config_file(&self.mqtt);
-        let mqtt = mqtt_config.build_client(true).await;
+        let mut mqtt_client: MqttClient = mqtt_config.into();
 
         let trigger = satori_common::TriggerCommand {
             id: self.id.clone(),
@@ -47,11 +50,14 @@ impl CliExecute for TriggerCommand {
             post: self.post.map(Duration::from_secs),
         };
         let message = Message::TriggerCommand(trigger);
-        let result =
-            satori_common::mqtt::send_json(&mqtt, mqtt_config.topic(), &message).map_err(|_| ());
 
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        let _ = mqtt.stop().await;
-        result
+        let mut client = mqtt_client.client();
+        let topic = mqtt_client.topic();
+        client.publish_json(topic, &message).await;
+        mqtt_client.poll_until_message_is_sent().await;
+
+        mqtt_client.disconnect().await;
+
+        Ok(())
     }
 }

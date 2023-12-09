@@ -5,20 +5,13 @@ use std::{
     time::Duration,
 };
 use tokio::{
-    sync::broadcast::{self, Sender},
+    sync::{
+        broadcast::{self, Receiver, Sender},
+        watch,
+    },
     task::JoinHandle,
 };
 use tracing::{error, info};
-
-pub trait PublishExt {
-    fn try_payload_str(&self) -> Result<&str, std::str::Utf8Error>;
-}
-
-impl PublishExt for Publish {
-    fn try_payload_str(&self) -> Result<&str, std::str::Utf8Error> {
-        std::str::from_utf8(&self.payload)
-    }
-}
 
 type MessageQueue = Arc<Mutex<VecDeque<Publish>>>;
 
@@ -28,6 +21,7 @@ pub struct TestMqttClient {
 
     client: AsyncClient,
     recevied_mqtt_messages: MessageQueue,
+    message_rx: Receiver<Publish>,
 }
 
 impl TestMqttClient {
@@ -39,7 +33,9 @@ impl TestMqttClient {
 
         let recevied_mqtt_messages = MessageQueue::default();
 
-        let (exit_tx, mut exit_rx) = broadcast::channel::<()>(1);
+        let (exit_tx, mut exit_rx) = broadcast::channel(1);
+        let (message_tx, message_rx) = broadcast::channel(16);
+        let (connected_tx, mut connected_rx) = watch::channel(false);
 
         let handle = {
             let recevied_mqtt_messages = recevied_mqtt_messages.clone();
@@ -49,9 +45,13 @@ impl TestMqttClient {
                     tokio::select! {
                         event = event_loop.poll() => {
                             match event {
+                                Ok(Event::Incoming(Incoming::ConnAck(_))) => {
+                                    connected_tx.send(true).unwrap();
+                                }
                                 Ok(Event::Incoming(Incoming::Publish(msg))) => {
                                     info!("Received message: {:?}", msg);
-                                    recevied_mqtt_messages.lock().unwrap().push_back(msg);
+                                    recevied_mqtt_messages.lock().unwrap().push_back(msg.clone());
+                                    message_tx.send(msg).unwrap();
                                 }
                                 Err(e) => {
                                     error!("MQTT client error: {:?}", e);
@@ -67,11 +67,15 @@ impl TestMqttClient {
             }))
         };
 
+        // Wait for the initial connection to complete
+        connected_rx.wait_for(|connected| *connected).await.unwrap();
+
         Self {
             handle,
             exit_tx,
             client,
             recevied_mqtt_messages,
+            message_rx,
         }
     }
 
@@ -92,12 +96,21 @@ impl TestMqttClient {
     pub fn pop_message(&self) -> Option<Publish> {
         self.recevied_mqtt_messages.lock().unwrap().pop_front()
     }
+
+    pub async fn wait_for_message(&mut self, timeout: Duration) -> Result<Publish, ()> {
+        match tokio::time::timeout(timeout, self.message_rx.recv()).await {
+            Ok(Ok(msg)) => Ok(msg),
+            Ok(Err(_)) => Err(()),
+            Err(_) => Err(()),
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::MosquittoDriver;
+    use satori_common::mqtt::PublishExt;
 
     #[ctor::ctor]
     fn init() {
@@ -110,7 +123,6 @@ mod test {
     #[tokio::test]
     async fn basic() {
         let mosquitto = MosquittoDriver::default();
-        info!("Mosquitto address: {}", mosquitto.address());
 
         let mut client = TestMqttClient::new(mosquitto.port()).await;
 
@@ -167,6 +179,54 @@ mod test {
         assert!(client.pop_message().is_none());
 
         tokio::time::sleep(Duration::from_millis(100)).await;
+
+        client.stop().await;
+    }
+
+    #[tokio::test]
+    async fn wait_for_message() {
+        let mosquitto = MosquittoDriver::default();
+
+        let mut client = TestMqttClient::new(mosquitto.port()).await;
+
+        client
+            .client()
+            .subscribe("test-1", rumqttc::QoS::AtLeastOnce)
+            .await
+            .unwrap();
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        client
+            .client()
+            .publish("test-1", rumqttc::QoS::AtLeastOnce, false, "Hello 1")
+            .await
+            .unwrap();
+
+        let msg = client
+            .wait_for_message(Duration::from_secs(5))
+            .await
+            .expect("a message should have been received");
+        assert_eq!(msg.topic, "test-1".to_string());
+        assert_eq!(msg.try_payload_str().unwrap(), "Hello 1");
+
+        client.stop().await;
+    }
+
+    #[tokio::test]
+    async fn wait_for_message_timeout() {
+        let mosquitto = MosquittoDriver::default();
+
+        let mut client = TestMqttClient::new(mosquitto.port()).await;
+
+        client
+            .client()
+            .subscribe("test-1", rumqttc::QoS::AtLeastOnce)
+            .await
+            .unwrap();
+
+        let msg = client.wait_for_message(Duration::from_secs(2)).await;
+        assert!(msg.is_err());
 
         client.stop().await;
     }

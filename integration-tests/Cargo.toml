@@ -8,6 +8,7 @@ edition.workspace = true
 ctor.workspace = true
 indoc.workspace = true
 rumqttc.workspace = true
+satori-common.workspace = true
 satori-testing-utils.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
