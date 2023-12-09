@@ -1,6 +1,9 @@
 use crate::{error::EventProcessorResult, hls_client::HlsClient, segments::Playlist};
 use kagiyama::prometheus::registry::Registry;
-use satori_common::{ArchiveCommand, CameraSegments, Event, EventReason, Message, Trigger};
+use satori_common::{
+    mqtt::{AsyncClientExt, MqttClient},
+    ArchiveCommand, CameraSegments, Event, EventReason, Message, Trigger,
+};
 use std::{
     fs::File,
     path::{Path, PathBuf},
@@ -110,12 +113,7 @@ impl EventSet {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn process(
-        &mut self,
-        camera_client: &HlsClient,
-        mqtt_client: &mqtt_channel_client::Client,
-        mqtt_control_topic: &str,
-    ) {
+    pub(crate) async fn process(&mut self, camera_client: &HlsClient, mqtt_client: &MqttClient) {
         // Do nothing if there are no events in the queue
         if self.events.is_empty() {
             return;
@@ -161,16 +159,16 @@ impl EventSet {
 
                 if !new_segments.is_empty() {
                     // Send archive command for segments
-                    if let Err(err) = satori_common::mqtt::send_json(
-                        mqtt_client,
-                        mqtt_control_topic,
-                        &Message::ArchiveCommand(ArchiveCommand::Segments(CameraSegments {
-                            name: camera.name.clone(),
-                            segment_list: new_segments.clone(),
-                        })),
-                    ) {
-                        error!("Failed to send archive segments command, reason: {}", err);
-                    }
+                    mqtt_client
+                        .client()
+                        .publish_json(
+                            mqtt_client.topic(),
+                            &Message::ArchiveCommand(ArchiveCommand::Segments(CameraSegments {
+                                name: camera.name.clone(),
+                                segment_list: new_segments.clone(),
+                            })),
+                        )
+                        .await;
                 }
 
                 // Update segment list in event
@@ -178,13 +176,13 @@ impl EventSet {
             }
 
             // Send archive command for event
-            if let Err(err) = satori_common::mqtt::send_json(
-                mqtt_client,
-                mqtt_control_topic,
-                &Message::ArchiveCommand(ArchiveCommand::EventMetadata(event.clone())),
-            ) {
-                error!("Failed to send archive event command, reason: {}", err);
-            }
+            mqtt_client
+                .client()
+                .publish_json(
+                    mqtt_client.topic(),
+                    &Message::ArchiveCommand(ArchiveCommand::EventMetadata(event.clone())),
+                )
+                .await;
         }
 
         // Now remove any events that have outlived the TTL

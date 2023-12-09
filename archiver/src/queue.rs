@@ -1,7 +1,7 @@
 use crate::{error::ArchiverResult, task::ArchiveTask, Context};
 use futures::StreamExt;
 use kagiyama::prometheus::registry::Registry;
-use satori_common::{ArchiveCommand, CameraSegments, Event};
+use satori_common::{mqtt::PublishExt, ArchiveCommand, CameraSegments, Event};
 use std::{
     collections::VecDeque,
     fs::File,
@@ -109,8 +109,8 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn handle_mqtt_message(&mut self, msg: mqtt_channel_client::paho_mqtt::Message) {
-        match serde_json::from_str(&msg.payload_str()) {
+    pub(crate) fn handle_mqtt_message(&mut self, msg: rumqttc::Publish) {
+        match msg.try_payload_from_json::<satori_common::Message>() {
             Ok(msg) => {
                 if let satori_common::Message::ArchiveCommand(cmd) = msg {
                     match cmd {
@@ -264,6 +264,7 @@ mod metrics {
 mod test {
     use super::*;
     use chrono::Utc;
+    use rumqttc::{Publish, QoS};
     use satori_common::EventMetadata;
 
     #[test]
@@ -284,11 +285,7 @@ mod test {
                 segment_list: vec![],
             },
         ));
-        let msg = mqtt_channel_client::paho_mqtt::Message::new(
-            "",
-            serde_json::to_string(&msg).unwrap(),
-            2,
-        );
+        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
         assert!(queue.queue.is_empty());
     }
@@ -304,11 +301,7 @@ mod test {
                 segment_list: vec!["one.ts".into(), "two.ts".into()],
             },
         ));
-        let msg = mqtt_channel_client::paho_mqtt::Message::new(
-            "",
-            serde_json::to_string(&msg).unwrap(),
-            2,
-        );
+        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
         assert_eq!(queue.queue.len(), 2);
     }
@@ -349,11 +342,7 @@ mod test {
                 cameras: Default::default(),
             }),
         );
-        let msg = mqtt_channel_client::paho_mqtt::Message::new(
-            "",
-            serde_json::to_string(&msg).unwrap(),
-            2,
-        );
+        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
 
         // Add two segments to the queue
@@ -363,11 +352,7 @@ mod test {
                 segment_list: vec!["one.ts".into(), "two.ts".into()],
             },
         ));
-        let msg = mqtt_channel_client::paho_mqtt::Message::new(
-            "",
-            serde_json::to_string(&msg).unwrap(),
-            2,
-        );
+        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
         queue.handle_mqtt_message(msg);
 
         assert_eq!(

@@ -36,7 +36,6 @@ hpke = { version = "0.11.0", features = ["std", "serde_impls"] }
 indoc = "2.0.4"
 lazy_static = "1.4.0"
 m3u8-rs = "5.0.3"
-mqtt-channel-client = { version = "0.6.0", features = ["metrics"] }
 nix = { version = "0.27.0", features = ["process", "signal"] }
 kagiyama = "0.3.0"
 pem-rfc7468 = { version = "0.7.0", features = ["alloc"] }

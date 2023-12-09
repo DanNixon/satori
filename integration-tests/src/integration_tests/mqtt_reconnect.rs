@@ -1,5 +1,6 @@
+use satori_common::mqtt::PublishExt;
 use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, PublishExt, TestMqttClient,
+    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
 };
 use std::{io::Write, time::Duration};
 use tempfile::NamedTempFile;
@@ -34,7 +35,8 @@ async fn mqtt_reconnect() {
                 event_ttl = 5
 
                 [mqtt]
-                broker = "{}"
+                broker = "localhost"
+                port = {}
                 client_id = "satori-event-processor"
                 username = "test"
                 password = ""
@@ -52,7 +54,7 @@ async fn mqtt_reconnect() {
                 "#
             ),
             event_processor_events_file.path().display(),
-            mosquitto.address(),
+            mosquitto.port(),
             stream_1.address(),
         );
 
@@ -93,7 +95,8 @@ async fn mqtt_reconnect() {
                 endpoint = "{}"
 
                 [mqtt]
-                broker = "{}"
+                broker = "localhost"
+                port = {}
                 client_id = "satori-archiver-s3"
                 username = "test"
                 password = ""
@@ -106,7 +109,7 @@ async fn mqtt_reconnect() {
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
-            mosquitto.address(),
+            mosquitto.port(),
             stream_1.address(),
         );
 
