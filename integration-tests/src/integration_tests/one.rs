@@ -193,12 +193,11 @@ async fn one() {
         .await
         .unwrap();
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
-
     // The event trigger message should be received
     assert_eq!(
         mqtt_client
-            .pop_message()
+            .wait_for_message(Duration::from_secs(5))
+            .await
             .unwrap()
             .try_payload_str()
             .unwrap(),
@@ -208,7 +207,8 @@ async fn one() {
     // Segment archive command for camera1 should be sent
     assert_eq!(
         mqtt_client
-            .pop_message()
+            .wait_for_message(Duration::from_secs(5))
+            .await
             .unwrap()
             .try_payload_str()
             .unwrap(),
@@ -218,7 +218,8 @@ async fn one() {
     // Segment archive command for camera3 should be sent
     assert_eq!(
         mqtt_client
-            .pop_message()
+            .wait_for_message(Duration::from_secs(5))
+            .await
             .unwrap()
             .try_payload_str()
             .unwrap(),
@@ -228,7 +229,8 @@ async fn one() {
     // Event metadata archive command should be sent
     assert_eq!(
         mqtt_client
-            .pop_message()
+            .wait_for_message(Duration::from_secs(5))
+            .await
             .unwrap()
             .try_payload_str()
             .unwrap(),
@@ -286,10 +288,11 @@ async fn one() {
         ]
     );
 
-    tokio::time::sleep(Duration::from_secs(1)).await;
-
     // There should be no more MQTT messages at this point
-    assert!(mqtt_client.pop_message().is_none());
+    assert!(mqtt_client
+        .wait_for_message(Duration::from_secs(5))
+        .await
+        .is_err());
 
     mqtt_client.stop().await;
 
