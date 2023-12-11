@@ -45,8 +45,4 @@ impl MosquittoDriver {
     pub fn port(&self) -> u16 {
         self.port
     }
-
-    pub fn address(&self) -> String {
-        format!("tcp://localhost:{}", self.port)
-    }
 }
