@@ -58,6 +58,10 @@ impl MqttClient {
                 self.subscribe_to_topic().await;
                 None
             }
+            Ok(Event::Incoming(Incoming::Disconnect)) => {
+                warn!("Disconnected");
+                None
+            }
             Ok(_) => None,
             Err(e) => {
                 warn!("rumqttc error: {:?}", e);
