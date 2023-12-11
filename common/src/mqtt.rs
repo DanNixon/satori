@@ -1,7 +1,7 @@
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, Outgoing, Publish, QoS};
 use serde::Deserialize;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 #[derive(Debug, Deserialize)]
 pub struct MqttConfig {
@@ -53,15 +53,12 @@ impl MqttClient {
                     None
                 }
             }
-            Ok(Event::Incoming(Incoming::ConnAck(event))) => {
-                info!("ConnAck - {:?}", event);
+            Ok(Event::Incoming(Incoming::ConnAck(_))) => {
+                info!("Connected");
                 self.subscribe_to_topic().await;
                 None
             }
-            Ok(event) => {
-                debug!("rumqttc event: {:?}", event);
-                None
-            }
+            Ok(_) => None,
             Err(e) => {
                 warn!("rumqttc error: {:?}", e);
                 None
@@ -78,9 +75,7 @@ impl MqttClient {
                     info!("Disconnected successfully");
                     break;
                 }
-                Ok(event) => {
-                    debug!("rumqttc event: {:?}", event);
-                }
+                Ok(_) => {}
                 Err(e) => {
                     warn!("rumqttc error: {:?}", e);
                 }
@@ -113,9 +108,7 @@ impl MqttClient {
                         break;
                     }
                 }
-                Ok(event) => {
-                    debug!("rumqttc event: {:?}", event);
-                }
+                Ok(_) => {}
                 Err(e) => {
                     warn!("rumqttc error: {:?}", e);
                 }
