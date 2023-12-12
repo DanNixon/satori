@@ -75,7 +75,7 @@ impl MqttClient {
 
         loop {
             match self.event_loop.poll().await {
-                Ok(Event::Incoming(Incoming::Disconnect)) => {
+                Ok(Event::Outgoing(Outgoing::Disconnect)) => {
                     info!("Disconnected successfully");
                     break;
                 }
@@ -217,6 +217,8 @@ mod test {
             .expect("a message should have been received");
         assert_eq!(msg.topic, topic);
         assert_eq!(msg.payload, "Hello, world!");
+
+        client.disconnect().await;
     }
 
     #[tokio::test]
@@ -257,5 +259,7 @@ mod test {
             .expect("a message should have been received");
         assert_eq!(msg.topic, topic);
         assert_eq!(msg.payload, "Hello, world!");
+
+        client.disconnect().await;
     }
 }

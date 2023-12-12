@@ -18,6 +18,10 @@ pub(crate) struct TriggerCommand {
     #[arg(long)]
     id: String,
 
+    /// Timestamp of this trigger, defaults to now if not specified.
+    #[arg(long)]
+    timestamp: Option<chrono::DateTime<chrono::FixedOffset>>,
+
     /// Name of the cameras that are affected by the trigger.
     #[arg(long)]
     camera: Option<Vec<String>>,
@@ -43,7 +47,7 @@ impl CliExecute for TriggerCommand {
 
         let trigger = satori_common::TriggerCommand {
             id: self.id.clone(),
-            timestamp: None,
+            timestamp: self.timestamp,
             cameras: self.camera.clone(),
             reason: self.reason.clone(),
             pre: self.pre.map(Duration::from_secs),
