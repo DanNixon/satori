@@ -1,0 +1,13 @@
+[package]
+name = "satori-web"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+clap.workspace = true
+kagiyama.workspace = true
+satori-common.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

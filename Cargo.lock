@@ -2444,6 +2444,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "satori-web"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "kagiyama",
+ "satori-common",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "satorictl"
 version = "0.3.1"
 dependencies = [
