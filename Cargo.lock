@@ -2450,9 +2450,11 @@ dependencies = [
  "clap",
  "kagiyama",
  "satori-common",
+ "serde",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
