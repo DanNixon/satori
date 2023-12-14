@@ -1,0 +1,7 @@
+[cameras."test one"]
+hls_stream = "http://one:9999/stream.m3u8"
+agent_metrics = "http://one:9090/metrics"
+
+[cameras."test two"]
+hls_stream = "http://two:9999/stream.m3u8"
+agent_metrics = "http://two:9090/metrics"
