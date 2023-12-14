@@ -10,5 +10,6 @@ pub(crate) struct Config {
 #[derive(Debug, Deserialize)]
 pub(crate) struct CameraDetails {
     hls_stream: Url,
+    agent_web: Url,
     agent_metrics: Url,
 }
