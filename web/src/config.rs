@@ -5,6 +5,7 @@ use url::Url;
 #[derive(Debug, Deserialize)]
 pub(crate) struct Config {
     cameras: HashMap<String, CameraDetails>,
+    // TODO: MQTT config
 }
 
 #[derive(Debug, Deserialize)]
