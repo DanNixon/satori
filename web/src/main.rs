@@ -1,4 +1,5 @@
 mod config;
+mod server;
 
 use crate::config::Config;
 use clap::Parser;
