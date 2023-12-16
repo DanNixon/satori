@@ -1,3 +1,4 @@
+use crate::utils::ThrottledErrorLogger;
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, Outgoing, Publish, QoS};
 use serde::Deserialize;
 use std::time::Duration;
@@ -19,6 +20,7 @@ pub struct MqttConfig {
 pub struct MqttClient {
     client: AsyncClient,
     event_loop: EventLoop,
+    poll_error_logger: ThrottledErrorLogger<String>,
 
     topic: String,
 }
@@ -34,6 +36,7 @@ impl From<MqttConfig> for MqttClient {
         Self {
             client,
             event_loop,
+            poll_error_logger: ThrottledErrorLogger::new(Duration::from_secs(5)),
             topic: config.topic,
         }
     }
@@ -64,7 +67,9 @@ impl MqttClient {
             }
             Ok(_) => None,
             Err(e) => {
-                warn!("rumqttc error: {:?}", e);
+                if let Some(e) = self.poll_error_logger.log(format!("{:?}", e)) {
+                    warn!("rumqttc error: {}", e);
+                }
                 None
             }
         }
@@ -81,7 +86,9 @@ impl MqttClient {
                 }
                 Ok(_) => {}
                 Err(e) => {
-                    warn!("rumqttc error: {:?}", e);
+                    if let Some(e) = self.poll_error_logger.log(format!("{:?}", e)) {
+                        warn!("rumqttc error: {}", e);
+                    }
                 }
             }
         }
@@ -114,7 +121,9 @@ impl MqttClient {
                 }
                 Ok(_) => {}
                 Err(e) => {
-                    warn!("rumqttc error: {:?}", e);
+                    if let Some(e) = self.poll_error_logger.log(format!("{:?}", e)) {
+                        warn!("rumqttc error: {}", e);
+                    }
                 }
             }
         }
