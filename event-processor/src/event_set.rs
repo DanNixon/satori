@@ -1,5 +1,4 @@
 use crate::{error::EventProcessorResult, hls_client::HlsClient, segments::Playlist};
-use kagiyama::prometheus::registry::Registry;
 use satori_common::{
     mqtt::{AsyncClientExt, MqttClient},
     ArchiveCommand, ArchiveSegmentsCommand, CameraSegments, Event, EventReason, Message, Trigger,
@@ -17,10 +16,6 @@ pub(crate) struct EventSet {
 
     event_ttl: Duration,
     backing_file_name: PathBuf,
-
-    triggers: metrics::TriggersMetric,
-    active_events: metrics::ActiveEventsMetric,
-    expired_events: metrics::ExpiredEventsMetric,
 }
 
 impl EventSet {
@@ -42,9 +37,6 @@ impl EventSet {
             },
             event_ttl,
             backing_file_name: path.into(),
-            triggers: Default::default(),
-            active_events: Default::default(),
-            expired_events: Default::default(),
         }
     }
 
@@ -70,27 +62,13 @@ impl EventSet {
         }
     }
 
-    pub(crate) fn register_metrics(&self, registry: &mut Registry) {
-        registry.register("triggers", "Trigger count", self.triggers.clone());
-
-        registry.register(
-            "active_events",
-            "Number of active events",
-            self.active_events.clone(),
-        );
-
-        registry.register(
-            "expired_events",
-            "Processed events count",
-            self.expired_events.clone(),
-        );
-    }
-
     #[tracing::instrument(skip(self))]
     pub(crate) fn trigger(&mut self, trigger: &Trigger) {
-        self.triggers
-            .get_or_create(&metrics::Labels::new(&trigger.metadata.id))
-            .inc();
+        metrics::counter!(
+            crate::METRIC_TRIGGERS,
+            1,
+            "id" => trigger.metadata.id.clone()
+        );
 
         match self
             .events
@@ -191,7 +169,7 @@ impl EventSet {
         // Now remove any events that have outlived the TTL
         self.prune_expired_events();
 
-        self.active_events.set(self.events.len() as i64);
+        metrics::gauge!(crate::METRIC_ACTIVE_EVENTS, self.events.len() as f64,);
 
         self.attempt_save();
     }
@@ -206,9 +184,11 @@ impl EventSet {
             .filter_map(|event| {
                 if event.should_expire(self.event_ttl) {
                     info!("Removing event: {:?}", event.metadata);
-                    self.expired_events
-                        .get_or_create(&metrics::Labels::new(&event.metadata.id))
-                        .inc();
+                    metrics::counter!(
+                        crate::METRIC_EXPIRED_EVENTS,
+                        1,
+                        "id" => event.metadata.id.clone()
+                    );
                     None
                 } else {
                     Some(event.clone())
@@ -253,29 +233,6 @@ fn update_event(event: &mut Event, other: &Trigger) {
                 name: camera.clone(),
                 segment_list: Vec::new(),
             });
-        }
-    }
-}
-
-mod metrics {
-    use kagiyama::prometheus::{
-        self as prometheus_client,
-        encoding::EncodeLabelSet,
-        metrics::{counter::Counter, family::Family, gauge::Gauge},
-    };
-
-    pub(super) type TriggersMetric = Family<Labels, Counter>;
-    pub(super) type ActiveEventsMetric = Gauge;
-    pub(super) type ExpiredEventsMetric = Family<Labels, Counter>;
-
-    #[derive(Debug, Clone, Hash, PartialEq, Eq, EncodeLabelSet)]
-    pub(super) struct Labels {
-        id: String,
-    }
-
-    impl Labels {
-        pub(super) fn new(id: &str) -> Self {
-            Self { id: id.to_owned() }
         }
     }
 }

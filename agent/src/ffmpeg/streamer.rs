@@ -1,5 +1,4 @@
 use crate::config::Config;
-use kagiyama::prometheus::metrics::gauge::Gauge;
 use nix::{
     sys::signal::{self, Signal},
     unistd::{self, Pid},
@@ -23,18 +22,16 @@ pub(crate) struct Streamer {
     frame_file: PathBuf,
     terminate: Arc<Mutex<bool>>,
     ffmpeg_pid: Arc<Mutex<Option<Pid>>>,
-    ffmpeg_invocations_metric: Gauge,
     handle: Option<JoinHandle<()>>,
 }
 
 impl Streamer {
-    pub(crate) fn new(config: Config, frame_file: &Path, ffmpeg_invocations_metric: Gauge) -> Self {
+    pub(crate) fn new(config: Config, frame_file: &Path) -> Self {
         Self {
             config,
             frame_file: frame_file.to_owned(),
             terminate: Arc::new(Mutex::new(false)),
             ffmpeg_pid: Default::default(),
-            ffmpeg_invocations_metric,
             handle: None,
         }
     }
@@ -45,7 +42,6 @@ impl Streamer {
         let frame_file = self.frame_file.clone();
         let ffmpeg_pid = self.ffmpeg_pid.clone();
         let terminate = self.terminate.clone();
-        let ffmpeg_invocations_metric = self.ffmpeg_invocations_metric.clone();
 
         self.handle = Some(tokio::spawn(async move {
             loop {
@@ -114,7 +110,7 @@ impl Streamer {
                 };
 
                 // Increment ffmpeg invocation count
-                ffmpeg_invocations_metric.inc();
+                metrics::counter!(crate::METRIC_FFMPEG_INVOCATIONS, 1);
 
                 let stdout = ffmpeg_process.stdout.take().unwrap();
                 let stderr = ffmpeg_process.stderr.take().unwrap();
