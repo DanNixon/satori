@@ -5,9 +5,13 @@ mod task;
 
 use crate::config::Config;
 use clap::Parser;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use satori_common::mqtt::MqttClient;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::{debug, info};
+
+const METRIC_QUEUE_LENGTH: &str = "satori_archiver_queue_length";
+const METRIC_PROCESSED_TASKS: &str = "satori_archiver_processed_tasks";
 
 /// Run the archiver.
 #[derive(Clone, Parser)]
@@ -44,14 +48,24 @@ async fn main() -> Result<(), ()> {
     let mut queue = queue::ArchiveTaskQueue::load_or_new(&config.queue_file);
     let mut queue_process_interval = tokio::time::interval(config.interval);
 
-    let mut app_watcher = kagiyama::Watcher::<kagiyama::AlwaysReady>::default();
-    {
-        let mut registry = app_watcher.metrics_registry();
-        let registry = registry.sub_registry_with_prefix("satori_archiver");
-        queue.register_metrics(registry);
-    }
+    // Set up metrics server
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(cli.observability_address)
+        .install()
+        .expect("prometheus metrics exporter should be setup");
 
-    app_watcher.start_server(cli.observability_address).await;
+    metrics::describe_gauge!(
+        METRIC_QUEUE_LENGTH,
+        metrics::Unit::Count,
+        "Number of tasks in queue"
+    );
+
+    metrics::describe_counter!(
+        METRIC_PROCESSED_TASKS,
+        metrics::Unit::Count,
+        "Finished task count"
+    );
 
     loop {
         tokio::select! {

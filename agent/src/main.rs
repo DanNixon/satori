@@ -4,9 +4,13 @@ mod server;
 mod utils;
 
 use clap::Parser;
-use kagiyama::prometheus::{metrics::gauge::Gauge, registry::Unit};
+use metrics_exporter_prometheus::PrometheusBuilder;
 use std::{fs, net::SocketAddr, path::PathBuf, time::Duration};
 use tracing::{debug, info, warn};
+
+const METRIC_DISK_USAGE: &str = "satori_agent_disk_usage";
+const METRIC_FFMPEG_INVOCATIONS: &str = "satori_agent_ffmpeg_invocations";
+const METRIC_SEGMENTS: &str = "satori_agent_segments";
 
 /// Run the camera agent.
 ///
@@ -36,39 +40,30 @@ async fn main() {
 
     info!("FFmpeg version: {}", ffmpeg::get_ffmpeg_version());
 
-    // Set up observability server
-    let mut app_watcher = kagiyama::Watcher::<kagiyama::AlwaysReady>::default();
-    app_watcher.start_server(cli.observability_address).await;
+    // Set up metrics server
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(cli.observability_address)
+        .install()
+        .expect("prometheus metrics exporter should be setup");
 
-    // Counter for number of files processed
-    let segments_metric: Gauge = Gauge::default();
-    let disk_usage_metric: Gauge = Gauge::default();
-    let ffmpeg_invocations_metric: Gauge = Gauge::default();
+    metrics::describe_gauge!(
+        METRIC_DISK_USAGE,
+        metrics::Unit::Bytes,
+        "Disk usage of this camera's output video directory"
+    );
 
-    // Register metrics
-    {
-        let mut registry = app_watcher.metrics_registry();
-        let registry = registry.sub_registry_with_prefix("satori_agent");
+    metrics::describe_counter!(
+        METRIC_FFMPEG_INVOCATIONS,
+        metrics::Unit::Count,
+        "Number of times ffmpeg has been invoked"
+    );
 
-        registry.register(
-            "segments",
-            "Number of MPEG-TS segments generated",
-            segments_metric.clone(),
-        );
-
-        registry.register_with_unit(
-            "disk_usage",
-            "Disk usage of this camera's output video directory",
-            Unit::Bytes,
-            disk_usage_metric.clone(),
-        );
-
-        registry.register(
-            "ffmpeg_invocations",
-            "Number of times ffmpeg has been invoked",
-            ffmpeg_invocations_metric.clone(),
-        );
-    }
+    metrics::describe_gauge!(
+        METRIC_SEGMENTS,
+        metrics::Unit::Count,
+        "Number of MPEG-TS segments generated"
+    );
 
     // Create video output directory
     fs::create_dir_all(&config.video_directory).expect("should be able to create output directory");
@@ -89,8 +84,7 @@ async fn main() {
     .await;
 
     // Start streamer
-    let mut streamer =
-        ffmpeg::Streamer::new(config.clone(), frame_file.path(), ffmpeg_invocations_metric);
+    let mut streamer = ffmpeg::Streamer::new(config.clone(), frame_file.path());
     streamer.start().await;
 
     let mut metrics_interval = tokio::time::interval(Duration::from_secs(30));
@@ -98,8 +92,8 @@ async fn main() {
     loop {
         tokio::select! {
             _ = metrics_interval.tick() => {
-                update_segment_count_metric(&segments_metric, &config);
-                update_disk_usage_metric(&disk_usage_metric, &config);
+                update_segment_count_metric(&config);
+                update_disk_usage_metric(&config);
             }
             _ = tokio::signal::ctrl_c() => {
                 info!("Exiting");
@@ -113,13 +107,10 @@ async fn main() {
 
     // Stop HTTP server
     server.stop().await;
-
-    // Stop observability server
-    app_watcher.stop_server().unwrap();
 }
 
 #[tracing::instrument(skip_all)]
-fn update_segment_count_metric(metric: &Gauge, config: &config::Config) {
+fn update_segment_count_metric(config: &config::Config) {
     debug!("Updating segment count metric");
 
     match std::fs::read_dir(&config.video_directory) {
@@ -140,7 +131,7 @@ fn update_segment_count_metric(metric: &Gauge, config: &config::Config) {
                 })
                 .count();
 
-            metric.set(ts_file_count as i64);
+            metrics::gauge!(METRIC_SEGMENTS, ts_file_count as f64);
         }
         Err(e) => {
             warn!("Failed to read video directory, err={}", e);
@@ -149,12 +140,12 @@ fn update_segment_count_metric(metric: &Gauge, config: &config::Config) {
 }
 
 #[tracing::instrument(skip_all)]
-fn update_disk_usage_metric(metric: &Gauge, config: &config::Config) {
+fn update_disk_usage_metric(config: &config::Config) {
     debug!("Updating disk usage metric");
 
     match config.get_disk_usage() {
         Ok(disk_usage) => {
-            metric.set(disk_usage.get_bytes() as i64);
+            metrics::gauge!(METRIC_DISK_USAGE, disk_usage.get_bytes() as f64);
         }
         Err(e) => {
             warn!("Failed to update disk usage, err={}", e);

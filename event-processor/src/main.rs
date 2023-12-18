@@ -9,9 +9,14 @@ use crate::{
     event_set::EventSet,
 };
 use clap::Parser;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use satori_common::mqtt::{MqttClient, PublishExt};
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::{debug, error, info};
+
+const METRIC_TRIGGERS: &str = "satori_eventprocessor_triggers";
+const METRIC_ACTIVE_EVENTS: &str = "satori_eventprocessor_active_events";
+const METRIC_EXPIRED_EVENTS: &str = "satori_eventprocessor_expired_events";
 
 /// Run the event processor.
 #[derive(Clone, Parser)]
@@ -42,14 +47,26 @@ async fn main() -> Result<(), ()> {
     // Load existing or create new event state
     let mut events = EventSet::load_or_new(&config.event_file, config.event_ttl);
 
-    // Set up observability
-    let mut app_watcher = kagiyama::Watcher::<kagiyama::AlwaysReady>::default();
-    {
-        let mut registry = app_watcher.metrics_registry();
-        let registry = registry.sub_registry_with_prefix("satori_eventprocessor");
-        events.register_metrics(registry);
-    }
-    app_watcher.start_server(cli.observability_address).await;
+    // Set up metrics server
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(cli.observability_address)
+        .install()
+        .expect("prometheus metrics exporter should be setup");
+
+    metrics::describe_counter!(METRIC_TRIGGERS, metrics::Unit::Count, "Trigger count");
+
+    metrics::describe_gauge!(
+        METRIC_ACTIVE_EVENTS,
+        metrics::Unit::Count,
+        "Number of active events"
+    );
+
+    metrics::describe_counter!(
+        METRIC_EXPIRED_EVENTS,
+        metrics::Unit::Count,
+        "Processed events count"
+    );
 
     // Run event loop
     let mut process_interval = tokio::time::interval(config.interval);
