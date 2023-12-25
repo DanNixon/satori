@@ -30,7 +30,7 @@ ciborium = "0.2.1"
 clap = { version = "4.4", features = ["cargo", "derive", "env", "string"] }
 ctor = "0.2.6"
 crossterm = "0.27"
-futures = "0.3.25"
+futures = "0.3.30"
 hex = "0.4.3"
 hpke = { version = "0.11.0", features = ["std", "serde_impls"] }
 indoc = "2.0.4"
