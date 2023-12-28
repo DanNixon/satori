@@ -1,47 +1,55 @@
-use crate::config::Config;
+use crate::{config::Config, jpeg_frame_decoder::JpegFrameDecoder};
+use futures::StreamExt;
 use nix::{
     sys::signal::{self, Signal},
     unistd::{self, Pid},
 };
 use std::{
-    path::{Path, PathBuf},
     process::Stdio,
     sync::{Arc, Mutex},
 };
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
+    sync::broadcast,
     task::JoinHandle,
 };
-use tracing::{debug, info, warn};
+use tokio_util::codec::FramedRead;
+use tracing::{debug, error, info, warn};
 
 const HLS_PLAYLIST_FILENAME: &str = "stream.m3u8";
 
 pub(crate) struct Streamer {
     config: Config,
-    frame_file: PathBuf,
     terminate: Arc<Mutex<bool>>,
     ffmpeg_pid: Arc<Mutex<Option<Pid>>>,
     handle: Option<JoinHandle<()>>,
+    jpeg_tx: broadcast::Sender<bytes::Bytes>,
 }
 
 impl Streamer {
-    pub(crate) fn new(config: Config, frame_file: &Path) -> Self {
+    pub(crate) fn new(config: Config) -> Self {
+        let (tx, _) = broadcast::channel(8);
+
         Self {
             config,
-            frame_file: frame_file.to_owned(),
             terminate: Arc::new(Mutex::new(false)),
             ffmpeg_pid: Default::default(),
             handle: None,
+            jpeg_tx: tx,
         }
+    }
+
+    pub(crate) fn jpeg_subscribe(&self) -> broadcast::Receiver<bytes::Bytes> {
+        self.jpeg_tx.subscribe()
     }
 
     #[tracing::instrument(skip_all)]
     pub(crate) async fn start(&mut self) {
         let config = self.config.clone();
-        let frame_file = self.frame_file.clone();
         let ffmpeg_pid = self.ffmpeg_pid.clone();
         let terminate = self.terminate.clone();
+        let jpeg_tx = self.jpeg_tx.clone();
 
         self.handle = Some(tokio::spawn(async move {
             loop {
@@ -79,9 +87,11 @@ impl Streamer {
                         // Output preview frames as JPEG
                         .arg("-vf")
                         .arg("fps=1")
+                        .arg("-f")
+                        .arg("image2")
                         .arg("-update")
                         .arg("1")
-                        .arg(&frame_file)
+                        .arg("pipe:1")
                         // Do nothing with stdin
                         .stdin(Stdio::null())
                         // Capture stdout and stderr
@@ -113,26 +123,33 @@ impl Streamer {
                 metrics::counter!(crate::METRIC_FFMPEG_INVOCATIONS, 1);
 
                 let stdout = ffmpeg_process.stdout.take().unwrap();
-                let stderr = ffmpeg_process.stderr.take().unwrap();
+                let mut stdout_frame = FramedRead::new(stdout, JpegFrameDecoder);
 
-                let mut stdout_reader = BufReader::new(stdout).lines();
+                let stderr = ffmpeg_process.stderr.take().unwrap();
                 let mut stderr_reader = BufReader::new(stderr).lines();
 
                 loop {
                     tokio::select! {
-                        // Output stdout to log with prefix
-                        line = stdout_reader.next_line() => {
-                            match line {
-                                Ok(Some(line)) => info!("ffmpeg stdout: {line}"),
-                                Err(_) => break,
-                                _ => (),
+                        // Handle JPEG data via stdout
+                        Some(frame) = stdout_frame.next() => {
+                            match frame {
+                                Ok(frame) => {
+                                    debug!("Got JPEG frame ({} bytes)", frame.len());
+                                    if let Err(e ) = jpeg_tx.send(frame) {
+                                        error!("JPEG frame channel error: {}", e);
+                                    }
+                                }
+                                Err(e) => error!("ffmpeg stdout frame errror: {:?}", e),
                             }
                         }
                         // Output stderr to log with prefix
                         line = stderr_reader.next_line() => {
                             match line {
                                 Ok(Some(line)) => info!("ffmpeg stderr: {line}"),
-                                Err(_) => break,
+                                Err(e) => {
+                                    warn!("ffmpeg stderr closed: {e}");
+                                    break;
+                                },
                                 _ => (),
                             }
                         }

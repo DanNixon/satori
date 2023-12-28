@@ -1,16 +1,33 @@
 mod config;
 mod ffmpeg;
-mod server;
+mod jpeg_frame_decoder;
 mod utils;
 
+use axum::{
+    http::header,
+    response::{Html, IntoResponse},
+    routing::get,
+    Router,
+};
+use bytes::Bytes;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use std::{fs, net::SocketAddr, path::PathBuf, time::Duration};
+use std::{
+    fs,
+    net::SocketAddr,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+use tokio::{net::TcpListener, task::JoinSet};
+use tower_http::services::ServeDir;
 use tracing::{debug, info, warn};
 
 const METRIC_DISK_USAGE: &str = "satori_agent_disk_usage";
 const METRIC_FFMPEG_INVOCATIONS: &str = "satori_agent_ffmpeg_invocations";
 const METRIC_SEGMENTS: &str = "satori_agent_segments";
+
+type SharedImageData = Arc<Mutex<Option<Bytes>>>;
 
 /// Run the camera agent.
 ///
@@ -68,32 +85,63 @@ async fn main() {
     // Create video output directory
     fs::create_dir_all(&config.video_directory).expect("should be able to create output directory");
 
-    // Generate a random filename for the frame JPEG
-    let frame_file = tempfile::Builder::new()
-        .prefix("satori-")
-        .suffix(".jpg")
-        .tempfile()
-        .unwrap();
-
-    // Start HTTP server
-    let mut server = server::Server::new(
-        cli.http_server_address,
-        config.clone(),
-        frame_file.path().to_owned(),
-    )
-    .await;
-
     // Start streamer
-    let mut streamer = ffmpeg::Streamer::new(config.clone(), frame_file.path());
+    let mut streamer = ffmpeg::Streamer::new(config.clone());
     streamer.start().await;
 
-    let mut metrics_interval = tokio::time::interval(Duration::from_secs(30));
+    let mut tasks = JoinSet::<()>::new();
 
+    // Configure HTTP server listener
+    let listener = TcpListener::bind(&cli.http_server_address)
+        .await
+        .unwrap_or_else(|_| panic!("tcp listener should bind to {}", cli.http_server_address));
+
+    let frame_image = SharedImageData::default();
+
+    // Configure HTTP server routes
+    let app = {
+        let frame_image = frame_image.clone();
+
+        Router::new()
+            .route("/player", get(Html(include_str!("player.html"))))
+            .route(
+                "/frame.jpg",
+                get(move || async move {
+                    match frame_image.lock().unwrap().as_ref() {
+                        Some(image) => {
+                            ([(header::CONTENT_TYPE, "image/jpeg")], image.clone()).into_response()
+                        }
+                        None => axum::http::StatusCode::NOT_FOUND.into_response(),
+                    }
+                }),
+            )
+            .nest_service("/", ServeDir::new(config.video_directory.clone()))
+    };
+
+    // Start HTTP server
+    info!("Starting HTTP server on {}", cli.http_server_address);
+    tasks.spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    let mut metrics_interval = tokio::time::interval(Duration::from_secs(30));
+    let mut jpeg_rx = streamer.jpeg_subscribe();
     loop {
         tokio::select! {
+            Ok(image) = jpeg_rx.recv() => {
+                frame_image.lock().unwrap().replace(image);
+            }
             _ = metrics_interval.tick() => {
                 update_segment_count_metric(&config);
                 update_disk_usage_metric(&config);
+            }
+            task = tasks.join_next() => {
+                match task {
+                    None => tokio::time::sleep(Duration::from_secs(5)).await,
+                    Some(task) => {
+                        info!("Task exits: {:?}", task);
+                    }
+                }
             }
             _ = tokio::signal::ctrl_c() => {
                 info!("Exiting");
@@ -105,8 +153,7 @@ async fn main() {
     // Stop streamer
     streamer.stop().await;
 
-    // Stop HTTP server
-    server.stop().await;
+    tasks.shutdown().await;
 }
 
 #[tracing::instrument(skip_all)]
