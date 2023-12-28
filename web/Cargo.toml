@@ -7,7 +7,6 @@ edition.workspace = true
 [dependencies]
 axum.workspace = true
 clap.workspace = true
-kagiyama.workspace = true
 satori-common.workspace = true
 serde.workspace = true
 tokio.workspace = true

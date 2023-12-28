@@ -35,17 +35,7 @@ async fn main() {
     // TODO
     println!("{:?}", config);
 
-    // Set up observability server
-    let mut app_watcher = kagiyama::Watcher::<kagiyama::AlwaysReady>::default();
-    app_watcher.start_server(cli.observability_address).await;
-
-    // Register metrics
-    {
-        let mut registry = app_watcher.metrics_registry();
-        let registry = registry.sub_registry_with_prefix("satori_web");
-
-        // TODO
-    }
+    // TODO: observability
 
     // TODO
 
@@ -58,7 +48,4 @@ async fn main() {
             }
         }
     }
-
-    // Stop observability server
-    app_watcher.stop_server().unwrap();
 }
