@@ -2449,7 +2449,6 @@ dependencies = [
 name = "satori-web"
 version = "0.2.0"
 dependencies = [
- "axum",
  "clap",
  "satori-common",
  "serde",
