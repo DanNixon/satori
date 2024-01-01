@@ -53,7 +53,7 @@ satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "3.0"
 serde_json = "1.0.91"
-tempfile = "3.3.0"
+tempfile = "3.9.0"
 thiserror = "1.0.51"
 tokio = { version = "1.35", features = ["macros", "rt-multi-thread", "signal", "process"] }
 toml = "0.8"
