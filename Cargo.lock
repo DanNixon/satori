@@ -2294,7 +2294,7 @@ checksum = "f98d2aa92eebf49b69786be48e4477826b256916e84a57ff2a4f21923b48eb4c"
 
 [[package]]
 name = "satori-agent"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "byte-unit",
@@ -2316,7 +2316,7 @@ dependencies = [
 
 [[package]]
 name = "satori-archiver"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "clap",
@@ -2339,7 +2339,7 @@ dependencies = [
 
 [[package]]
 name = "satori-common"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2359,7 +2359,7 @@ dependencies = [
 
 [[package]]
 name = "satori-event-processor"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "chrono",
@@ -2382,7 +2382,7 @@ dependencies = [
 
 [[package]]
 name = "satori-integration-tests"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ctor",
  "indoc",
@@ -2397,7 +2397,7 @@ dependencies = [
 
 [[package]]
 name = "satori-storage"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-channel",
  "async-trait",
@@ -2425,7 +2425,7 @@ dependencies = [
 
 [[package]]
 name = "satori-testing-utils"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "chrono",
@@ -2445,7 +2445,7 @@ dependencies = [
 
 [[package]]
 name = "satorictl"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "chrono",
