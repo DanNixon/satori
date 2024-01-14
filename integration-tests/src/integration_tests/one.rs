@@ -52,7 +52,7 @@ async fn one() {
             indoc::indoc!(
                 r#"
                 event_file = "{}"
-                interval = 10
+                interval = 10  # seconds
                 event_ttl = 5
 
                 [mqtt]
@@ -117,7 +117,7 @@ async fn one() {
             indoc::indoc!(
                 r#"
                 queue_file = "{}"
-                interval = 30
+                interval = 10  # milliseconds
 
                 [storage]
                 kind = "s3"

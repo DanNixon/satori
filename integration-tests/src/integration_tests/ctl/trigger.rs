@@ -42,7 +42,7 @@ async fn trigger() {
             indoc::indoc!(
                 r#"
                 event_file = "{}"
-                interval = 10
+                interval = 10  # seconds
                 event_ttl = 5
 
                 [mqtt]
