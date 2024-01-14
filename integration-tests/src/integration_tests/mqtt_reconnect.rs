@@ -31,7 +31,7 @@ async fn mqtt_reconnect() {
             indoc::indoc!(
                 r#"
                 event_file = "{}"
-                interval = 10
+                interval = 10  # seconds
                 event_ttl = 5
 
                 [mqtt]
@@ -86,7 +86,7 @@ async fn mqtt_reconnect() {
             indoc::indoc!(
                 r#"
                 queue_file = "{}"
-                interval = 10
+                interval = 10  # milliseconds
 
                 [storage]
                 kind = "s3"

@@ -2320,7 +2320,6 @@ version = "0.3.0"
 dependencies = [
  "bytes",
  "clap",
- "futures",
  "metrics",
  "metrics-exporter-prometheus",
  "reqwest",

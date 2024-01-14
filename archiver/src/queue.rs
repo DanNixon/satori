@@ -1,5 +1,4 @@
 use crate::{error::ArchiverResult, task::ArchiveTask, Context};
-use futures::StreamExt;
 use satori_common::{mqtt::PublishExt, ArchiveCommand, ArchiveSegmentsCommand, Event};
 use std::{
     collections::VecDeque,
@@ -119,9 +118,8 @@ impl ArchiveTaskQueue {
         info!("Queueing archive event metadata command");
         self.queue.push_back(ArchiveTask::EventMetadata(event));
 
-        self.update_queue_length_metrics();
-
         self.attempt_save();
+        self.update_queue_length_metrics();
     }
 
     #[tracing::instrument(skip_all)]
@@ -137,50 +135,46 @@ impl ArchiveTaskQueue {
                 }));
         }
 
-        self.update_queue_length_metrics();
-
         self.attempt_save();
+        self.update_queue_length_metrics();
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn process(&mut self, context: &Context) {
-        if !self.queue.is_empty() {
-            self.queue = futures::stream::iter(self.queue.clone().into_iter())
-                .filter_map(|task| async move {
-                    let task_type = match &task {
-                        ArchiveTask::EventMetadata(_) => "event",
-                        ArchiveTask::CameraSegment(_) => "segment",
-                    };
+    pub(crate) async fn process_one(&mut self, context: &Context) {
+        if let Some(task) = self.queue.front() {
+            let task_type = match &task {
+                ArchiveTask::EventMetadata(_) => "event",
+                ArchiveTask::CameraSegment(_) => "segment",
+            };
 
-                    let result = task.run(context).await;
+            let result = task.run(context).await;
 
-                    let task_result = match &result {
-                        Ok(_) => "success",
-                        Err(_) => "failure",
-                    };
+            let task_result = match &result {
+                Ok(_) => "success",
+                Err(_) => "failure",
+            };
 
-                    metrics::counter!(
-                        crate::METRIC_PROCESSED_TASKS,
-                        1,
-                        "type" => task_type,
-                        "result" => task_result
-                    );
+            metrics::counter!(
+                crate::METRIC_PROCESSED_TASKS,
+                1,
+                "type" => task_type,
+                "result" => task_result
+            );
 
-                    match result {
-                        Ok(()) => None,
-                        Err(err) => {
-                            error!("Failed to process task: {:?}, reason: {}", task, err);
-                            Some(task)
-                        }
-                    }
-                })
-                .collect()
-                .await;
+            match result {
+                Ok(()) => {
+                    info!("Successfully processed task: {:?}", task);
 
-            self.attempt_save();
+                    // Remove the task from the queue
+                    self.queue.pop_front();
+                    self.attempt_save();
+                    self.update_queue_length_metrics();
+                }
+                Err(err) => {
+                    error!("Failed to process task: {:?}, reason: {}", task, err);
+                }
+            }
         }
-
-        self.update_queue_length_metrics();
     }
 }
 

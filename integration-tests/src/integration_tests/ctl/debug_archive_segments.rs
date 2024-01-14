@@ -37,7 +37,7 @@ async fn debug_archive_segments() {
             indoc::indoc!(
                 r#"
                 queue_file = "{}"
-                interval = 30
+                interval = 10  # miliseconds
 
                 [storage]
                 kind = "s3"

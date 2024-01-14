@@ -8,7 +8,7 @@ use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use satori_common::mqtt::MqttClient;
 use std::{net::SocketAddr, path::PathBuf};
-use tracing::{debug, info};
+use tracing::info;
 
 const METRIC_QUEUE_LENGTH: &str = "satori_archiver_queue_length";
 const METRIC_PROCESSED_TASKS: &str = "satori_archiver_processed_tasks";
@@ -76,13 +76,10 @@ async fn main() -> Result<(), ()> {
             msg = mqtt_client.poll() => {
                 if let Some(msg) = msg {
                     queue.handle_mqtt_message(msg);
-                    // Immediately process the queue
-                    queue.process(&context).await;
                 }
             }
             _ = queue_process_interval.tick() => {
-                debug!("Processing queue at interval");
-                queue.process(&context).await;
+                queue.process_one(&context).await;
             }
         }
     }
