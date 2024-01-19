@@ -31,6 +31,9 @@ impl From<MqttConfig> for MqttClient {
         options.set_keep_alive(Duration::from_secs(5));
         options.set_credentials(config.username, config.password);
 
+        let max_packet_size_bytes = 1024 * 1024;
+        options.set_max_packet_size(max_packet_size_bytes, max_packet_size_bytes);
+
         let (client, event_loop) = AsyncClient::new(options, 64);
 
         Self {
