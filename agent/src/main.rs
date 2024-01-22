@@ -4,12 +4,13 @@ mod jpeg_frame_decoder;
 mod utils;
 
 use axum::{
+    body::Body,
     http::header,
     response::{Html, IntoResponse},
     routing::get,
     Router,
 };
-use bytes::Bytes;
+use bytes::{BufMut, Bytes};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use std::{
@@ -19,7 +20,8 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tokio::{net::TcpListener, task::JoinSet};
+use tokio::net::TcpListener;
+use tokio_stream::wrappers::BroadcastStream;
 use tower_http::services::ServeDir;
 use tracing::{debug, info, warn};
 
@@ -85,27 +87,30 @@ async fn main() {
     // Create video output directory
     fs::create_dir_all(&config.video_directory).expect("should be able to create output directory");
 
-    // Start streamer
-    let mut streamer = ffmpeg::Streamer::new(config.clone());
-    streamer.start().await;
+    // Channel for JPEG frames
+    let (jpeg_tx, mut jpeg_rx) = tokio::sync::broadcast::channel(8);
 
-    let mut tasks = JoinSet::<()>::new();
+    // Start streamer
+    let mut streamer = ffmpeg::Streamer::new(config.clone(), jpeg_tx);
+    streamer.start().await;
 
     // Configure HTTP server listener
     let listener = TcpListener::bind(&cli.http_server_address)
         .await
         .unwrap_or_else(|_| panic!("tcp listener should bind to {}", cli.http_server_address));
 
+    // Configure HTTP server endpoints
     let frame_image = SharedImageData::default();
+    let (jpeg_multipart_tx, _) = tokio::sync::broadcast::channel::<Bytes>(8);
 
-    // Configure HTTP server routes
     let app = {
         let frame_image = frame_image.clone();
+        let jpeg_multipart_tx = jpeg_multipart_tx.clone();
 
         Router::new()
             .route("/player", get(Html(include_str!("player.html"))))
             .route(
-                "/frame.jpg",
+                "/jpeg",
                 get(move || async move {
                     match frame_image.lock().unwrap().as_ref() {
                         Some(image) => {
@@ -115,33 +120,48 @@ async fn main() {
                     }
                 }),
             )
+            .route(
+                "/mjpeg",
+                get(move || async move {
+                    let stream = BroadcastStream::new(jpeg_multipart_tx.subscribe());
+                    let body = Body::from_stream(stream);
+
+                    (
+                        [(
+                            header::CONTENT_TYPE,
+                            "multipart/x-mixed-replace; boundary=frame",
+                        )],
+                        body,
+                    )
+                        .into_response()
+                }),
+            )
             .nest_service("/", ServeDir::new(config.video_directory.clone()))
     };
 
     // Start HTTP server
     info!("Starting HTTP server on {}", cli.http_server_address);
-    tasks.spawn(async move {
+    let server_handle = tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
     });
 
     let mut metrics_interval = tokio::time::interval(Duration::from_secs(30));
-    let mut jpeg_rx = streamer.jpeg_subscribe();
     loop {
         tokio::select! {
             Ok(image) = jpeg_rx.recv() => {
+                let mut body = bytes::BytesMut::new();
+                body.put_slice(b"--frame\r\n");
+                body.put_slice(format!("{}: image/jpeg\r\n", header::CONTENT_TYPE).as_bytes());
+                body.put_slice(format!("{}: {}\r\n", header::CONTENT_LENGTH, image.len()).as_bytes());
+                body.put_slice(b"\r\n");
+                body.put_slice(&image);
+                let _ = jpeg_multipart_tx.send(body.into());
+
                 frame_image.lock().unwrap().replace(image);
             }
             _ = metrics_interval.tick() => {
                 update_segment_count_metric(&config);
                 update_disk_usage_metric(&config);
-            }
-            task = tasks.join_next() => {
-                match task {
-                    None => tokio::time::sleep(Duration::from_secs(5)).await,
-                    Some(task) => {
-                        info!("Task exits: {:?}", task);
-                    }
-                }
             }
             _ = tokio::signal::ctrl_c() => {
                 info!("Exiting");
@@ -153,7 +173,10 @@ async fn main() {
     // Stop streamer
     streamer.stop().await;
 
-    tasks.shutdown().await;
+    // Stop server
+    info!("Stopping HTTP server");
+    server_handle.abort();
+    let _ = server_handle.await;
 }
 
 #[tracing::instrument(skip_all)]

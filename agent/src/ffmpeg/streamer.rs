@@ -1,4 +1,5 @@
 use crate::{config::Config, jpeg_frame_decoder::JpegFrameDecoder};
+use bytes::Bytes;
 use futures::StreamExt;
 use nix::{
     sys::signal::{self, Signal},
@@ -11,7 +12,7 @@ use std::{
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
-    sync::broadcast,
+    sync::broadcast::Sender,
     task::JoinHandle,
 };
 use tokio_util::codec::FramedRead;
@@ -24,24 +25,18 @@ pub(crate) struct Streamer {
     terminate: Arc<Mutex<bool>>,
     ffmpeg_pid: Arc<Mutex<Option<Pid>>>,
     handle: Option<JoinHandle<()>>,
-    jpeg_tx: broadcast::Sender<bytes::Bytes>,
+    jpeg_tx: Sender<Bytes>,
 }
 
 impl Streamer {
-    pub(crate) fn new(config: Config) -> Self {
-        let (tx, _) = broadcast::channel(8);
-
+    pub(crate) fn new(config: Config, jpeg_tx: Sender<Bytes>) -> Self {
         Self {
             config,
             terminate: Arc::new(Mutex::new(false)),
             ffmpeg_pid: Default::default(),
             handle: None,
-            jpeg_tx: tx,
+            jpeg_tx,
         }
-    }
-
-    pub(crate) fn jpeg_subscribe(&self) -> broadcast::Receiver<bytes::Bytes> {
-        self.jpeg_tx.subscribe()
     }
 
     #[tracing::instrument(skip_all)]
