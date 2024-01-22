@@ -27,7 +27,7 @@ byte-unit = { version = "4.0", features = ["serde"] }
 bytes = { version = "1.3.0", features = ["serde"] }
 chrono = { version = "0.4.23", features = ["serde"] }
 ciborium = "0.2.1"
-clap = { version = "4.4.16", features = ["cargo", "derive", "env", "string"] }
+clap = { version = "4.4.18", features = ["cargo", "derive", "env", "string"] }
 ctor = "0.2.6"
 crossterm = "0.27"
 futures = "0.3.30"
@@ -42,8 +42,8 @@ nix = { version = "0.27.0", features = ["process", "signal"] }
 pem-rfc7468 = { version = "0.7.0", features = ["alloc"] }
 rand = "0.8.5"
 ratatui = { version = "0.23.0", features = ["all-widgets"]}
-rayon = "1.7.0"
-regex = "1.7.1"
+rayon = "1.8.1"
+regex = "1.10.3"
 reqwest = "0.11.23"
 rumqttc = "0.23.0"
 rust-s3 = "0.34.0-rc4"
@@ -51,7 +51,7 @@ satori-common = { path = "./common" }
 satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
-serde_with = "3.0"
+serde_with = "3.5"
 serde_json = "1.0.111"
 tempfile = "3.9.0"
 thiserror = "1.0.56"
