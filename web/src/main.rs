@@ -6,9 +6,7 @@ use clap::Parser;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::info;
 
-/// Run the camera agent.
-///
-/// Handles restreaming a single camera as HLS with history.
+/// Run the web server.
 #[derive(Clone, Parser)]
 #[command(author, version = satori_common::version!(), about, long_about = None)]
 pub(crate) struct Cli {
@@ -16,7 +14,7 @@ pub(crate) struct Cli {
     #[arg(short, long, env = "CONFIG_FILE", value_name = "FILE")]
     config: PathBuf,
 
-    /// Address to listen on for observability/metrics endpoints
+    /// Address to listen on for web endpoints
     #[clap(long, env = "HTTP_SERVER_ADDRESS", default_value = "127.0.0.1:8000")]
     http_server_address: SocketAddr,
 
