@@ -25,8 +25,8 @@ async-trait = "0.1.77"
 axum = "0.7.4"
 byte-unit = { version = "4.0", features = ["serde"] }
 bytes = { version = "1.3.0", features = ["serde"] }
-chrono = { version = "0.4.23", features = ["serde"] }
-ciborium = "0.2.1"
+chrono = { version = "0.4.33", features = ["serde"] }
+ciborium = "0.2.2"
 clap = { version = "4.4.18", features = ["cargo", "derive", "env", "string"] }
 ctor = "0.2.6"
 crossterm = "0.27"
@@ -52,7 +52,7 @@ satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "3.5"
-serde_json = "1.0.111"
+serde_json = "1.0.113"
 tempfile = "3.9.0"
 thiserror = "1.0.56"
 tokio = { version = "1.35", features = ["macros", "rt-multi-thread", "signal", "process"] }
