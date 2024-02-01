@@ -8,10 +8,12 @@ use crate::{
     config::{Config, TriggersConfig},
     event_set::EventSet,
 };
+use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use satori_common::mqtt::{MqttClient, PublishExt};
 use std::{net::SocketAddr, path::PathBuf};
+use tokio::net::TcpListener;
 use tracing::{debug, error, info};
 
 const METRIC_TRIGGERS: &str = "satori_eventprocessor_triggers";
@@ -25,6 +27,10 @@ pub(crate) struct Cli {
     /// Path to configuration file
     #[arg(short, long, env = "CONFIG_FILE", value_name = "FILE")]
     config: PathBuf,
+
+    /// Address to listen on for application endpoints
+    #[clap(long, env = "HTTP_SERVER_ADDRESS", default_value = "127.0.0.1:8000")]
+    http_server_address: SocketAddr,
 
     /// Address to listen on for observability/metrics endpoints
     #[clap(long, env = "OBSERVABILITY_ADDRESS", default_value = "127.0.0.1:9090")]
@@ -67,6 +73,24 @@ async fn main() -> Result<(), ()> {
         metrics::Unit::Count,
         "Processed events count"
     );
+
+    let http_app = {
+        Router::new().route(
+            "/jpeg",
+            get(move || async move { axum::http::StatusCode::NOT_FOUND.into_response() }),
+        )
+    };
+
+    // Configure HTTP server listener
+    let listener = TcpListener::bind(&cli.http_server_address)
+        .await
+        .unwrap_or_else(|_| panic!("tcp listener should bind to {}", cli.http_server_address));
+
+    // Start HTTP server
+    info!("Starting HTTP server on {}", cli.http_server_address);
+    let server_handle = tokio::spawn(async move {
+        axum::serve(listener, http_app).await.unwrap();
+    });
 
     // Run event loop
     let mut process_interval = tokio::time::interval(config.interval);
