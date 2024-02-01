@@ -76,7 +76,7 @@ async fn main() -> Result<(), ()> {
 
     let http_app = {
         Router::new().route(
-            "/jpeg",
+            "/trigger",
             get(move || async move { axum::http::StatusCode::NOT_FOUND.into_response() }),
         )
     };
