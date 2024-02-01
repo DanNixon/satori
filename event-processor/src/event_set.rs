@@ -6,13 +6,14 @@ use satori_common::{
 use std::{
     fs::File,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
     time::Duration,
 };
 use tracing::{error, info, warn};
 
 #[derive(Default)]
 pub(crate) struct EventSet {
-    events: Vec<Event>,
+    events: Arc<Mutex<Vec<Event>>>,
 
     event_ttl: Duration,
     backing_file_name: PathBuf,
@@ -23,8 +24,8 @@ impl EventSet {
     pub(crate) fn load_or_new(path: &Path, event_ttl: Duration) -> Self {
         Self {
             // Try and load active events from disk
-            events: match Self::load(path) {
-                Ok(v) => v,
+            events: match Self::load_event_list(path) {
+                Ok(v) => Arc::new(Mutex::new(v)),
                 Err(err) => {
                     // Otherwise provide an event set
                     warn!(
@@ -41,7 +42,7 @@ impl EventSet {
     }
 
     #[tracing::instrument]
-    fn load(path: &Path) -> EventProcessorResult<Vec<Event>> {
+    fn load_event_list(path: &Path) -> EventProcessorResult<Vec<Event>> {
         let file = File::open(path)?;
         Ok(serde_json::from_reader(&file)?)
     }
@@ -63,7 +64,7 @@ impl EventSet {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn trigger(&mut self, trigger: &Trigger) {
+    pub(crate) fn trigger(&self, trigger: &Trigger) {
         metrics::counter!(
             crate::METRIC_TRIGGERS,
             1,
@@ -91,7 +92,7 @@ impl EventSet {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn process(&mut self, camera_client: &HlsClient, mqtt_client: &MqttClient) {
+    pub(crate) async fn process(&self, camera_client: &HlsClient, mqtt_client: &MqttClient) {
         // Do nothing if there are no events in the queue
         if self.events.is_empty() {
             return;
@@ -175,7 +176,7 @@ impl EventSet {
     }
 
     #[tracing::instrument(skip_all)]
-    fn prune_expired_events(&mut self) {
+    fn prune_expired_events(&self) {
         info!("Pruning expired events");
 
         self.events = self
