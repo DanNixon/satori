@@ -50,7 +50,8 @@ impl EventSet {
     #[tracing::instrument(skip_all)]
     fn save(&self) -> EventProcessorResult<()> {
         let file = File::create(&self.backing_file_name)?;
-        Ok(serde_json::to_writer(&file, &self.events)?)
+        let events = self.events.lock().unwrap();
+        Ok(serde_json::to_writer(&file, &events)?)
     }
 
     #[tracing::instrument(skip_all)]
@@ -71,8 +72,9 @@ impl EventSet {
             "id" => trigger.metadata.id.clone()
         );
 
-        match self
-            .events
+        let events = self.events.lock().unwrap();
+
+        match events
             .iter_mut()
             .find(|e| e.metadata.id == trigger.metadata.id)
         {
@@ -84,7 +86,7 @@ impl EventSet {
             None => {
                 // Otherwise add a new event
                 info!("Adding new event for trigger");
-                self.events.push(trigger.clone().into());
+                events.push(trigger.clone().into());
             }
         }
 
@@ -93,12 +95,14 @@ impl EventSet {
 
     #[tracing::instrument(skip_all)]
     pub(crate) async fn process(&self, camera_client: &HlsClient, mqtt_client: &MqttClient) {
+        let mut events = self.events.lock().unwrap();
+
         // Do nothing if there are no events in the queue
-        if self.events.is_empty() {
+        if events.is_empty() {
             return;
         }
 
-        for event in &mut self.events {
+        for event in events.iter_mut() {
             info!("Processing event: {:?}", event.metadata);
 
             for camera in &mut event.cameras {
@@ -170,7 +174,7 @@ impl EventSet {
         // Now remove any events that have outlived the TTL
         self.prune_expired_events();
 
-        metrics::gauge!(crate::METRIC_ACTIVE_EVENTS, self.events.len() as f64,);
+        metrics::gauge!(crate::METRIC_ACTIVE_EVENTS, events.len() as f64,);
 
         self.attempt_save();
     }
@@ -179,8 +183,9 @@ impl EventSet {
     fn prune_expired_events(&self) {
         info!("Pruning expired events");
 
-        self.events = self
-            .events
+        let events = self.events.lock().unwrap();
+
+        let new_events = events
             .iter()
             .filter_map(|event| {
                 if event.should_expire(self.event_ttl) {
@@ -197,7 +202,9 @@ impl EventSet {
             })
             .collect();
 
-        info!("{} event(s) remain", self.events.len());
+        // TODO
+
+        info!("{} event(s) remain", events.len());
     }
 }
 
