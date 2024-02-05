@@ -44,18 +44,18 @@ rand = "0.8.5"
 ratatui = { version = "0.23.0", features = ["all-widgets"]}
 rayon = "1.8.1"
 regex = "1.10.3"
-reqwest = "0.11.23"
+reqwest = "0.11.24"
 rumqttc = "0.23.0"
 rust-s3 = "0.34.0-rc4"
 satori-common = { path = "./common" }
 satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
-serde_with = "3.5"
+serde_with = "3.6"
 serde_json = "1.0.113"
 tempfile = "3.9.0"
 thiserror = "1.0.56"
-tokio = { version = "1.35", features = ["macros", "rt-multi-thread", "signal", "process"] }
+tokio = { version = "1.36", features = ["macros", "rt-multi-thread", "signal", "process"] }
 tokio-stream = { version = "0.1.14", features = ["sync"] }
 tokio-util = { version = "0.7.10", features = ["codec"] }
 toml = "0.8"
