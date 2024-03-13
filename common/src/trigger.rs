@@ -159,7 +159,7 @@ mod test {
         );
 
         let trigger_time: DateTime<Utc> = trigger.metadata.timestamp.into();
-        assert!(Utc::now() - trigger_time < chrono::Duration::milliseconds(100));
+        assert!(Utc::now() - trigger_time < chrono::Duration::try_milliseconds(100).unwrap());
     }
 
     #[test]

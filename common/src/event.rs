@@ -118,7 +118,7 @@ mod test {
         let t = crate::Trigger {
             metadata: EventMetadata {
                 id: "trig1".into(),
-                timestamp: (Utc::now() - chrono::Duration::minutes(13)).into(),
+                timestamp: (Utc::now() - chrono::Duration::try_minutes(13).unwrap()).into(),
             },
             reason: "Something happened".into(),
             cameras: vec!["camera-1".into()],
@@ -142,7 +142,7 @@ mod test {
         let t = crate::Trigger {
             metadata: EventMetadata {
                 id: "trig1".into(),
-                timestamp: (Utc::now() - chrono::Duration::minutes(13)).into(),
+                timestamp: (Utc::now() - chrono::Duration::try_minutes(13).unwrap()).into(),
             },
             reason: "Something happened".into(),
             cameras: vec!["camera-1".into()],

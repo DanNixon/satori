@@ -507,7 +507,7 @@ mod test {
         let mut expected = event.clone();
 
         trigger.pre = Duration::from_secs(60);
-        expected.start = event.metadata.timestamp - chrono::Duration::seconds(60);
+        expected.start = event.metadata.timestamp - chrono::Duration::try_seconds(60).unwrap();
 
         expected.reasons = vec![
             EventReason {
@@ -542,7 +542,7 @@ mod test {
         let mut expected = event.clone();
 
         trigger.post = Duration::from_secs(120);
-        expected.end = event.metadata.timestamp + chrono::Duration::seconds(120);
+        expected.end = event.metadata.timestamp + chrono::Duration::try_seconds(120).unwrap();
 
         expected.reasons = vec![
             EventReason {
@@ -578,9 +578,9 @@ mod test {
 
         let reason_1_timestamp = trigger.metadata.timestamp;
 
-        trigger.metadata.timestamp += chrono::Duration::seconds(1);
+        trigger.metadata.timestamp += chrono::Duration::try_seconds(1).unwrap();
         trigger.reason = "Something else happened".into();
-        expected.end += chrono::Duration::seconds(1);
+        expected.end += chrono::Duration::try_seconds(1).unwrap();
 
         let reason_2_timestamp = trigger.metadata.timestamp;
 
