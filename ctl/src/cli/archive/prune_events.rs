@@ -1,4 +1,5 @@
 use super::CliResult;
+use chrono::{Duration, Utc};
 use clap::Parser;
 use satori_storage::{workflows, Provider};
 use tracing::error;
@@ -13,7 +14,8 @@ pub(crate) struct PruneEventsCommand {
 
 impl PruneEventsCommand {
     pub(super) async fn execute(&self, storage: Provider) -> CliResult {
-        let time = chrono::Utc::now() - chrono::Duration::days(self.days);
+        let time =
+            Utc::now() - Duration::try_days(self.days).expect("days range should be within limits");
         workflows::prune_events_older_than(storage, time.into())
             .await
             .map_err(|err| {
