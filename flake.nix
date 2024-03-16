@@ -4,11 +4,6 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     naersk = {
       url = "github:nix-community/naersk";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -19,7 +14,6 @@
     self,
     nixpkgs,
     flake-utils,
-    fenix,
     naersk,
   }:
     flake-utils.lib.eachDefaultSystem (
