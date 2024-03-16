@@ -32,7 +32,7 @@
         version = cargoToml.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
-        nativeBuildInputs = with pkgs; [cmake pkg-config];
+        nativeBuildInputs = with pkgs; [pkg-config];
         buildInputs = with pkgs; [openssl];
 
         lintingRustFlags = "-D unused-crate-dependencies";
