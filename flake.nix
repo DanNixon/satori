@@ -28,20 +28,14 @@
           inherit system;
         };
 
-        toolchain = fenix.packages.${system}.toolchainOf {
-          channel = "1.75";
-          date = "2023-12-28";
-          sha256 = "SXRtAuO4IqNOQq+nLbrsDFbVk+3aVA8NNpSZsKlVH/8=";
-        };
-
         naersk' = pkgs.callPackage naersk {
-          cargo = toolchain.rust;
-          rustc = toolchain.rust;
+          cargo = pkgs.cargo;
+          rustc = pkgs.rustc;
         };
 
-        cargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+        cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
-        version = cargo.workspace.package.version;
+        version = cargoToml.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
         nativeBuildInputs = with pkgs; [cmake pkg-config];
@@ -50,10 +44,16 @@
         lintingRustFlags = "-D unused-crate-dependencies";
       in rec {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
+          nativeBuildInputs = nativeBuildInputs;
           buildInputs = buildInputs;
 
           packages = with pkgs; [
+            # Rust toolchain
+            cargo
+            clippy
+            rustc
+            rustfmt
+
             # Code formatting tools
             treefmt
             alejandra
