@@ -9,6 +9,9 @@ updates:
       cargo-dependencies:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "clap"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: "/"
