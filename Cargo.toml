@@ -21,7 +21,7 @@ edition = "2021"
 
 [workspace.dependencies]
 async-channel = "2.2.0"
-async-trait = "0.1.77"
+async-trait = "0.1.78"
 axum = "0.7.4"
 byte-unit = { version = "4.0", features = ["serde"] }
 bytes = { version = "1.3.0", features = ["serde"] }
@@ -44,19 +44,19 @@ rand = "0.8.5"
 ratatui = { version = "0.23.0", features = ["all-widgets"]}
 rayon = "1.9.0"
 regex = "1.10.3"
-reqwest = "0.11.25"
+reqwest = "0.11.26"
 rumqttc = "0.23.0"
 rust-s3 = "0.34.0-rc4"
 satori-common = { path = "./common" }
 satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
-serde_with = "3.6"
+serde_with = "3.7"
 serde_json = "1.0.114"
 tempfile = "3.10.1"
-thiserror = "1.0.57"
+thiserror = "1.0.58"
 tokio = { version = "1.36", features = ["macros", "rt-multi-thread", "signal", "process"] }
-tokio-stream = { version = "0.1.14", features = ["sync"] }
+tokio-stream = { version = "0.1.15", features = ["sync"] }
 tokio-util = { version = "0.7.10", features = ["codec"] }
 toml = "0.8"
 tower-http = { version = "0.5.2", features = ["fs"] }
