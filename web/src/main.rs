@@ -34,12 +34,13 @@ pub(crate) struct Cli {
 #[derive(Clone)]
 struct ApiState {
     client: reqwest::Client,
+    cameras: config::CameraDetails,
 }
 
 impl ApiState {
-    fn new() -> Self {
+    fn new(cameras: config::CameraDetails) -> Self {
         let client = reqwest::Client::new();
-        Self { client }
+        Self { client, cameras }
     }
 }
 
@@ -87,7 +88,7 @@ async fn main() {
         .expect("prometheus metrics exporter should be setup");
 
     // TODO
-    let api_state = ApiState::new();
+    let api_state = ApiState::new(config.cameras);
     let api = Router::new()
         .route("/:camera/jpeg", get(get_camera_jpeg))
         .route("/:camera/mjpeg", get(get_camera_mjpeg))
