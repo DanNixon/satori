@@ -2450,6 +2450,7 @@ dependencies = [
  "axum",
  "clap",
  "metrics-exporter-prometheus",
+ "reqwest",
  "satori-common",
  "serde",
  "tokio",

@@ -31,34 +31,40 @@ pub(crate) struct Cli {
     observability_address: SocketAddr,
 }
 
-#[derive(Debug, Clone)]
-struct Context {}
+#[derive(Clone)]
+struct ApiState {
+    client: reqwest::Client,
+}
 
-async fn get_camera_jpeg(State(state): State<Context>, Path(camera): Path<String>) -> Response {
-    println!("get jpeg\n  state: {:?}\n  camera: {:?}", state, camera);
+impl ApiState {
+    fn new() -> Self {
+        let client = reqwest::Client::new();
+        Self { client }
+    }
+}
+
+async fn get_camera_jpeg(State(state): State<ApiState>, Path(camera): Path<String>) -> Response {
+    println!("get jpeg\n  camera: {:?}", camera);
     "todo".into_response()
 }
 
-async fn get_camera_mjpeg(State(state): State<Context>, Path(camera): Path<String>) -> Response {
-    println!("get mjpeg\n  state: {:?}\n  camera: {:?}", state, camera);
+async fn get_camera_mjpeg(State(state): State<ApiState>, Path(camera): Path<String>) -> Response {
+    println!("get mjpeg\n  camera: {:?}", camera);
     "todo".into_response()
 }
 
-async fn get_camera_hls(State(state): State<Context>, Path(camera): Path<String>) -> Response {
-    println!(
-        "hls get plist\n  state: {:?}\n  camera: {:?}",
-        state, camera
-    );
+async fn get_camera_hls(State(state): State<ApiState>, Path(camera): Path<String>) -> Response {
+    println!("hls get plist\n  camera: {:?}", camera);
     "todo".into_response()
 }
 
 async fn get_camera_hls_segment(
-    State(state): State<Context>,
+    State(state): State<ApiState>,
     Path((camera, segment)): Path<(String, String)>,
 ) -> Response {
     println!(
-        "hls get segment\n  state: {:?}\n  camera: {:?}\n  segment: {:?}",
-        state, camera, segment
+        "hls get segment\n  camera: {:?}\n  segment: {:?}",
+        camera, segment
     );
     "todo".into_response()
 }
@@ -78,13 +84,15 @@ async fn main() {
         .expect("prometheus metrics exporter should be setup");
 
     // TODO
-    let state = Context {};
-    let app = Router::new()
+    let api_state = ApiState::new();
+    let api = Router::new()
         .route("/:camera/jpeg", get(get_camera_jpeg))
         .route("/:camera/mjpeg", get(get_camera_mjpeg))
         .route("/:camera/hls/stream.m3u8", get(get_camera_mjpeg))
         .route("/:camera/hsl/:segment", get(get_camera_mjpeg))
-        .with_state(state);
+        .with_state(api_state);
+
+    let app = Router::new().nest("/api/cameras", api);
 
     // Configure HTTP server listener
     let listener = TcpListener::bind(&cli.http_server_address)
