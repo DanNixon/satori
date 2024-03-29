@@ -53,7 +53,10 @@ async fn get_camera_mjpeg(State(state): State<ApiState>, Path(camera): Path<Stri
     "todo".into_response()
 }
 
-async fn get_camera_hls(State(state): State<ApiState>, Path(camera): Path<String>) -> Response {
+async fn get_camera_hls_playlist(
+    State(state): State<ApiState>,
+    Path(camera): Path<String>,
+) -> Response {
     println!("hls get plist\n  camera: {:?}", camera);
     "todo".into_response()
 }
@@ -88,8 +91,8 @@ async fn main() {
     let api = Router::new()
         .route("/:camera/jpeg", get(get_camera_jpeg))
         .route("/:camera/mjpeg", get(get_camera_mjpeg))
-        .route("/:camera/hls/stream.m3u8", get(get_camera_mjpeg))
-        .route("/:camera/hsl/:segment", get(get_camera_mjpeg))
+        .route("/:camera/hls/stream.m3u8", get(get_camera_hls_playlist))
+        .route("/:camera/hls/:segment", get(get_camera_hls_segment))
         .with_state(api_state);
 
     let app = Router::new().nest("/api/cameras", api);
