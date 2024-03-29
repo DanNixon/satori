@@ -2447,6 +2447,7 @@ dependencies = [
 name = "satori-web"
 version = "0.3.1"
 dependencies = [
+ "axum",
  "clap",
  "metrics-exporter-prometheus",
  "satori-common",
