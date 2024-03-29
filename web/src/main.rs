@@ -44,18 +44,18 @@ impl ApiState {
     }
 }
 
-async fn get_camera_jpeg(State(state): State<ApiState>, Path(camera): Path<String>) -> Response {
+async fn get_camera_jpeg(State(_state): State<ApiState>, Path(camera): Path<String>) -> Response {
     println!("get jpeg\n  camera: {:?}", camera);
     "todo".into_response()
 }
 
-async fn get_camera_mjpeg(State(state): State<ApiState>, Path(camera): Path<String>) -> Response {
+async fn get_camera_mjpeg(State(_state): State<ApiState>, Path(camera): Path<String>) -> Response {
     println!("get mjpeg\n  camera: {:?}", camera);
     "todo".into_response()
 }
 
 async fn get_camera_hls_playlist(
-    State(state): State<ApiState>,
+    State(_state): State<ApiState>,
     Path(camera): Path<String>,
 ) -> Response {
     println!("hls get plist\n  camera: {:?}", camera);
@@ -63,7 +63,7 @@ async fn get_camera_hls_playlist(
 }
 
 async fn get_camera_hls_segment(
-    State(state): State<ApiState>,
+    State(_state): State<ApiState>,
     Path((camera, segment)): Path<(String, String)>,
 ) -> Response {
     println!(
