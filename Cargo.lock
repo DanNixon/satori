@@ -2448,6 +2448,7 @@ name = "satori-web"
 version = "0.3.1"
 dependencies = [
  "clap",
+ "metrics-exporter-prometheus",
  "satori-common",
  "serde",
  "tokio",

@@ -3,6 +3,7 @@ mod server;
 
 use crate::config::Config;
 use clap::Parser;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::info;
 
@@ -33,7 +34,12 @@ async fn main() {
     // TODO
     println!("{:?}", config);
 
-    // TODO: observability
+    // Set up metrics server
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(cli.observability_address)
+        .install()
+        .expect("prometheus metrics exporter should be setup");
 
     // TODO
 

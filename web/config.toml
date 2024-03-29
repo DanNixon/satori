@@ -1,9 +1,9 @@
 [cameras."test one"]
-hls_stream = "http://one:9999/stream.m3u8"
-agent_url= "http://one:9999/"
-agent_metrics = "http://one:9090/metrics"
+hls_url = "http://one:9999/stream.m3u8"
+thumbnail_url = "http://one:9999/jpeg"
+mjpeg_url = "http://one:9999/mjpeg"
 
 [cameras."test two"]
-hls_stream = "http://two:9999/stream.m3u8"
-agent_url= "http://two:9999/"
-agent_metrics = "http://two:9090/metrics"
+hls_url = "http://two:9999/stream.m3u8"
+thumbnail_url = "http://two:9999/jpeg"
+mjpeg_url = "http://two:9999/mjpeg"
