@@ -44,14 +44,17 @@
           packages = with pkgs; [
             # Rust toolchain
             cargo
-            clippy
             rustc
-            rustfmt
+
+            # Code analysis tools
+            clippy
+            rust-analyzer
 
             # Code formatting tools
             treefmt
             alejandra
             mdl
+            rustfmt
 
             # Rust dependency linting
             cargo-deny
