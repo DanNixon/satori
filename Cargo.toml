@@ -51,7 +51,7 @@ satori-common = { path = "./common" }
 satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
-serde_with = "3.7"
+serde_with = "3.8"
 serde_json = "1.0.116"
 tempfile = "3.10.1"
 thiserror = "1.0.59"
