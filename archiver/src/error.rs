@@ -1,5 +1,11 @@
-#[derive(thiserror::Error, Debug)]
-pub(crate) enum ArchiverError {
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum Error {
+    #[error("Config file error: {0}")]
+    ConfigFile(#[from] satori_common::ConfigFileError),
+
+    #[error("Prometheus exporter error: {0}")]
+    Prometheus(#[from] metrics_exporter_prometheus::BuildError),
+
     #[error("Storage error: {0}")]
     Storage(#[from] satori_storage::StorageError),
 
@@ -16,4 +22,4 @@ pub(crate) enum ArchiverError {
     Url,
 }
 
-pub(crate) type ArchiverResult<T> = Result<T, ArchiverError>;
+pub(crate) type Result<T> = std::result::Result<T, Error>;

@@ -1,7 +1,4 @@
-use crate::{
-    error::{ArchiverError, ArchiverResult},
-    Context,
-};
+use crate::Context;
 use bytes::Bytes;
 use satori_common::Event;
 use satori_storage::StorageProvider;
@@ -18,7 +15,7 @@ pub(crate) enum ArchiveTask {
 
 impl ArchiveTask {
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn run(&self, context: &Context) -> ArchiverResult<()> {
+    pub(crate) async fn run(&self, context: &Context) -> crate::error::Result<()> {
         match &self {
             Self::EventMetadata(event) => self.run_event(context, event).await,
             Self::CameraSegment(segment) => self.run_segment(context, segment).await,
@@ -26,13 +23,17 @@ impl ArchiveTask {
     }
 
     #[tracing::instrument(skip(context))]
-    async fn run_event(&self, context: &Context, event: &Event) -> ArchiverResult<()> {
+    async fn run_event(&self, context: &Context, event: &Event) -> crate::error::Result<()> {
         info!("Saving event");
         Ok(context.storage.put_event(event).await?)
     }
 
     #[tracing::instrument(skip(context))]
-    async fn run_segment(&self, context: &Context, segment: &CameraSegment) -> ArchiverResult<()> {
+    async fn run_segment(
+        &self,
+        context: &Context,
+        segment: &CameraSegment,
+    ) -> crate::error::Result<()> {
         info!("Saving segment");
         let data = segment.get(context).await?;
         Ok(context
@@ -51,7 +52,7 @@ pub(crate) struct CameraSegment {
 
 impl CameraSegment {
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn get(&self, context: &Context) -> ArchiverResult<Bytes> {
+    pub(crate) async fn get(&self, context: &Context) -> crate::error::Result<Bytes> {
         let url = get_segment_url(self.camera_url.clone(), &self.filename)?;
         debug!("Segment URL: {url}");
 
@@ -60,12 +61,12 @@ impl CameraSegment {
     }
 }
 
-fn get_segment_url(hls_url: Url, segment_filename: &Path) -> ArchiverResult<Url> {
+fn get_segment_url(hls_url: Url, segment_filename: &Path) -> crate::error::Result<Url> {
     let mut url = hls_url;
     url.path_segments_mut()
-        .map_err(|_| ArchiverError::Url)?
+        .map_err(|_| crate::error::Error::Url)?
         .pop()
-        .push(segment_filename.to_str().ok_or(ArchiverError::Url)?);
+        .push(segment_filename.to_str().ok_or(crate::error::Error::Url)?);
     Ok(url)
 }
 

@@ -1,4 +1,4 @@
-use crate::{error::ArchiverResult, task::ArchiveTask, Context};
+use crate::{task::ArchiveTask, Context};
 use satori_common::{mqtt::PublishExt, ArchiveCommand, ArchiveSegmentsCommand, Event};
 use std::{
     collections::VecDeque,
@@ -38,7 +38,7 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument]
-    fn load(path: &Path) -> ArchiverResult<Self> {
+    fn load(path: &Path) -> crate::error::Result<Self> {
         let file = File::open(path)?;
         let queue = Self {
             queue: serde_json::from_reader(file)?,
@@ -49,7 +49,7 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    fn save(&self) -> ArchiverResult<()> {
+    fn save(&self) -> crate::error::Result<()> {
         info!("Saving job queue to {}", self.backing_file_name.display());
         let file = File::create(&self.backing_file_name)?;
         Ok(serde_json::to_writer(file, &self.queue)?)
