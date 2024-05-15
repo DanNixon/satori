@@ -52,7 +52,7 @@ pub(crate) struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), crate::error::Error> {
+async fn main() -> crate::error::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
