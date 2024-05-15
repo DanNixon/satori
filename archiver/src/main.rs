@@ -32,11 +32,11 @@ struct Context {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ()> {
+async fn main() -> crate::error::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
-    let config: Config = satori_common::load_config_file(&cli.config);
+    let config: Config = satori_common::load_config_file(&cli.config)?;
 
     let mut mqtt_client: MqttClient = config.mqtt.into();
 
@@ -52,8 +52,7 @@ async fn main() -> Result<(), ()> {
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(cli.observability_address)
-        .install()
-        .expect("prometheus metrics exporter should be setup");
+        .install()?;
 
     metrics::describe_gauge!(
         METRIC_QUEUE_LENGTH,
