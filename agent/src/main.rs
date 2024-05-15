@@ -1,4 +1,5 @@
 mod config;
+mod error;
 mod ffmpeg;
 mod jpeg_frame_decoder;
 mod utils;
@@ -51,11 +52,11 @@ pub(crate) struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), crate::error::Error> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
-    let config: config::Config = satori_common::load_config_file(&cli.config);
+    let config: config::Config = satori_common::load_config_file(&cli.config)?;
 
     info!("FFmpeg version: {}", ffmpeg::get_ffmpeg_version());
 
@@ -63,8 +64,7 @@ async fn main() {
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(cli.observability_address)
-        .install()
-        .expect("prometheus metrics exporter should be setup");
+        .install()?;
 
     metrics::describe_gauge!(
         METRIC_DISK_USAGE,
@@ -85,7 +85,7 @@ async fn main() {
     );
 
     // Create video output directory
-    fs::create_dir_all(&config.video_directory).expect("should be able to create output directory");
+    fs::create_dir_all(&config.video_directory)?;
 
     // Channel for JPEG frames
     let (jpeg_tx, mut jpeg_rx) = tokio::sync::broadcast::channel(8);
@@ -95,9 +95,7 @@ async fn main() {
     streamer.start().await;
 
     // Configure HTTP server listener
-    let listener = TcpListener::bind(&cli.http_server_address)
-        .await
-        .unwrap_or_else(|_| panic!("tcp listener should bind to {}", cli.http_server_address));
+    let listener = TcpListener::bind(&cli.http_server_address).await?;
 
     // Configure HTTP server endpoints
     let frame_image = SharedImageData::default();
@@ -177,6 +175,8 @@ async fn main() {
     info!("Stopping HTTP server");
     server_handle.abort();
     let _ = server_handle.await;
+
+    Ok(())
 }
 
 #[tracing::instrument(skip_all)]
