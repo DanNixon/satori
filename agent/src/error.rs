@@ -9,3 +9,5 @@ pub(crate) enum Error {
     #[error("Prometheus exporter error: {0}")]
     Prometheus(#[from] metrics_exporter_prometheus::BuildError),
 }
+
+pub(crate) type Result<T> = std::result::Result<T, Error>;
