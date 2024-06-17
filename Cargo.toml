@@ -46,7 +46,7 @@ rayon = "1.10.0"
 regex = "1.10.5"
 reqwest = "0.11.27"
 rumqttc = "0.23.0"
-rust-s3 = "0.34.0-rc4"
+rust-s3 = "0.34.0"
 satori-common = { path = "./common" }
 satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
