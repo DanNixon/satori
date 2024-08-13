@@ -36,7 +36,7 @@
         buildInputs = with pkgs; [openssl];
 
         lintingRustFlags = "-D unused-crate-dependencies";
-      in rec {
+      in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs;
           buildInputs = buildInputs;
