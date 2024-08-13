@@ -1,24 +1,27 @@
 {
   pkgs,
-  naersk',
+  rustPlatform,
   version,
   gitRevision,
   buildInputs,
   nativeBuildInputs,
 }: rec {
-  satorictl = naersk'.buildPackage {
-    name = "satorictl";
+  satorictl = rustPlatform.buildRustPackage {
+    pname = "satorictl";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "satorictl"];
+    cargoLock.lockFile = ../Cargo.lock;
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
-    overrideMain = p: {
-      GIT_REVISION = gitRevision;
-    };
+    cargoBuildFlags = ["--package satorictl"];
+
+    GIT_REVISION = gitRevision;
+
+    # No need to do tests here, testing should have already been done earlier in CI pipeline
+    doCheck = false;
   };
 
   satorictl-container-image = pkgs.dockerTools.buildImage {

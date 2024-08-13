@@ -1,28 +1,32 @@
 {
   pkgs,
-  naersk',
+  rustPlatform,
   version,
   gitRevision,
   buildInputs,
   nativeBuildInputs,
 }: rec {
-  satori-agent = naersk'.buildPackage {
-    name = "satori-agent";
+  satori-agent = rustPlatform.buildRustPackage {
+    pname = "satori-agent";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "satori-agent"];
+    cargoLock.lockFile = ../Cargo.lock;
 
     nativeBuildInputs = nativeBuildInputs ++ [pkgs.makeWrapper];
     buildInputs = buildInputs;
+
+    cargoBuildFlags = ["--package satori-agent"];
+
+    GIT_REVISION = gitRevision;
 
     # Ensure ffmpeg binary is available
     postInstall = ''
       wrapProgram $out/bin/satori-agent --prefix PATH : ${pkgs.lib.makeBinPath [pkgs.ffmpeg]}
     '';
-    overrideMain = p: {
-      GIT_REVISION = gitRevision;
-    };
+
+    # No need to do tests here, testing should have already been done earlier in CI pipeline
+    doCheck = false;
   };
 
   satori-agent-container-image = let

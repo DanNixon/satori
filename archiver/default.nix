@@ -1,24 +1,27 @@
 {
   pkgs,
-  naersk',
+  rustPlatform,
   version,
   gitRevision,
   buildInputs,
   nativeBuildInputs,
 }: rec {
-  satori-archiver = naersk'.buildPackage {
-    name = "satori-archiver";
+  satori-archiver = rustPlatform.buildRustPackage {
+    pname = "satori-archiver";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "satori-archiver"];
+    cargoLock.lockFile = ../Cargo.lock;
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
-    overrideMain = p: {
-      GIT_REVISION = gitRevision;
-    };
+    cargoBuildFlags = ["--package satori-archiver"];
+
+    GIT_REVISION = gitRevision;
+
+    # No need to do tests here, testing should have already been done earlier in CI pipeline
+    doCheck = false;
   };
 
   satori-archiver-container-image = pkgs.dockerTools.buildImage {
