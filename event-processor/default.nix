@@ -1,24 +1,27 @@
 {
   pkgs,
-  naersk',
+  rustPlatform,
   version,
   gitRevision,
   buildInputs,
   nativeBuildInputs,
 }: rec {
-  satori-event-processor = naersk'.buildPackage {
-    name = "satori-event-processor";
+  satori-event-processor = rustPlatform.buildRustPackage {
+    pname = "satori-event-processor";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "satori-event-processor"];
+    cargoLock.lockFile = ../Cargo.lock;
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
-    overrideMain = p: {
-      GIT_REVISION = gitRevision;
-    };
+    cargoBuildFlags = ["--package satori-event-processor"];
+
+    GIT_REVISION = gitRevision;
+
+    # No need to do tests here, testing should have already been done earlier in CI pipeline
+    doCheck = false;
   };
 
   satori-event-processor-container-image = pkgs.dockerTools.buildImage {
