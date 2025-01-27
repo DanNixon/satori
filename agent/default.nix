@@ -22,7 +22,7 @@
 
     # Ensure ffmpeg binary is available
     postInstall = ''
-      wrapProgram $out/bin/satori-agent --prefix PATH : ${pkgs.lib.makeBinPath [pkgs.ffmpeg]}
+      wrapProgram $out/bin/satori-agent --prefix PATH : ${pkgs.lib.makeBinPath [pkgs.ffmpeg_6]}
     '';
 
     # No need to do tests here, testing should have already been done earlier in CI pipeline
