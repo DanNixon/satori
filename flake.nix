@@ -1,13 +1,20 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
+
     flake-utils.url = "github:numtide/flake-utils";
+
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
     self,
     nixpkgs,
     flake-utils,
+    fenix,
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
@@ -15,9 +22,15 @@
           inherit system;
         };
 
+        toolchain = fenix.packages.${system}.toolchainOf {
+          channel = "1.84";
+          date = "2025-01-09";
+          sha256 = "lMLAupxng4Fd9F1oDw8gx+qA0RuF7ou7xhNU8wgs0PU=";
+        };
+
         rustPlatform = pkgs.makeRustPlatform {
-          cargo = pkgs.cargo;
-          rustc = pkgs.rustc;
+          cargo = toolchain.cargo;
+          rustc = toolchain.rustc;
         };
 
         cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
@@ -36,18 +49,12 @@
 
           packages = with pkgs; [
             # Rust toolchain
-            cargo
-            rustc
-
-            # Code analysis tools
-            clippy
-            rust-analyzer
+            toolchain.toolchain
 
             # Code formatting tools
             treefmt
             alejandra
             mdl
-            rustfmt
 
             # Rust dependency linting
             cargo-deny
