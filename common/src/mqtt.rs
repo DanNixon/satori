@@ -1,4 +1,5 @@
 use crate::utils::ThrottledErrorLogger;
+use async_trait::async_trait;
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, Outgoing, Publish, QoS};
 use serde::Deserialize;
 use std::time::Duration;
@@ -147,12 +148,12 @@ impl MqttClient {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait AsyncClientExt {
     async fn publish_json<T: serde::Serialize + Sync>(&mut self, topic: &str, payload: &T);
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl AsyncClientExt for AsyncClient {
     async fn publish_json<T: serde::Serialize + Sync>(&mut self, topic: &str, payload: &T) {
         let payload = serde_json::to_vec(payload).expect("Message should be serialized to JSON");
