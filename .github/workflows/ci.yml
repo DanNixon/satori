@@ -17,7 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v16
-      # - uses: DeterminateSystems/magic-nix-cache-action@v2
 
       # Evaluate the devshell here so that the time reported for subsequent
       # steps that use it reflect what is actually done there.
@@ -36,6 +35,14 @@ jobs:
       - name: Tests
         run: nix develop --command cargo test
 
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v16
+
       - name: Integration tests
         run: nix develop --command cargo test integration_tests -- --ignored --test-threads=1
 
@@ -43,6 +50,7 @@ jobs:
     name: Build
     needs:
       - formatting-and-quality
+      - integration-tests
     runs-on: ubuntu-latest
 
     strategy:
@@ -56,12 +64,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v16
-      # - uses: DeterminateSystems/magic-nix-cache-action@v2
-
-      # Evaluate the devshell here so that the time reported for subsequent
-      # steps that use it reflect what is actually done there.
-      - name: Evaluate devshell
-        run: nix develop
 
       - name: Build
         run: nix build -L .#${{ matrix.package }}
