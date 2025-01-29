@@ -74,9 +74,9 @@ impl ArchiveTaskQueue {
 
         metrics::gauge!(
             crate::METRIC_QUEUE_LENGTH,
-            event_queue_length,
             "type" => "event"
-        );
+        )
+        .set(event_queue_length);
 
         let segment_queue_length = self
             .queue
@@ -86,9 +86,9 @@ impl ArchiveTaskQueue {
 
         metrics::gauge!(
             crate::METRIC_QUEUE_LENGTH,
-            segment_queue_length,
             "type" => "segment"
-        );
+        )
+        .set(segment_queue_length);
     }
 
     #[tracing::instrument(skip_all)]
@@ -156,10 +156,10 @@ impl ArchiveTaskQueue {
 
             metrics::counter!(
                 crate::METRIC_PROCESSED_TASKS,
-                1,
                 "type" => task_type,
                 "result" => task_result
-            );
+            )
+            .increment(1);
 
             match result {
                 Ok(()) => {
