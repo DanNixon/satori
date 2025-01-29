@@ -69,8 +69,8 @@
         packages =
           import ./agent {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;}
           // import ./archiver {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;}
-          // import ./ctl {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;}
-          // import ./event-processor {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;};
+          // import ./event-processor {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;}
+          // import ./storage-cli {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;};
       }
     );
 }

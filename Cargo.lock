@@ -2587,6 +2587,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "satori-storage-cli"
+version = "0.3.1"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "clap",
+ "crossterm",
+ "ratatui",
+ "rayon",
+ "satori-common",
+ "satori-storage",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "satori-testing-utils"
 version = "0.3.1"
 dependencies = [
@@ -2601,23 +2618,6 @@ dependencies = [
  "rust-s3",
  "satori-common",
  "tempfile",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "satorictl"
-version = "0.3.1"
-dependencies = [
- "async-trait",
- "chrono",
- "clap",
- "crossterm",
- "ratatui",
- "rayon",
- "satori-common",
- "satori-storage",
  "tokio",
  "tracing",
  "tracing-subscriber",

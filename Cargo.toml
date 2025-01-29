@@ -8,8 +8,8 @@ members = [
 
   "agent",
   "archiver",
-  "ctl",
   "event-processor",
+  "storage-cli",
 
   "integration-tests",
 ]

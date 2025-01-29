@@ -200,7 +200,10 @@ fn render_event_info_pane<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rec
 
 fn render_app_info_pane<B: Backend>(f: &mut Frame<B>, _: &mut App, area: Rect) {
     let title = Line::from(vec![
-        Span::styled("satorictl", Style::default().add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Satori storage explorer",
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" "),
         Span::raw(satori_common::version!()),
     ]);
