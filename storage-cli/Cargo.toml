@@ -1,5 +1,5 @@
 [package]
-name = "satorictl"
+name = "satori-storage-cli"
 license.workspace = true
 version.workspace = true
 edition.workspace = true
@@ -16,4 +16,3 @@ satori-storage.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-url.workspace = true
