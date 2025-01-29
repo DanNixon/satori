@@ -17,6 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
 
       # Evaluate the devshell here so that the time reported for subsequent
       # steps that use it reflect what is actually done there.
@@ -42,6 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
 
       - name: Integration tests
         run: nix develop --command cargo test integration_tests -- --ignored --test-threads=1
@@ -64,6 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
 
       - name: Build
         run: nix build -L .#${{ matrix.package }}
