@@ -22,15 +22,15 @@
           inherit system;
         };
 
-        toolchain = fenix.packages.${system}.toolchainOf {
+        rustToolchain = fenix.packages.${system}.toolchainOf {
           channel = "1.84";
           date = "2025-01-09";
           sha256 = "lMLAupxng4Fd9F1oDw8gx+qA0RuF7ou7xhNU8wgs0PU=";
         };
 
         rustPlatform = pkgs.makeRustPlatform {
-          cargo = toolchain.cargo;
-          rustc = toolchain.rustc;
+          cargo = rustToolchain.cargo;
+          rustc = rustToolchain.rustc;
         };
 
         cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
@@ -49,9 +49,9 @@
 
           packages = with pkgs; [
             # Rust toolchain
-            toolchain.toolchain
+            rustToolchain.toolchain
 
-            # Code formatting tools
+            # Code formatting
             treefmt
             alejandra
             mdl
@@ -59,7 +59,7 @@
             # Rust dependency linting
             cargo-deny
 
-            # Container image management tool
+            # Container image management
             skopeo
           ];
 
