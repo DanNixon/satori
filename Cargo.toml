@@ -21,7 +21,7 @@ edition = "2021"
 
 [workspace.dependencies]
 async-channel = "2.3.1"
-async-trait = "0.1.83"
+async-trait = "0.1.86"
 axum = "0.7.9"
 byte-unit = { version = "4.0", features = ["serde"] }
 bytes = { version = "1.9.0", features = ["serde"] }
@@ -52,10 +52,10 @@ satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "3.12"
-serde_json = "1.0.134"
-tempfile = "3.14.0"
+serde_json = "1.0.138"
+tempfile = "3.16.0"
 thiserror = "1.0.69"
-tokio = { version = "1.42", features = ["macros", "rt-multi-thread", "signal", "process"] }
+tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "signal", "process"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = { version = "0.7.13", features = ["codec"] }
 toml = "0.8"
