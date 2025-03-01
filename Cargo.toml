@@ -24,8 +24,8 @@ async-channel = "2.3.1"
 async-trait = "0.1.86"
 axum = "0.7.9"
 byte-unit = { version = "4.0", features = ["serde"] }
-bytes = { version = "1.9.0", features = ["serde"] }
-chrono = { version = "0.4.39", features = ["serde"] }
+bytes = { version = "1.10.0", features = ["serde"] }
+chrono = { version = "0.4.40", features = ["serde"] }
 ciborium = "0.2.2"
 clap = { version = "4.4.18", features = ["cargo", "derive", "env", "string"] }
 ctor = "0.2.9"
@@ -52,8 +52,8 @@ satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "3.12"
-serde_json = "1.0.138"
-tempfile = "3.16.0"
+serde_json = "1.0.139"
+tempfile = "3.17.1"
 thiserror = "1.0.69"
 tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "signal", "process"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
