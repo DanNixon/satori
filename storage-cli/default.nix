@@ -6,8 +6,8 @@
   buildInputs,
   nativeBuildInputs,
 }: rec {
-  satorictl = rustPlatform.buildRustPackage {
-    pname = "satorictl";
+  satori-storage-cli = rustPlatform.buildRustPackage {
+    pname = "satori-storage-cli";
     version = version;
 
     src = ./..;
@@ -16,7 +16,7 @@
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
-    cargoBuildFlags = ["--package satorictl"];
+    cargoBuildFlags = ["--package satori-storage-cli"];
 
     GIT_REVISION = gitRevision;
 
@@ -24,8 +24,8 @@
     doCheck = false;
   };
 
-  satorictl-container-image = pkgs.dockerTools.buildImage {
-    name = "satorictl";
+  satori-storage-cli-container-image = pkgs.dockerTools.buildImage {
+    name = "satori-storage-cli";
     tag = "latest";
     created = "now";
 
@@ -36,7 +36,7 @@
     };
 
     config = {
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${satorictl}/bin/satorictl"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${satori-storage-cli}/bin/satori-storage-cli"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];

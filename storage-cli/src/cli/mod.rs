@@ -16,9 +16,10 @@ use clap::{Parser, Subcommand};
 use satori_storage::StorageConfig;
 use std::path::PathBuf;
 
-/// Interact with an archive target.
+/// Interact with a Satori NVR archive target.
 #[derive(Debug, Clone, Parser)]
-pub(crate) struct ArchiveCommand {
+#[command(author, version = satori_common::version!(), about, long_about = None)]
+pub(crate) struct Cli {
     /// Path to storage configuration.
     #[arg(long)]
     storage: PathBuf,
@@ -28,7 +29,7 @@ pub(crate) struct ArchiveCommand {
 }
 
 #[async_trait]
-impl CliExecute for ArchiveCommand {
+impl CliExecute for Cli {
     async fn execute(&self) -> CliResult {
         let storage_config: StorageConfig = satori_common::load_config_file(&self.storage);
         let storage = storage_config.create_provider();

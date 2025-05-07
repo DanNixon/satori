@@ -2,9 +2,7 @@ use super::{
     super::{border_style, highlight_style, App, KeyEventResult, SharedEvent},
     PanelOperations,
 };
-use crate::cli::archive::explore::{
-    reset_terminal, setup_terminal, table_scroll::TableScrollState,
-};
+use crate::cli::explore::{reset_terminal, setup_terminal, table_scroll::TableScrollState};
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
