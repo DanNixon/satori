@@ -12,6 +12,7 @@ use satori_common::Event;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum Provider {
     Dummy(dummy::DummyStorage),
     Local(local::LocalStorage),

@@ -1,17 +1,17 @@
 mod panels;
 
 use self::panels::{
-    camera_list::CameraListPanel, event_list::EventListPanel, trigger_list::TriggerListPanel,
-    PanelOperations,
+    PanelOperations, camera_list::CameraListPanel, event_list::EventListPanel,
+    trigger_list::TriggerListPanel,
 };
 use crossterm::event::{self, Event, KeyCode};
 use ratatui::{
+    Frame, Terminal,
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Frame, Terminal,
 };
 use satori_storage::Provider;
 use std::{

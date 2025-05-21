@@ -1,8 +1,8 @@
 use satori_common::{
-    camera_config::CamerasConfig, mqtt::MqttConfig, Trigger, TriggerCommand, TriggerTemplate,
+    Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig, mqtt::MqttConfig,
 };
 use serde::Deserialize;
-use serde_with::{serde_as, DurationSeconds};
+use serde_with::{DurationSeconds, serde_as};
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 use tracing::info;
 

@@ -1,7 +1,7 @@
 use crate::{error::EventProcessorResult, hls_client::HlsClient, segments::Playlist};
 use satori_common::{
-    mqtt::{AsyncClientExt, MqttClient},
     ArchiveCommand, ArchiveSegmentsCommand, CameraSegments, Event, EventReason, Message, Trigger,
+    mqtt::{AsyncClientExt, MqttClient},
 };
 use std::{
     fs::File,
@@ -57,7 +57,8 @@ impl EventSet {
         if let Err(err) = self.save() {
             error!(
                 "Could not persist event list file {}, reason: {}. Active events will be lost upon restart.",
-                self.backing_file_name.display(), err
+                self.backing_file_name.display(),
+                err
             );
         }
     }

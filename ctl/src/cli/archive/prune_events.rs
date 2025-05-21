@@ -1,7 +1,7 @@
 use super::CliResult;
 use chrono::{Duration, Utc};
 use clap::Parser;
-use satori_storage::{workflows, Provider};
+use satori_storage::{Provider, workflows};
 use tracing::error;
 
 /// Removes events matching specific rules.

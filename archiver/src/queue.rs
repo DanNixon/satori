@@ -1,5 +1,5 @@
-use crate::{error::ArchiverResult, task::ArchiveTask, Context};
-use satori_common::{mqtt::PublishExt, ArchiveCommand, ArchiveSegmentsCommand, Event};
+use crate::{Context, error::ArchiverResult, task::ArchiveTask};
+use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event, mqtt::PublishExt};
 use std::{
     collections::VecDeque,
     fs::File,
@@ -60,7 +60,8 @@ impl ArchiveTaskQueue {
         if let Err(err) = self.save() {
             error!(
                 "Could not persist queue file {}, reason: {}. Pending tasks in the queue will be lost upon restart.",
-                self.backing_file_name.display(), err
+                self.backing_file_name.display(),
+                err
             );
         }
     }

@@ -6,5 +6,5 @@ pub use prune_events::prune_events_older_than;
 
 mod prune_segments;
 pub use prune_segments::{
-    calculate_unreferenced_segments, delete_unreferenced_segments, UnreferencedSegments,
+    UnreferencedSegments, calculate_unreferenced_segments, delete_unreferenced_segments,
 };

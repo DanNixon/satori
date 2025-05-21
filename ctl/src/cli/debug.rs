@@ -2,8 +2,8 @@ use super::{CliExecute, CliResult};
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use satori_common::{
-    mqtt::{AsyncClientExt, MqttClient, MqttConfig, PublishExt},
     ArchiveCommand, ArchiveSegmentsCommand, Event, EventMetadata, Message, Trigger,
+    mqtt::{AsyncClientExt, MqttClient, MqttConfig, PublishExt},
 };
 use std::{path::PathBuf, time::Duration};
 use tracing::{info, warn};

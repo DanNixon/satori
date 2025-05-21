@@ -84,76 +84,84 @@ mod test {
     #[test]
     fn test_segment_file_between_1() {
         let file = get_test_file();
-        assert!(file.between(
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 9, 30)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 10, 30)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-        ));
+        assert!(
+            file.between(
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 9, 30)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 10, 30)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+            )
+        );
     }
 
     #[test]
     fn test_segment_file_between_2() {
         let file = get_test_file();
-        assert!(file.between(
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 10, 30)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 11, 30)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-        ));
+        assert!(
+            file.between(
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 10, 30)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 11, 30)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+            )
+        );
     }
 
     #[test]
     fn test_segment_file_between_not_1() {
         let file = get_test_file();
-        assert!(!file.between(
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 12, 0)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 13, 0)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-        ));
+        assert!(
+            !file.between(
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 12, 0)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 13, 0)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+            )
+        );
     }
 
     #[test]
     fn test_segment_file_between_not_2() {
         let file = get_test_file();
-        assert!(!file.between(
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 8, 0)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-            chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
-                .unwrap()
-                .and_hms_opt(18, 9, 0)
-                .unwrap()
-                .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
-                .unwrap(),
-        ));
+        assert!(
+            !file.between(
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 8, 0)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+                chrono::NaiveDate::from_ymd_opt(2022, 12, 30)
+                    .unwrap()
+                    .and_hms_opt(18, 9, 0)
+                    .unwrap()
+                    .and_local_timezone(chrono::FixedOffset::east_opt(0).unwrap())
+                    .unwrap(),
+            )
+        );
     }
 }

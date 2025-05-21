@@ -1,9 +1,9 @@
 use axum::{
+    Router,
     extract::Path,
     http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::get,
-    Router,
 };
 use chrono::{DateTime, Utc};
 use m3u8_rs::{MediaPlaylist, MediaSegment};

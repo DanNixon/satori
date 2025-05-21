@@ -249,10 +249,12 @@ async fn mqtt_reconnect() {
     );
 
     // There should be no more MQTT messages at this point
-    assert!(mqtt_client
-        .wait_for_message(Duration::from_secs(5))
-        .await
-        .is_err());
+    assert!(
+        mqtt_client
+            .wait_for_message(Duration::from_secs(5))
+            .await
+            .is_err()
+    );
 
     mqtt_client.stop().await;
 

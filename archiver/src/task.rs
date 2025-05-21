@@ -1,6 +1,6 @@
 use crate::{
-    error::{ArchiverError, ArchiverResult},
     Context,
+    error::{ArchiverError, ArchiverResult},
 };
 use bytes::Bytes;
 use satori_common::Event;

@@ -1,7 +1,7 @@
 use satori_common::mqtt::MqttConfig;
 use satori_storage::StorageConfig;
 use serde::Deserialize;
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 use std::{path::PathBuf, time::Duration};
 
 #[serde_as]
