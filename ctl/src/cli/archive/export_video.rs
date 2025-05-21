@@ -1,6 +1,6 @@
 use super::CliResult;
 use clap::Parser;
-use satori_storage::{workflows, Provider};
+use satori_storage::{Provider, workflows};
 use std::{fs::File, io::Write, path::PathBuf};
 use tracing::{error, info};
 

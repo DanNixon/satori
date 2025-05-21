@@ -1,4 +1,4 @@
-use crate::{encryption::KeyOperations, EncryptionConfig, StorageProvider, StorageResult};
+use crate::{EncryptionConfig, StorageProvider, StorageResult, encryption::KeyOperations};
 use async_trait::async_trait;
 use bytes::Bytes;
 use satori_common::Event;
@@ -172,7 +172,10 @@ impl StorageProvider for LocalStorage {
             .unwrap_or(false)
         {
             if let Err(err) = std::fs::remove_dir(&camera_directory) {
-                warn!("Failed to remove directory ({}) for camera that no longer has any video segments. {err}", camera_directory.display());
+                warn!(
+                    "Failed to remove directory ({}) for camera that no longer has any video segments. {err}",
+                    camera_directory.display()
+                );
             }
         }
 
@@ -208,7 +211,7 @@ fn list_dir_dirs(dir: &Path) -> StorageResult<Vec<String>> {
                 if md.is_dir() {
                     Some(
                         md.components()
-                            .last()
+                            .next_back()
                             .unwrap()
                             .as_os_str()
                             .to_str()

@@ -1,4 +1,4 @@
-use rumqttc::{mqttbytes::v4::Publish, AsyncClient, Event, Incoming, MqttOptions};
+use rumqttc::{AsyncClient, Event, Incoming, MqttOptions, mqttbytes::v4::Publish};
 use std::time::Duration;
 use tokio::{
     sync::{

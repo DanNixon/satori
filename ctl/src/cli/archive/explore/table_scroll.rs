@@ -50,22 +50,14 @@ impl TableScrollState {
                 Some(i) => match step {
                     Step::Up(step) => {
                         if i < step {
-                            if wrap {
-                                data_length - 1
-                            } else {
-                                0
-                            }
+                            if wrap { data_length - 1 } else { 0 }
                         } else {
                             i - step
                         }
                     }
                     Step::Down(step) => {
                         if i + step >= data_length {
-                            if wrap {
-                                0
-                            } else {
-                                data_length - 1
-                            }
+                            if wrap { 0 } else { data_length - 1 }
                         } else {
                             i + step
                         }

@@ -1,5 +1,5 @@
 use super::{
-    super::{border_style, highlight_style, App, KeyEventResult, SharedEvent},
+    super::{App, KeyEventResult, SharedEvent, border_style, highlight_style},
     PanelOperations,
 };
 use crate::cli::archive::explore::{
@@ -8,12 +8,12 @@ use crate::cli::archive::explore::{
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
+    Frame,
     backend::Backend,
     layout::{Constraint, Rect},
     widgets::{Block, Borders, Cell, Row, Table},
-    Frame,
 };
-use satori_storage::{workflows, Provider};
+use satori_storage::{Provider, workflows};
 use std::{fs::File, io::Write};
 use tracing::info;
 

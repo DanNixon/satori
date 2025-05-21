@@ -4,11 +4,11 @@ mod jpeg_frame_decoder;
 mod utils;
 
 use axum::{
+    Router,
     body::Body,
     http::header,
     response::{Html, IntoResponse},
     routing::get,
-    Router,
 };
 use bytes::{BufMut, Bytes};
 use clap::Parser;

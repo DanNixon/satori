@@ -1,9 +1,9 @@
 use crate::{
-    encryption::KeyOperations, EncryptionConfig, StorageError, StorageProvider, StorageResult,
+    EncryptionConfig, StorageError, StorageProvider, StorageResult, encryption::KeyOperations,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
-use s3::{creds::Credentials, region::Region, Bucket};
+use s3::{Bucket, creds::Credentials, region::Region};
 use satori_common::Event;
 use serde::Deserialize;
 use std::{

@@ -1,5 +1,5 @@
 use crate::PodmanDriver;
-use s3::{creds::Credentials, Bucket, BucketConfiguration, Region};
+use s3::{Bucket, BucketConfiguration, Region, creds::Credentials};
 use std::time::Duration;
 
 pub struct MinioDriver {
@@ -52,8 +52,10 @@ impl MinioDriver {
     }
 
     pub fn set_credential_env_vars(&self) {
-        std::env::set_var("AWS_ACCESS_KEY_ID", self.key_id.clone());
-        std::env::set_var("AWS_SECRET_ACCESS_KEY", self.secret_key.clone());
+        unsafe {
+            std::env::set_var("AWS_ACCESS_KEY_ID", self.key_id.clone());
+            std::env::set_var("AWS_SECRET_ACCESS_KEY", self.secret_key.clone());
+        }
     }
 
     pub async fn create_bucket(&self, name: &str) -> Bucket {

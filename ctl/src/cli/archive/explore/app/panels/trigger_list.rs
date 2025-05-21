@@ -1,16 +1,16 @@
 use super::{
-    super::{border_style, highlight_style, App, KeyEventResult, SharedEvent},
+    super::{App, KeyEventResult, SharedEvent, border_style, highlight_style},
     PanelOperations,
 };
 use crate::cli::archive::explore::table_scroll::TableScrollState;
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
+    Frame,
     backend::Backend,
     layout::{Constraint, Rect},
     style::{Modifier, Style},
     widgets::{Block, Borders, Cell, Row, Table},
-    Frame,
 };
 
 pub(crate) struct TriggerListPanel {

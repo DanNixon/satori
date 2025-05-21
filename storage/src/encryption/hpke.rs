@@ -1,7 +1,7 @@
 use super::KeyOperations;
 use crate::{StorageError, StorageResult};
 use bytes::Bytes;
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng};
 use serde::{Deserialize, Serialize};
 
 type SelectedKem = hpke::kem::X25519HkdfSha256;

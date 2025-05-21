@@ -1,6 +1,6 @@
 use super::{CliResult, CliResultWithValue};
 use clap::{Parser, Subcommand};
-use satori_storage::{workflows, Provider};
+use satori_storage::{Provider, workflows};
 use std::path::PathBuf;
 use tracing::error;
 
