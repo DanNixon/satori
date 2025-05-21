@@ -16,6 +16,9 @@ allow = [
   "CC0-1.0",
   "ISC",
   "Unicode-3.0",
+  "OpenSSL",
+  "Zlib",
+  "CDLA-Permissive-2.0",
 ]
 
 [[licenses.clarify]]
