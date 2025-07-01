@@ -115,7 +115,7 @@ impl Streamer {
                 };
 
                 // Increment ffmpeg invocation count
-                metrics::counter!(crate::METRIC_FFMPEG_INVOCATIONS, 1);
+                metrics::counter!(crate::METRIC_FFMPEG_INVOCATIONS).increment(1);
 
                 let stdout = ffmpeg_process.stdout.take().unwrap();
                 let mut stdout_frame = FramedRead::new(stdout, JpegFrameDecoder);
