@@ -67,9 +67,9 @@ impl EventSet {
     pub(crate) fn trigger(&mut self, trigger: &Trigger) {
         metrics::counter!(
             crate::METRIC_TRIGGERS,
-            1,
             "id" => trigger.metadata.id.clone()
-        );
+        )
+        .increment(1);
 
         match self
             .events
@@ -170,7 +170,7 @@ impl EventSet {
         // Now remove any events that have outlived the TTL
         self.prune_expired_events();
 
-        metrics::gauge!(crate::METRIC_ACTIVE_EVENTS, self.events.len() as f64,);
+        metrics::gauge!(crate::METRIC_ACTIVE_EVENTS).set(self.events.len() as f64);
 
         self.attempt_save();
     }
@@ -187,9 +187,9 @@ impl EventSet {
                     info!("Removing event: {:?}", event.metadata);
                     metrics::counter!(
                         crate::METRIC_EXPIRED_EVENTS,
-                        1,
                         "id" => event.metadata.id.clone()
-                    );
+                    )
+                    .increment(1);
                     None
                 } else {
                     Some(event.clone())

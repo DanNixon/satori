@@ -201,7 +201,7 @@ fn update_segment_count_metric(config: &config::Config) {
                 })
                 .count();
 
-            metrics::gauge!(METRIC_SEGMENTS, ts_file_count as f64);
+            metrics::gauge!(METRIC_SEGMENTS).set(ts_file_count as f64);
         }
         Err(e) => {
             warn!("Failed to read video directory, err={}", e);
@@ -215,7 +215,7 @@ fn update_disk_usage_metric(config: &config::Config) {
 
     match config.get_disk_usage() {
         Ok(disk_usage) => {
-            metrics::gauge!(METRIC_DISK_USAGE, disk_usage.get_bytes() as f64);
+            metrics::gauge!(METRIC_DISK_USAGE).set(disk_usage.get_bytes() as f64);
         }
         Err(e) => {
             warn!("Failed to update disk usage, err={}", e);
