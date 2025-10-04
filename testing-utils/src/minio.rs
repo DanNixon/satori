@@ -58,7 +58,7 @@ impl MinioDriver {
         }
     }
 
-    pub async fn create_bucket(&self, name: &str) -> Bucket {
+    pub async fn create_bucket(&self, name: &str) -> Box<Bucket> {
         Bucket::create_with_path_style(
             name,
             Region::Custom {

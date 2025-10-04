@@ -3,8 +3,6 @@
   rustPlatform,
   version,
   gitRevision,
-  buildInputs,
-  nativeBuildInputs,
 }: rec {
   satorictl = rustPlatform.buildRustPackage {
     pname = "satorictl";
@@ -12,9 +10,6 @@
 
     src = ./..;
     cargoLock.lockFile = ../Cargo.lock;
-
-    nativeBuildInputs = nativeBuildInputs;
-    buildInputs = buildInputs;
 
     cargoBuildFlags = ["--package satorictl"];
 

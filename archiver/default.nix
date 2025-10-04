@@ -3,8 +3,6 @@
   rustPlatform,
   version,
   gitRevision,
-  buildInputs,
-  nativeBuildInputs,
 }: rec {
   satori-archiver = rustPlatform.buildRustPackage {
     pname = "satori-archiver";
@@ -12,9 +10,6 @@
 
     src = ./..;
     cargoLock.lockFile = ../Cargo.lock;
-
-    nativeBuildInputs = nativeBuildInputs;
-    buildInputs = buildInputs;
 
     cargoBuildFlags = ["--package satori-archiver"];
 

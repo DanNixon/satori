@@ -22,7 +22,7 @@ pub struct S3Config {
 
 #[derive(Clone)]
 pub struct S3Storage {
-    bucket: Bucket,
+    bucket: Box<Bucket>,
     encryption: EncryptionConfig,
 }
 
