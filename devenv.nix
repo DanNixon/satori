@@ -1,23 +1,25 @@
-{ pkgs, lib, config, inputs, ... }:
-
 {
+  pkgs,
+  lib,
+  config,
+  inputs,
+  ...
+}: {
+  packages = with pkgs; [
+    # Rust toolchain
+    rustup
 
-  packages = with pkgs; [ 
+    # Code formatting
+    treefmt
+    alejandra
+    mdl
 
-            # Rust toolchain
-  rustup
+    # Rust dependency linting
+    cargo-deny
 
-            # Code formatting
-            treefmt
-            alejandra
-            mdl
+    # Container image management
+    skopeo
 
-            # Rust dependency linting
-            cargo-deny
-
-            # Container image management
-            skopeo
-
-    pkgs.git ];
-
+    pkgs.git
+  ];
 }
