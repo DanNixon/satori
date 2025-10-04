@@ -30,7 +30,7 @@ impl ExploreCommand {
         terminal.show_cursor().unwrap();
 
         result.map_err(|err| {
-            println!("{:?}", err);
+            println!("{err:?}");
         })
     }
 }

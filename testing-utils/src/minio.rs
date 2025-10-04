@@ -29,7 +29,7 @@ impl Default for MinioDriver {
             &["server", "/data"],
         );
 
-        let endpoint = format!("http://localhost:{}", port);
+        let endpoint = format!("http://localhost:{port}");
 
         Self {
             _podman: podman,

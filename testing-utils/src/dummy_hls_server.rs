@@ -90,7 +90,7 @@ impl DummyHlsServer {
             axum::serve(listener, app).await.unwrap();
         }));
 
-        let stream_address = format!("http://localhost:{}/stream.m3u8", port);
+        let stream_address = format!("http://localhost:{port}/stream.m3u8");
 
         Self {
             handle,
