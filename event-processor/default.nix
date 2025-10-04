@@ -3,8 +3,6 @@
   rustPlatform,
   version,
   gitRevision,
-  buildInputs,
-  nativeBuildInputs,
 }: rec {
   satori-event-processor = rustPlatform.buildRustPackage {
     pname = "satori-event-processor";
@@ -12,9 +10,6 @@
 
     src = ./..;
     cargoLock.lockFile = ../Cargo.lock;
-
-    nativeBuildInputs = nativeBuildInputs;
-    buildInputs = buildInputs;
 
     cargoBuildFlags = ["--package satori-event-processor"];
 

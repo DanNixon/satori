@@ -46,7 +46,7 @@ rayon = "1.11.0"
 regex = "1.11.3"
 reqwest = { version = "0.12.23", default-features = false, features = ["rustls-tls"] }
 rumqttc = "0.24.0"
-rust-s3 = "0.34.0"
+rust-s3 = { version = "0.37.0", default-features = false, features = ["tokio-rustls-tls"] }
 satori-common = { path = "./common" }
 satori-storage = { path = "./storage" }
 satori-testing-utils = { path = "./testing-utils" }

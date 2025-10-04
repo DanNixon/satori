@@ -38,15 +38,9 @@
         version = cargoToml.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
-        nativeBuildInputs = with pkgs; [pkg-config];
-        buildInputs = with pkgs; [openssl];
-
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs;
-          buildInputs = buildInputs;
-
           packages = with pkgs; [
             # Rust toolchain
             rustToolchain.toolchain
@@ -67,10 +61,10 @@
         };
 
         packages =
-          import ./agent {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;}
-          // import ./archiver {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;}
-          // import ./ctl {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;}
-          // import ./event-processor {inherit pkgs rustPlatform version gitRevision nativeBuildInputs buildInputs;};
+          import ./agent {inherit pkgs rustPlatform version gitRevision;}
+          // import ./archiver {inherit pkgs rustPlatform version gitRevision;}
+          // import ./ctl {inherit pkgs rustPlatform version gitRevision;}
+          // import ./event-processor {inherit pkgs rustPlatform version gitRevision;};
       }
     );
 }

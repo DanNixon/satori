@@ -3,8 +3,6 @@
   rustPlatform,
   version,
   gitRevision,
-  buildInputs,
-  nativeBuildInputs,
 }: rec {
   satori-agent = rustPlatform.buildRustPackage {
     pname = "satori-agent";
@@ -13,8 +11,7 @@
     src = ./..;
     cargoLock.lockFile = ../Cargo.lock;
 
-    nativeBuildInputs = nativeBuildInputs ++ [pkgs.makeWrapper];
-    buildInputs = buildInputs;
+    nativeBuildInputs = [pkgs.makeWrapper];
 
     cargoBuildFlags = ["--package satori-agent"];
 
