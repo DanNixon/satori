@@ -23,9 +23,9 @@
         };
 
         rustToolchain = fenix.packages.${system}.toolchainOf {
-          channel = "1.87";
-          date = "2025-05-15";
-          sha256 = "KUm16pHj+cRedf8vxs/Hd2YWxpOrWZ7UOrwhILdSJBU=";
+          channel = "1.88";
+          date = "2025-06-26";
+          sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
         };
 
         rustPlatform = pkgs.makeRustPlatform {

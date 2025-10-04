@@ -20,7 +20,7 @@ impl UnreferencedSegments {
     pub fn save(&self, file: &Path) -> StorageResult<()> {
         let mut file = File::create(file)?;
         let report = toml::to_string_pretty(self)?;
-        Ok(write!(file, "{}", report)?)
+        Ok(write!(file, "{report}")?)
     }
 
     pub fn load(file: &Path) -> StorageResult<Self> {

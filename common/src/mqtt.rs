@@ -71,7 +71,7 @@ impl MqttClient {
             }
             Ok(_) => None,
             Err(e) => {
-                if let Some(e) = self.poll_error_logger.log(format!("{:?}", e)) {
+                if let Some(e) = self.poll_error_logger.log(format!("{e:?}")) {
                     warn!("rumqttc error: {}", e);
                 }
                 None
@@ -90,7 +90,7 @@ impl MqttClient {
                 }
                 Ok(_) => {}
                 Err(e) => {
-                    if let Some(e) = self.poll_error_logger.log(format!("{:?}", e)) {
+                    if let Some(e) = self.poll_error_logger.log(format!("{e:?}")) {
                         warn!("rumqttc error: {}", e);
                     }
                 }
@@ -125,7 +125,7 @@ impl MqttClient {
                 }
                 Ok(_) => {}
                 Err(e) => {
-                    if let Some(e) = self.poll_error_logger.log(format!("{:?}", e)) {
+                    if let Some(e) = self.poll_error_logger.log(format!("{e:?}")) {
                         warn!("rumqttc error: {}", e);
                     }
                 }
