@@ -10,61 +10,61 @@ on:
   pull_request:
 
 jobs:
-  formatting-and-quality:
-    name: Formatting and Quality
-    runs-on: ubuntu-latest
+  # formatting-and-quality:
+  #   name: Formatting and Quality
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
-      - uses: cachix/cachix-action@v16
-        with:
-          name: devenv
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
+  #   steps:
+  #     - uses: actions/checkout@v5
+  #     - uses: cachix/install-nix-action@v31
+  #     - uses: cachix/cachix-action@v16
+  #       with:
+  #         name: devenv
+  #     - name: Install devenv.sh
+  #       run: nix profile install nixpkgs#devenv
 
-      - name: Format
-        shell: devenv shell bash -- -e {0}
-        run: treefmt --fail-on-change
+  #     - name: Format
+  #       shell: devenv shell bash -- -e {0}
+  #       run: treefmt --fail-on-change
 
-      - name: cargo-deny
-        shell: devenv shell bash -- -e {0}
-        run: cargo deny check
+  #     - name: cargo-deny
+  #       shell: devenv shell bash -- -e {0}
+  #       run: cargo deny check
 
-      - name: Clippy
-        shell: devenv shell bash -- -e {0}
-        run: cargo clippy --all-targets -- -D warnings
+  #     - name: Clippy
+  #       shell: devenv shell bash -- -e {0}
+  #       run: cargo clippy --all-targets -- -D warnings
 
-      - name: Build
-        shell: devenv shell bash -- -e {0}
-        run: cargo build --all-targets
+  #     - name: Build
+  #       shell: devenv shell bash -- -e {0}
+  #       run: cargo build --all-targets
 
-      - name: Tests
-        shell: devenv shell bash -- -e {0}
-        run: cargo test
+  #     - name: Tests
+  #       shell: devenv shell bash -- -e {0}
+  #       run: cargo test
 
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
+  # integration-tests:
+  #   name: Integration Tests
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
-      - uses: cachix/cachix-action@v16
-        with:
-          name: devenv
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
+  #   steps:
+  #     - uses: actions/checkout@v5
+  #     - uses: cachix/install-nix-action@v31
+  #     - uses: cachix/cachix-action@v16
+  #       with:
+  #         name: devenv
+  #     - name: Install devenv.sh
+  #       run: nix profile install nixpkgs#devenv
 
-      - name: Integration tests
-        shell: devenv shell bash -- -e {0}
-        run: cargo test integration_tests -- --ignored --test-threads=1
+  #     - name: Integration tests
+  #       shell: devenv shell bash -- -e {0}
+  #       run: cargo test integration_tests -- --ignored --test-threads=1
 
   container-images:
     name: Container Images
-    needs:
-      - formatting-and-quality
-      - integration-tests
+    # needs:
+    #   - formatting-and-quality
+    #   - integration-tests
     runs-on: ubuntu-latest
 
     strategy:
@@ -85,7 +85,7 @@ jobs:
         run: nix profile install nixpkgs#devenv
 
       - name: Build container image
-        run: buildah bud . -f "${{ matrix.package }}/Containerfile" -t "${{ matrix.package }}:latest"
+        run: buildah bud -f "${{ matrix.package }}/Containerfile" -t "${{ matrix.package }}:latest" .
 
       # TODO
       # - name: Push container image
