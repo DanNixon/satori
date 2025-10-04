@@ -71,7 +71,7 @@ jobs:
       matrix:
         package:
           # - satori-agent
-          # - satori-archiver
+          - satori-archiver
           - satori-event-processor
           # - satorictl
 
