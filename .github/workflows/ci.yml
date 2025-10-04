@@ -70,10 +70,10 @@ jobs:
     strategy:
       matrix:
         package:
-          - satori-agent
-          - satori-archiver
+          # - satori-agent
+          # - satori-archiver
           - satori-event-processor
-          - satorictl
+          # - satorictl
 
     steps:
       - uses: actions/checkout@v5
@@ -84,14 +84,17 @@ jobs:
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
 
+      - name: Build container image
+        run: buildah bud . -f "${{ matrix.package }}/Containerfile" -t "${{ matrix.package }}:latest"
+
       # TODO
-      # - name: Build and push container image
+      # - name: Push container image
       #   if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
       #   run: |
       #     set -x
 
       #     # Build image via Nix and take the resulting path as the local container registry
-      #     local_cr="docker-archive://$(nix build .#${{ matrix.package }}-container-image --no-link --print-out-paths)"
+      #     local_cr="docker-archive://$(nix build .#-container-image --no-link --print-out-paths)"
 
       #     # The container registry to push images to (GHCR)
       #     remote_cr="docker://ghcr.io/dannixon/${{ matrix.package }}"
