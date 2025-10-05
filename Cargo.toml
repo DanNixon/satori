@@ -1,17 +1,17 @@
 [workspace]
 resolver = "2"
 members = [
-  "common",
-  "storage",
+  "satori-common",
+  "satori-storage",
 
-  "testing-utils",
+  "satori-testing-utils",
 
-  "agent",
-  "archiver",
-  "ctl",
-  "event-processor",
+  "satori-agent",
+  "satori-archiver",
+  "satori-event-processor",
+  "satorictl",
 
-  "integration-tests",
+  "satori-integration-tests",
 ]
 
 [workspace.package]
@@ -47,9 +47,9 @@ regex = "1.11.3"
 reqwest = { version = "0.12.23", default-features = false, features = ["rustls-tls"] }
 rumqttc = "0.24.0"
 rust-s3 = { version = "0.37.0", default-features = false, features = ["tokio-rustls-tls"] }
-satori-common = { path = "./common" }
-satori-storage = { path = "./storage" }
-satori-testing-utils = { path = "./testing-utils" }
+satori-common = { path = "./satori-common" }
+satori-storage = { path = "./satori-storage" }
+satori-testing-utils = { path = "./satori-testing-utils" }
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "3.14"
 serde_json = "1.0.145"
