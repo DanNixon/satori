@@ -79,12 +79,11 @@ async fn main() -> miette::Result<()> {
                 break;
             }
             msg = mqtt_client.poll() => {
-                if let Some(msg) = msg {
-                    if handle_mqtt_message(msg, &mut events, &config.triggers) {
+                if let Some(msg) = msg
+                    && handle_mqtt_message(msg, &mut events, &config.triggers) {
                         // Immediately process events
                         events.process(&camera_client, &mqtt_client).await;
                     }
-                }
             }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");

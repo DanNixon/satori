@@ -170,13 +170,12 @@ impl StorageProvider for LocalStorage {
             .read_dir()
             .map(|mut i| i.next().is_none())
             .unwrap_or(false)
+            && let Err(err) = std::fs::remove_dir(&camera_directory)
         {
-            if let Err(err) = std::fs::remove_dir(&camera_directory) {
-                warn!(
-                    "Failed to remove directory ({}) for camera that no longer has any video segments. {err}",
-                    camera_directory.display()
-                );
-            }
+            warn!(
+                "Failed to remove directory ({}) for camera that no longer has any video segments. {err}",
+                camera_directory.display()
+            );
         }
 
         Ok(())
