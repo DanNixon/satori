@@ -43,8 +43,51 @@ jobs:
         shell: devenv shell bash -- -e {0}
         run: cargo test
 
+  build-container-images:
+    name: Build Container Images
+    needs:
+      - formatting-and-quality
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package:
+          - satori-agent
+          - satori-archiver
+          - satori-event-processor
+          - satorictl
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build image
+        run: |
+          buildah build \
+            -f "${{ matrix.package }}/Containerfile" \
+            -t "${{ matrix.package }}:latest" \
+            .
+
+      - name: Export image to archive
+        run: |
+          set -eo pipefail
+
+          # See https://github.com/actions/runner-images/issues/10443
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+          skopeo copy \
+            "containers-storage:localhost/${{ matrix.package }}:latest" \
+            "docker-archive:/tmp/oci-image-${{ matrix.package }}.tar"
+
+      - name: Upload image archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: oci-image-${{ matrix.package }}
+          path: /tmp/oci-image-${{ matrix.package }}.tar
+
   integration-tests:
     name: Integration Tests
+    needs:
+      - build-container-images
     runs-on: ubuntu-latest
 
     steps:
@@ -60,10 +103,11 @@ jobs:
         shell: devenv shell bash -- -e {0}
         run: cargo test integration_tests -- --ignored --test-threads=1
 
-  container-images:
-    name: Container Images
+  publish-container-images:
+    name: Publish Container Images
+    if: (github.ref_name == 'main' || github.ref_type == 'tag') && github.repository == 'DanNixon/satori'
     needs:
-      - formatting-and-quality
+      - build-container-images
       - integration-tests
     runs-on: ubuntu-latest
 
@@ -76,24 +120,31 @@ jobs:
           - satorictl
 
     steps:
-      - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v31
-      - uses: cachix/cachix-action@v16
+      - name: Download image archive
+        uses: actions/download-artifact@v5
         with:
-          name: devenv
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
+          name: oci-image-${{ matrix.package }}
 
-      - name: Build container image
-        run: buildah build -f "${{ matrix.package }}/Containerfile" -t "${{ matrix.package }}:latest" .
+      - name: Publish image
+        run: |
+          set -eo pipefail
 
-      - name: Push container image
-        if: (github.ref_name == 'main' || github.ref_type == 'tag') && github.repository == 'DanNixon/satori'
-        env:
-          PACKAGE: ${{ matrix.package }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_REF_TYPE: ${{ github.ref_type }}
-          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-          GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: bash .github/workflows/push-container-images.sh
+          # See https://github.com/actions/runner-images/issues/10443
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+          local_cr="docker-archive:oci-image-${{ matrix.package }}.tar"
+
+          # The container registry to push images to
+          remote_cr="docker://ghcr.io/dannixon/${{ matrix.package }}"
+          remote_cr_creds="${{ github.repository_owner }}:${{ github.token }}"
+
+          # Push image using the Git ref name as the image tag (i.e. "main" or the tag name)
+          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.ref_name }}"
+
+          # Push image using the Git SHA as the image tag
+          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.sha }}"
+
+          # If the trigger was a tag (i.e. a release)
+          if [[ "${{ github.ref_type }}" == 'tag' ]]; then
+            skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:latest"
+          fi
