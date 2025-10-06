@@ -10,6 +10,7 @@ use crate::{
 };
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use miette::{Context, IntoDiagnostic};
 use satori_common::mqtt::{MqttClient, PublishExt};
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::{debug, error, info};
@@ -32,7 +33,7 @@ pub(crate) struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ()> {
+async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
@@ -52,7 +53,8 @@ async fn main() -> Result<(), ()> {
     builder
         .with_http_listener(cli.observability_address)
         .install()
-        .expect("prometheus metrics exporter should be setup");
+        .into_diagnostic()
+        .wrap_err("Failed to start prometheus metrics exporter")?;
 
     metrics::describe_counter!(METRIC_TRIGGERS, metrics::Unit::Count, "Trigger count");
 
@@ -103,18 +105,17 @@ fn handle_mqtt_message(
     events: &mut EventSet,
     trigger_config: &TriggersConfig,
 ) -> bool {
-    let msg = msg.try_payload_from_json::<satori_common::Message>();
-    if let Err(err) = msg {
-        error!("Failed to parse MQTT message ({})", err);
-        return false;
-    }
-
-    if let satori_common::Message::TriggerCommand(cmd) = msg.unwrap() {
-        debug!("Trigger command: {:?}", cmd);
-        let trigger = trigger_config.create_trigger(&cmd);
-        events.trigger(&trigger);
-        true
-    } else {
-        false
+    match msg.try_payload_from_json::<satori_common::Message>() {
+        Ok(satori_common::Message::TriggerCommand(cmd)) => {
+            debug!("Trigger command: {:?}", cmd);
+            let trigger = trigger_config.create_trigger(&cmd);
+            events.trigger(&trigger);
+            true
+        }
+        Ok(_) => false,
+        Err(e) => {
+            error!("Failed to parse MQTT message ({})", e);
+            false
+        }
     }
 }

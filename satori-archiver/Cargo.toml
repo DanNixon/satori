@@ -9,6 +9,7 @@ bytes.workspace = true
 clap.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
+miette = { workspace = true, features = ["fancy"] }
 reqwest.workspace = true
 rumqttc.workspace = true
 satori-common.workspace = true

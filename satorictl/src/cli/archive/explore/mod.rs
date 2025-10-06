@@ -1,13 +1,13 @@
 mod app;
 mod table_scroll;
 
-use super::CliResult;
 use clap::Parser;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use miette::IntoDiagnostic;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use satori_storage::Provider;
 use std::io;
@@ -17,7 +17,7 @@ use std::io;
 pub(crate) struct ExploreCommand {}
 
 impl ExploreCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
         let app = self::app::App::new(storage).await;
 
         setup_terminal();
@@ -29,9 +29,7 @@ impl ExploreCommand {
         reset_terminal();
         terminal.show_cursor().unwrap();
 
-        result.map_err(|err| {
-            println!("{err:?}");
-        })
+        result.into_diagnostic()
     }
 }
 

@@ -6,6 +6,7 @@ mod task;
 use crate::config::Config;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use miette::{Context, IntoDiagnostic};
 use satori_common::mqtt::MqttClient;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::info;
@@ -26,13 +27,13 @@ pub(crate) struct Cli {
     observability_address: SocketAddr,
 }
 
-struct Context {
+struct AppContext {
     storage: satori_storage::Provider,
     http_client: reqwest::Client,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ()> {
+async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
@@ -40,7 +41,7 @@ async fn main() -> Result<(), ()> {
 
     let mut mqtt_client: MqttClient = config.mqtt.into();
 
-    let context = Context {
+    let context = AppContext {
         storage: config.storage.create_provider(),
         http_client: reqwest::Client::new(),
     };
@@ -53,7 +54,8 @@ async fn main() -> Result<(), ()> {
     builder
         .with_http_listener(cli.observability_address)
         .install()
-        .expect("prometheus metrics exporter should be setup");
+        .into_diagnostic()
+        .wrap_err("Failed to start prometheus metrics exporter")?;
 
     metrics::describe_gauge!(
         METRIC_QUEUE_LENGTH,

@@ -1,8 +1,7 @@
-use super::CliResult;
 use clap::Parser;
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, StorageProvider};
 use std::path::PathBuf;
-use tracing::error;
 
 /// Retrieve a specific video segment for a given camera.
 #[derive(Debug, Clone, Parser)]
@@ -15,14 +14,12 @@ pub(crate) struct GetSegmentCommand {
 }
 
 impl GetSegmentCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
-        let event = storage.get_segment(&self.camera, &self.file).await;
-        println!(
-            "{:?}",
-            event.map_err(|err| {
-                error!("{}", err);
-            })?
-        );
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
+        let event = storage
+            .get_segment(&self.camera, &self.file)
+            .await
+            .into_diagnostic()?;
+        println!("{event:?}");
         Ok(())
     }
 }

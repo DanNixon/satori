@@ -5,12 +5,9 @@ mod trigger;
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 
-pub(crate) type CliResultWithValue<T> = Result<T, ()>;
-pub(crate) type CliResult = CliResultWithValue<()>;
-
 #[async_trait]
 pub(crate) trait CliExecute {
-    async fn execute(&self) -> CliResult;
+    async fn execute(&self) -> miette::Result<()>;
 }
 
 /// Control Satori NVR.
@@ -23,7 +20,7 @@ pub(crate) struct Cli {
 
 #[async_trait]
 impl CliExecute for Cli {
-    async fn execute(&self) -> CliResult {
+    async fn execute(&self) -> miette::Result<()> {
         self.command.execute().await
     }
 }
@@ -37,7 +34,7 @@ pub(crate) enum Command {
 
 #[async_trait]
 impl CliExecute for Command {
-    async fn execute(&self) -> CliResult {
+    async fn execute(&self) -> miette::Result<()> {
         match self {
             Command::Trigger(cmd) => cmd.execute().await,
             Command::Archive(cmd) => cmd.execute().await,

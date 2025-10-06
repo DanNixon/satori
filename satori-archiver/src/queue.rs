@@ -1,4 +1,4 @@
-use crate::{Context, error::ArchiverResult, task::ArchiveTask};
+use crate::{AppContext, error::ArchiverResult, task::ArchiveTask};
 use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event, mqtt::PublishExt};
 use std::{
     collections::VecDeque,
@@ -141,7 +141,7 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn process_one(&mut self, context: &Context) {
+    pub(crate) async fn process_one(&mut self, context: &AppContext) {
         if let Some(task) = self.queue.front() {
             let task_type = match &task {
                 ArchiveTask::EventMetadata(_) => "event",

@@ -1,7 +1,6 @@
-use super::CliResult;
 use clap::Parser;
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, StorageProvider};
-use tracing::error;
 
 /// List video segment files for a given camera.
 #[derive(Debug, Clone, Parser)]
@@ -11,10 +10,12 @@ pub(crate) struct ListSegmentsCommand {
 }
 
 impl ListSegmentsCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
-        for segment_file in storage.list_segments(&self.camera).await.map_err(|err| {
-            error!("{}", err);
-        })? {
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
+        for segment_file in storage
+            .list_segments(&self.camera)
+            .await
+            .into_diagnostic()?
+        {
             println!("{}", segment_file.display());
         }
         Ok(())

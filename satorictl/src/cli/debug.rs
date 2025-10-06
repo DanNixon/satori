@@ -1,4 +1,4 @@
-use super::{CliExecute, CliResult};
+use super::CliExecute;
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use satori_common::{
@@ -22,7 +22,7 @@ pub(crate) struct DebugCommand {
 
 #[async_trait]
 impl CliExecute for DebugCommand {
-    async fn execute(&self) -> CliResult {
+    async fn execute(&self) -> miette::Result<()> {
         let mqtt_config: MqttConfig = satori_common::load_config_file(&self.mqtt);
         let mut mqtt_client: MqttClient = mqtt_config.into();
 

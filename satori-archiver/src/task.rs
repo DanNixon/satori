@@ -1,5 +1,5 @@
 use crate::{
-    Context,
+    AppContext,
     error::{ArchiverError, ArchiverResult},
 };
 use bytes::Bytes;
@@ -18,7 +18,7 @@ pub(crate) enum ArchiveTask {
 
 impl ArchiveTask {
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn run(&self, context: &Context) -> ArchiverResult<()> {
+    pub(crate) async fn run(&self, context: &AppContext) -> ArchiverResult<()> {
         match &self {
             Self::EventMetadata(event) => self.run_event(context, event).await,
             Self::CameraSegment(segment) => self.run_segment(context, segment).await,
@@ -26,13 +26,17 @@ impl ArchiveTask {
     }
 
     #[tracing::instrument(skip(context))]
-    async fn run_event(&self, context: &Context, event: &Event) -> ArchiverResult<()> {
+    async fn run_event(&self, context: &AppContext, event: &Event) -> ArchiverResult<()> {
         info!("Saving event");
         Ok(context.storage.put_event(event).await?)
     }
 
     #[tracing::instrument(skip(context))]
-    async fn run_segment(&self, context: &Context, segment: &CameraSegment) -> ArchiverResult<()> {
+    async fn run_segment(
+        &self,
+        context: &AppContext,
+        segment: &CameraSegment,
+    ) -> ArchiverResult<()> {
         info!("Saving segment");
         let data = segment.get(context).await?;
         Ok(context
@@ -51,7 +55,7 @@ pub(crate) struct CameraSegment {
 
 impl CameraSegment {
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn get(&self, context: &Context) -> ArchiverResult<Bytes> {
+    pub(crate) async fn get(&self, context: &AppContext) -> ArchiverResult<Bytes> {
         let url = get_segment_url(self.camera_url.clone(), &self.filename)?;
         debug!("Segment URL: {url}");
 
