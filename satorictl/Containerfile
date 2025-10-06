@@ -16,14 +16,14 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+RUN mkdir -p /app && \
+    mkdir -p /config && \
+    mkdir -p /data
 
 COPY --from=builder /app/target/release/satorictl /app/satorictl
-
-RUN mkdir -p /config && \
-    mkdir -p /data
 
 VOLUME /config
 VOLUME /data
 
+WORKDIR /data
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/satorictl"]
