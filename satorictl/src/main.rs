@@ -1,10 +1,10 @@
 mod cli;
 
-use crate::cli::{Cli, CliExecute, CliResult};
+use crate::cli::{Cli, CliExecute};
 use clap::Parser;
 
 #[tokio::main]
-async fn main() -> CliResult {
+async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();

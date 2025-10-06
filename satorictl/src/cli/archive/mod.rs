@@ -10,7 +10,7 @@ mod list_segments;
 mod prune_events;
 mod prune_segments;
 
-use super::{CliExecute, CliResult, CliResultWithValue};
+use super::CliExecute;
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use satori_storage::StorageConfig;
@@ -29,7 +29,7 @@ pub(crate) struct ArchiveCommand {
 
 #[async_trait]
 impl CliExecute for ArchiveCommand {
-    async fn execute(&self) -> CliResult {
+    async fn execute(&self) -> miette::Result<()> {
         let storage_config: StorageConfig = satori_common::load_config_file(&self.storage);
         let storage = storage_config.create_provider();
 

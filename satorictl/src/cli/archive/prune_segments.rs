@@ -1,8 +1,7 @@
-use super::{CliResult, CliResultWithValue};
 use clap::{Parser, Subcommand};
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, workflows};
 use std::path::PathBuf;
-use tracing::error;
 
 /// Removes segments that are not referenced by any event.
 #[derive(Debug, Clone, Parser)]
@@ -34,53 +33,34 @@ pub(crate) enum PruneSegmentsAction {
 }
 
 impl PruneSegmentsCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
         match &self.command {
             PruneSegmentsAction::Prune => {
                 let unreferenced_segments =
-                    calculate_unrefeferenced_segments(storage.clone(), self.jobs).await?;
+                    workflows::calculate_unreferenced_segments(storage.clone(), self.jobs)
+                        .await
+                        .into_diagnostic()?;
 
-                delete_unreferenced_segments(storage, unreferenced_segments, self.jobs).await
+                workflows::delete_unreferenced_segments(storage, unreferenced_segments, self.jobs)
+                    .await
+                    .into_diagnostic()
             }
             PruneSegmentsAction::Report { report } => {
                 let unreferenced_segments =
-                    calculate_unrefeferenced_segments(storage.clone(), self.jobs).await?;
+                    workflows::calculate_unreferenced_segments(storage.clone(), self.jobs)
+                        .await
+                        .into_diagnostic()?;
 
-                unreferenced_segments.save(report).map_err(|err| {
-                    error!("{}", err);
-                })
+                unreferenced_segments.save(report).into_diagnostic()
             }
             PruneSegmentsAction::Delete { report } => {
                 let unreferenced_segments =
-                    workflows::UnreferencedSegments::load(report).map_err(|err| {
-                        error!("{}", err);
-                    })?;
+                    workflows::UnreferencedSegments::load(report).into_diagnostic()?;
 
-                delete_unreferenced_segments(storage, unreferenced_segments, self.jobs).await
+                workflows::delete_unreferenced_segments(storage, unreferenced_segments, self.jobs)
+                    .await
+                    .into_diagnostic()
             }
         }
     }
-}
-
-async fn calculate_unrefeferenced_segments(
-    storage: Provider,
-    jobs: usize,
-) -> CliResultWithValue<workflows::UnreferencedSegments> {
-    workflows::calculate_unreferenced_segments(storage, jobs)
-        .await
-        .map_err(|err| {
-            error!("{}", err);
-        })
-}
-
-async fn delete_unreferenced_segments(
-    storage: Provider,
-    segments: workflows::UnreferencedSegments,
-    jobs: usize,
-) -> CliResult {
-    workflows::delete_unreferenced_segments(storage, segments, jobs)
-        .await
-        .map_err(|err| {
-            error!("{}", err);
-        })
 }

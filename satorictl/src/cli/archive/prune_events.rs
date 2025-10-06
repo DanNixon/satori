@@ -1,8 +1,7 @@
-use super::CliResult;
 use chrono::{Duration, Utc};
 use clap::Parser;
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, workflows};
-use tracing::error;
 
 /// Removes events matching specific rules.
 #[derive(Debug, Clone, Parser)]
@@ -13,13 +12,11 @@ pub(crate) struct PruneEventsCommand {
 }
 
 impl PruneEventsCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
         let time =
             Utc::now() - Duration::try_days(self.days).expect("days range should be within limits");
         workflows::prune_events_older_than(storage, time.into())
             .await
-            .map_err(|err| {
-                error!("{}", err);
-            })
+            .into_diagnostic()
     }
 }

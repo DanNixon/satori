@@ -13,6 +13,7 @@ use axum::{
 use bytes::{BufMut, Bytes};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use miette::{Context, IntoDiagnostic};
 use std::{
     fs,
     net::SocketAddr,
@@ -51,7 +52,7 @@ pub(crate) struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
@@ -64,7 +65,8 @@ async fn main() {
     builder
         .with_http_listener(cli.observability_address)
         .install()
-        .expect("prometheus metrics exporter should be setup");
+        .into_diagnostic()
+        .wrap_err("Failed to start prometheus metrics exporter")?;
 
     metrics::describe_gauge!(
         METRIC_DISK_USAGE,
@@ -85,7 +87,9 @@ async fn main() {
     );
 
     // Create video output directory
-    fs::create_dir_all(&config.video_directory).expect("should be able to create output directory");
+    fs::create_dir_all(&config.video_directory)
+        .into_diagnostic()
+        .wrap_err("Failed to create output directory")?;
 
     // Channel for JPEG frames
     let (jpeg_tx, mut jpeg_rx) = tokio::sync::broadcast::channel(8);
@@ -97,7 +101,11 @@ async fn main() {
     // Configure HTTP server listener
     let listener = TcpListener::bind(&cli.http_server_address)
         .await
-        .unwrap_or_else(|_| panic!("tcp listener should bind to {}", cli.http_server_address));
+        .into_diagnostic()
+        .wrap_err(format!(
+            "tcp listener should bind to {}",
+            cli.http_server_address
+        ))?;
 
     // Configure HTTP server endpoints
     let frame_image = SharedImageData::default();
@@ -177,6 +185,8 @@ async fn main() {
     info!("Stopping HTTP server");
     server_handle.abort();
     let _ = server_handle.await;
+
+    Ok(())
 }
 
 #[tracing::instrument(skip_all)]

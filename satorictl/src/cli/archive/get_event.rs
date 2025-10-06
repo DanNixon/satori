@@ -1,8 +1,7 @@
-use super::CliResult;
 use clap::Parser;
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, StorageProvider};
 use std::path::PathBuf;
-use tracing::error;
 
 /// Retrieve metadata for a specific event.
 #[derive(Debug, Clone, Parser)]
@@ -12,14 +11,9 @@ pub(crate) struct GetEventCommand {
 }
 
 impl GetEventCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
-        let event = storage.get_event(&self.file).await;
-        println!(
-            "{:#?}",
-            event.map_err(|err| {
-                error!("{}", err);
-            })?
-        );
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
+        let event = storage.get_event(&self.file).await.into_diagnostic()?;
+        println!("{event:#?}");
         Ok(())
     }
 }

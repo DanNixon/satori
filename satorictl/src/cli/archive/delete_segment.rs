@@ -1,8 +1,7 @@
-use super::CliResult;
 use clap::Parser;
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, StorageProvider};
 use std::path::PathBuf;
-use tracing::error;
 
 /// Delete a selection of video segment files for a given camera.
 #[derive(Debug, Clone, Parser)]
@@ -15,14 +14,12 @@ pub(crate) struct DeleteSegmentCommand {
 }
 
 impl DeleteSegmentCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
         for path in &self.file {
             storage
                 .delete_segment(&self.camera, path)
                 .await
-                .map_err(|err| {
-                    error!("{}", err);
-                })?;
+                .into_diagnostic()?;
         }
         Ok(())
     }

@@ -1,8 +1,8 @@
-use super::CliResult;
 use clap::Parser;
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, workflows};
 use std::{fs::File, io::Write, path::PathBuf};
-use tracing::{error, info};
+use tracing::info;
 
 /// Exports a video file for a given event.
 #[derive(Debug, Clone, Parser)]
@@ -22,31 +22,23 @@ pub(crate) struct ExportVideoSubcommand {
 }
 
 impl ExportVideoSubcommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
         let (event, file_content) =
             workflows::export_event_video(storage, &self.event, self.camera.clone())
                 .await
-                .map_err(|err| {
-                    error!("{}", err);
-                })?;
+                .into_diagnostic()?;
 
         // Use the user provided output filename if one exists, otherwise generate one.
         let output_filename = match &self.output {
             Some(filename) => filename.clone(),
             None => {
-                workflows::generate_video_filename(&event, self.camera.clone()).map_err(|err| {
-                    error!("{}", err);
-                })?
+                workflows::generate_video_filename(&event, self.camera.clone()).into_diagnostic()?
             }
         };
 
         info!("Saving video: {}", output_filename.display());
-        let mut file = File::create(&output_filename).map_err(|err| {
-            error!("{}", err);
-        })?;
-        file.write_all(&file_content).map_err(|err| {
-            error!("{}", err);
-        })?;
+        let mut file = File::create(&output_filename).into_diagnostic()?;
+        file.write_all(&file_content).into_diagnostic()?;
 
         Ok(())
     }

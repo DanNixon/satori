@@ -1,8 +1,7 @@
-use super::CliResult;
 use clap::Parser;
+use miette::IntoDiagnostic;
 use satori_storage::{Provider, StorageProvider};
 use std::path::PathBuf;
-use tracing::error;
 
 /// Delete a selection of event metadata files.
 #[derive(Debug, Clone, Parser)]
@@ -12,14 +11,10 @@ pub(crate) struct DeleteEventCommand {
 }
 
 impl DeleteEventCommand {
-    pub(super) async fn execute(&self, storage: Provider) -> CliResult {
+    pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
         for path in &self.file {
-            let event = storage.get_event(path).await.map_err(|err| {
-                error!("{}", err);
-            })?;
-            storage.delete_event(&event).await.map_err(|err| {
-                error!("{}", err);
-            })?;
+            let event = storage.get_event(path).await.into_diagnostic()?;
+            storage.delete_event(&event).await.into_diagnostic()?;
         }
         Ok(())
     }

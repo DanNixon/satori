@@ -9,6 +9,7 @@ async-trait.workspace = true
 chrono.workspace = true
 clap.workspace = true
 crossterm.workspace = true
+miette = { workspace = true, features = ["fancy"] }
 ratatui.workspace = true
 rayon.workspace = true
 satori-common.workspace = true
