@@ -2837,6 +2837,7 @@ dependencies = [
 name = "satori-event-processor"
 version = "0.3.1"
 dependencies = [
+ "axum",
  "bytes",
  "chrono",
  "clap",
@@ -2852,6 +2853,7 @@ dependencies = [
  "serde_with",
  "thiserror",
  "tokio",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
  "url",

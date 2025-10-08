@@ -8,16 +8,29 @@ use crate::{
     config::{Config, TriggersConfig},
     event_set::EventSet,
 };
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::post,
+    Json, Router,
+};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::mqtt::{MqttClient, PublishExt};
-use std::{net::SocketAddr, path::PathBuf};
-use tracing::{debug, error, info};
+use satori_common::{mqtt::MqttClient, TriggerCommand};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use tokio::{net::TcpListener, sync::Mutex};
+use tracing::{debug, info};
 
 const METRIC_TRIGGERS: &str = "satori_eventprocessor_triggers";
 const METRIC_ACTIVE_EVENTS: &str = "satori_eventprocessor_active_events";
 const METRIC_EXPIRED_EVENTS: &str = "satori_eventprocessor_expired_events";
+
+struct AppState {
+    events: Arc<Mutex<EventSet>>,
+    trigger_config: Arc<TriggersConfig>,
+}
 
 /// Run the event processor.
 #[derive(Clone, Parser)]
@@ -26,6 +39,10 @@ pub(crate) struct Cli {
     /// Path to configuration file
     #[arg(short, long, env = "CONFIG_FILE", value_name = "FILE")]
     config: PathBuf,
+
+    /// Address to listen on for HTTP API endpoints
+    #[clap(long, env = "HTTP_SERVER_ADDRESS", default_value = "127.0.0.1:8080")]
+    http_server_address: SocketAddr,
 
     /// Address to listen on for observability/metrics endpoints
     #[clap(long, env = "OBSERVABILITY_ADDRESS", default_value = "127.0.0.1:9090")]
@@ -39,14 +56,17 @@ async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config);
 
-    // Set up and connect MQTT client
-    let mut mqtt_client: MqttClient = config.mqtt.into();
+    // Set up and connect MQTT client (for sending archive commands only)
+    let mqtt_client: MqttClient = config.mqtt.into();
 
     // Set up camera stream client
     let camera_client = self::hls_client::HlsClient::new(config.cameras);
 
     // Load existing or create new event state
-    let mut events = EventSet::load_or_new(&config.event_file, config.event_ttl);
+    let events = Arc::new(Mutex::new(EventSet::load_or_new(
+        &config.event_file,
+        config.event_ttl,
+    )));
 
     // Set up metrics server
     let builder = PrometheusBuilder::new();
@@ -70,7 +90,35 @@ async fn main() -> miette::Result<()> {
         "Processed events count"
     );
 
-    // Run event loop
+    // Set up shared state
+    let state = Arc::new(AppState {
+        events: events.clone(),
+        trigger_config: Arc::new(config.triggers),
+    });
+
+    // Configure HTTP server
+    let app = Router::new()
+        .route("/trigger", post(handle_trigger))
+        .with_state(state);
+
+    let listener = TcpListener::bind(&cli.http_server_address)
+        .await
+        .into_diagnostic()
+        .wrap_err(format!(
+            "tcp listener should bind to {}",
+            cli.http_server_address
+        ))?;
+
+    info!("Starting HTTP server on {}", cli.http_server_address);
+
+    // Spawn HTTP server task
+    let server_handle = tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("HTTP server should run");
+    });
+
+    // Run event processing loop
     let mut process_interval = tokio::time::interval(config.interval);
     loop {
         tokio::select! {
@@ -78,43 +126,32 @@ async fn main() -> miette::Result<()> {
                 info!("Exiting.");
                 break;
             }
-            msg = mqtt_client.poll() => {
-                if let Some(msg) = msg
-                    && handle_mqtt_message(msg, &mut events, &config.triggers) {
-                        // Immediately process events
-                        events.process(&camera_client, &mqtt_client).await;
-                    }
-            }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");
-                events.process(&camera_client, &mqtt_client).await;
+                let mut events_lock = events.lock().await;
+                events_lock.process(&camera_client, &mqtt_client).await;
             }
         }
     }
 
-    // Disconnect MQTT client
-    mqtt_client.disconnect().await;
+    // Stop HTTP server
+    info!("Stopping HTTP server");
+    server_handle.abort();
+    let _ = server_handle.await;
 
     Ok(())
 }
 
 #[tracing::instrument(skip_all)]
-fn handle_mqtt_message(
-    msg: rumqttc::Publish,
-    events: &mut EventSet,
-    trigger_config: &TriggersConfig,
-) -> bool {
-    match msg.try_payload_from_json::<satori_common::Message>() {
-        Ok(satori_common::Message::TriggerCommand(cmd)) => {
-            debug!("Trigger command: {:?}", cmd);
-            let trigger = trigger_config.create_trigger(&cmd);
-            events.trigger(&trigger);
-            true
-        }
-        Ok(_) => false,
-        Err(e) => {
-            error!("Failed to parse MQTT message ({})", e);
-            false
-        }
-    }
+async fn handle_trigger(
+    State(state): State<Arc<AppState>>,
+    Json(cmd): Json<TriggerCommand>,
+) -> impl IntoResponse {
+    debug!("Trigger command: {:?}", cmd);
+    
+    let trigger = state.trigger_config.create_trigger(&cmd);
+    let mut events = state.events.lock().await;
+    events.trigger(&trigger);
+    
+    StatusCode::OK
 }
