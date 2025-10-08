@@ -1,6 +1,7 @@
 # Event Processor
 
 The event processor is responsible for:
+
 - Receiving event triggers via HTTP
 - Managing active events and their lifecycle
 - Requesting video segments from cameras for triggered events
@@ -15,6 +16,7 @@ Accepts event triggers via HTTP POST.
 **Endpoint:** `POST /trigger`
 
 **Request Format:**
+
 ```json
 {
   "id": "trigger-id",
@@ -27,6 +29,7 @@ Accepts event triggers via HTTP POST.
 ```
 
 **Example:**
+
 ```bash
 curl -X POST http://localhost:8080/trigger \
   -H "Content-Type: application/json" \
@@ -42,11 +45,13 @@ curl -X POST http://localhost:8080/trigger \
 ## Configuration
 
 The HTTP server address can be configured via:
+
 - Command line: `--http-server-address 127.0.0.1:8080`
 - Environment variable: `HTTP_SERVER_ADDRESS=127.0.0.1:8080`
 - Default: `127.0.0.1:8080`
 
 The observability/metrics endpoint can be configured via:
+
 - Command line: `--observability-address 127.0.0.1:9090`
 - Environment variable: `OBSERVABILITY_ADDRESS=127.0.0.1:9090`
 - Default: `127.0.0.1:9090`
