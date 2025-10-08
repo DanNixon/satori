@@ -76,6 +76,8 @@ async fn two() {
         vec![
             "--config".to_string(),
             event_processor_config_file.path().display().to_string(),
+            "--http-server-address".to_string(),
+            "127.0.0.1:8080".to_string(),
             "--observability-address".to_string(),
             "127.0.0.1:9090".to_string(),
         ],
@@ -143,15 +145,13 @@ async fn two() {
         .await
         .expect("archiver should be running");
 
-    // Trigger an event
-    mqtt_client
-        .client()
-        .publish(
-            MQTT_TOPIC,
-            rumqttc::QoS::ExactlyOnce,
-            false,
-            r#"{"kind": "trigger_command", "data": {"id": "test", "reason": "test", "cameras": ["camera1"], "pre": 50, "post": 5 }}"#.to_string(),
-        )
+    // Trigger an event via HTTP
+    let http_client = reqwest::Client::new();
+    http_client
+        .post("http://localhost:8080/trigger")
+        .header("Content-Type", "application/json")
+        .body(r#"{"id": "test", "reason": "test", "cameras": ["camera1"], "pre": 50, "post": 5 }"#)
+        .send()
         .await
         .unwrap();
 
