@@ -2865,6 +2865,7 @@ version = "0.3.1"
 dependencies = [
  "ctor",
  "indoc",
+ "reqwest",
  "rumqttc",
  "satori-common",
  "satori-testing-utils",
