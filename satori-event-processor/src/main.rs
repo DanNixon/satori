@@ -8,17 +8,11 @@ use crate::{
     config::{Config, TriggersConfig},
     event_set::EventSet,
 };
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post,
-    Json, Router,
-};
+use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::{mqtt::MqttClient, TriggerCommand};
+use satori_common::{TriggerCommand, mqtt::MqttClient};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::Mutex};
 use tracing::{debug, info};
@@ -148,10 +142,10 @@ async fn handle_trigger(
     Json(cmd): Json<TriggerCommand>,
 ) -> impl IntoResponse {
     debug!("Trigger command: {:?}", cmd);
-    
+
     let trigger = state.trigger_config.create_trigger(&cmd);
     let mut events = state.events.lock().await;
     events.trigger(&trigger);
-    
+
     StatusCode::OK
 }
