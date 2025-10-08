@@ -7,6 +7,7 @@ edition.workspace = true
 [dev-dependencies]
 ctor.workspace = true
 indoc.workspace = true
+reqwest.workspace = true
 rumqttc.workspace = true
 satori-common.workspace = true
 satori-testing-utils.workspace = true
