@@ -1,6 +1,5 @@
 mod archive;
 mod debug;
-mod trigger;
 
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
@@ -27,7 +26,6 @@ impl CliExecute for Cli {
 
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum Command {
-    Trigger(trigger::TriggerCommand),
     Archive(archive::ArchiveCommand),
     Debug(debug::DebugCommand),
 }
@@ -36,7 +34,6 @@ pub(crate) enum Command {
 impl CliExecute for Command {
     async fn execute(&self) -> miette::Result<()> {
         match self {
-            Command::Trigger(cmd) => cmd.execute().await,
             Command::Archive(cmd) => cmd.execute().await,
             Command::Debug(cmd) => cmd.execute().await,
         }
