@@ -77,7 +77,7 @@ async fn two() {
             "--config".to_string(),
             event_processor_config_file.path().display().to_string(),
             "--http-server-address".to_string(),
-            "127.0.0.1:8080".to_string(),
+            "127.0.0.1:8000".to_string(),
             "--observability-address".to_string(),
             "127.0.0.1:9090".to_string(),
         ],
@@ -148,7 +148,7 @@ async fn two() {
     // Trigger an event via HTTP
     let http_client = reqwest::Client::new();
     http_client
-        .post("http://localhost:8080/trigger")
+        .post("http://localhost:8000/trigger")
         .header("Content-Type", "application/json")
         .body(r#"{"id": "test", "reason": "test", "cameras": ["camera1"], "pre": 50, "post": 5 }"#)
         .send()

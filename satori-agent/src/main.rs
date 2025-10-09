@@ -42,7 +42,7 @@ pub(crate) struct Cli {
     #[arg(short, long, env = "CONFIG_FILE", value_name = "FILE")]
     config: PathBuf,
 
-    /// Address to listen on for observability/metrics endpoints
+    /// Address to listen on for HTTP API endpoints
     #[clap(long, env = "HTTP_SERVER_ADDRESS", default_value = "127.0.0.1:8000")]
     http_server_address: SocketAddr,
 

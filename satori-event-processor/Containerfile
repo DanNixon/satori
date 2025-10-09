@@ -22,4 +22,7 @@ COPY --from=builder /app/target/release/satori-event-processor /app/satori-event
 ENV OBSERVABILITY_ADDRESS=0.0.0.0:9090
 EXPOSE 9090/tcp
 
+ENV HTTP_SERVER_ADDRESS=0.0.0.0:8000
+EXPOSE 8000/tcp
+
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/satori-event-processor"]
