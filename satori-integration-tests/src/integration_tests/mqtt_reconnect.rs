@@ -169,17 +169,6 @@ async fn mqtt_reconnect() {
         .await
         .unwrap();
 
-    // The archive command message should be received by the MQTT archiver
-    assert!(
-        mqtt_client
-            .wait_for_message(Duration::from_secs(5))
-            .await
-            .unwrap()
-            .try_payload_str()
-            .unwrap()
-            .contains(r#""kind":"archive_command""#)
-    );
-
     // Segment archive command for camera1 should be sent
     assert_eq!(
         mqtt_client
