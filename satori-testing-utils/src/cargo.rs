@@ -37,6 +37,7 @@ impl CargoBinaryRunner {
                 let mut cargo_process = unsafe {
                     Command::new("cargo")
                         .current_dir(workspace_dir)
+                        .env("NO_COLOR", "1")
                         .envs(env)
                         // Run the specified binary
                         .arg("run")

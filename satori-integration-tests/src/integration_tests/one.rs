@@ -111,6 +111,9 @@ async fn one() {
     satori_testing_utils::wait_for_url("http://localhost:9090", Duration::from_secs(600))
         .await
         .expect("event processor should be running");
+    satori_testing_utils::wait_for_url("http://localhost:8080", Duration::from_secs(600))
+        .await
+        .expect("event processor should be running");
 
     let archiver_queue_file = NamedTempFile::new().unwrap();
 

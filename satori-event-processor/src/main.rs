@@ -122,6 +122,9 @@ async fn main() -> miette::Result<()> {
                 info!("Exiting.");
                 break;
             }
+            _ = mqtt_client.poll() => {
+                // Do not need to receive MQTT messages
+            }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");
                 let mut events = events.lock().await;
