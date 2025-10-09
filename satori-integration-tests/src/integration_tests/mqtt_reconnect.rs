@@ -68,6 +68,8 @@ async fn mqtt_reconnect() {
         vec![
             "--config".to_string(),
             event_processor_config_file.path().display().to_string(),
+            "--http-server-address".to_string(),
+            "127.0.0.1:8000".to_string(),
             "--observability-address".to_string(),
             "127.0.0.1:9090".to_string(),
         ],
@@ -157,28 +159,15 @@ async fn mqtt_reconnect() {
         .await
         .unwrap();
 
-    // Trigger an event
-    mqtt_client
-        .client()
-        .publish(
-            MQTT_TOPIC,
-            rumqttc::QoS::ExactlyOnce,
-            false,
-            r#"{"kind": "trigger_command", "data": {"id": "test", "timestamp": "2023-01-01T00:02:15Z", "reason": "test", "cameras": ["camera1"], "pre": 50, "post": 30 }}"#.to_string(),
-        )
+    // Trigger an event via HTTP
+    let http_client = reqwest::Client::new();
+    http_client
+        .post("http://localhost:8000/trigger")
+        .header("Content-Type", "application/json")
+        .body(r#"{"id": "test", "timestamp": "2023-01-01T00:02:15Z", "reason": "test", "cameras": ["camera1"], "pre": 50, "post": 30 }"#)
+        .send()
         .await
         .unwrap();
-
-    // The event trigger message should be received
-    assert_eq!(
-        mqtt_client
-            .wait_for_message(Duration::from_secs(5))
-            .await
-            .unwrap()
-            .try_payload_str()
-            .unwrap(),
-        r#"{"kind": "trigger_command", "data": {"id": "test", "timestamp": "2023-01-01T00:02:15Z", "reason": "test", "cameras": ["camera1"], "pre": 50, "post": 30 }}"#,
-    );
 
     // Segment archive command for camera1 should be sent
     assert_eq!(
