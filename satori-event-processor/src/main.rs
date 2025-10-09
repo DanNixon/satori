@@ -24,6 +24,7 @@ const METRIC_EXPIRED_EVENTS: &str = "satori_eventprocessor_expired_events";
 struct AppState {
     events: Arc<Mutex<EventSet>>,
     trigger_config: Arc<TriggersConfig>,
+    trigger_tx: tokio::sync::mpsc::UnboundedSender<()>,
 }
 
 /// Run the event processor.
@@ -84,10 +85,14 @@ async fn main() -> miette::Result<()> {
         "Processed events count"
     );
 
+    // Set up channel for trigger notifications
+    let (trigger_tx, mut trigger_rx) = tokio::sync::mpsc::unbounded_channel();
+
     // Set up shared state
     let state = Arc::new(AppState {
         events: events.clone(),
         trigger_config: Arc::new(config.triggers),
+        trigger_tx: trigger_tx.clone(),
     });
 
     // Configure HTTP server
@@ -119,8 +124,13 @@ async fn main() -> miette::Result<()> {
             }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");
-                let mut events_lock = events.lock().await;
-                events_lock.process(&camera_client, &mqtt_client).await;
+                let mut events = events.lock().await;
+                events.process(&camera_client, &mqtt_client).await;
+            }
+            Some(_) = trigger_rx.recv() => {
+                debug!("Processing events due to trigger");
+                let mut events = events.lock().await;
+                events.process(&camera_client, &mqtt_client).await;
             }
         }
     }
@@ -146,6 +156,9 @@ async fn handle_trigger(
     let trigger = state.trigger_config.create_trigger(&cmd);
     let mut events = state.events.lock().await;
     events.trigger(&trigger);
+
+    // Notify main loop to process events immediately
+    let _ = state.trigger_tx.send(());
 
     StatusCode::OK
 }
