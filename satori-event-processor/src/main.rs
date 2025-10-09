@@ -14,8 +14,8 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
 use satori_common::{TriggerCommand, mqtt::MqttClient};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
-use tokio::{net::TcpListener, sync::Mutex};
-use tracing::{debug, info};
+use tokio::{net::TcpListener, sync::Mutex, time::Instant};
+use tracing::{debug, error, info};
 
 const METRIC_TRIGGERS: &str = "satori_eventprocessor_triggers";
 const METRIC_ACTIVE_EVENTS: &str = "satori_eventprocessor_active_events";
@@ -24,7 +24,7 @@ const METRIC_EXPIRED_EVENTS: &str = "satori_eventprocessor_expired_events";
 struct AppState {
     events: Arc<Mutex<EventSet>>,
     trigger_config: Arc<TriggersConfig>,
-    trigger_tx: tokio::sync::mpsc::UnboundedSender<()>,
+    trigger_tx: tokio::sync::watch::Sender<Instant>,
 }
 
 /// Run the event processor.
@@ -86,7 +86,7 @@ async fn main() -> miette::Result<()> {
     );
 
     // Set up channel for trigger notifications
-    let (trigger_tx, mut trigger_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (trigger_tx, mut trigger_rx) = tokio::sync::watch::channel(Instant::now());
 
     // Set up shared state
     let state = Arc::new(AppState {
@@ -127,7 +127,7 @@ async fn main() -> miette::Result<()> {
                 let mut events = events.lock().await;
                 events.process(&camera_client, &mqtt_client).await;
             }
-            Some(_) = trigger_rx.recv() => {
+            _ = trigger_rx.changed() => {
                 debug!("Processing events due to trigger");
                 let mut events = events.lock().await;
                 events.process(&camera_client, &mqtt_client).await;
@@ -158,7 +158,9 @@ async fn handle_trigger(
     events.trigger(&trigger);
 
     // Notify main loop to process events immediately
-    let _ = state.trigger_tx.send(());
+    if let Err(e) = state.trigger_tx.send(Instant::now()) {
+        error!("Failed to send trigger notification: {e}");
+    }
 
     StatusCode::OK
 }
