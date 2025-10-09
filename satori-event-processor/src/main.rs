@@ -50,8 +50,8 @@ async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config);
 
-    // Set up and connect MQTT client (for sending archive commands only)
-    let mqtt_client: MqttClient = config.mqtt.into();
+    // Set up and connect MQTT client
+    let mut mqtt_client: MqttClient = config.mqtt.into();
 
     // Set up camera stream client
     let camera_client = self::hls_client::HlsClient::new(config.cameras);
@@ -98,10 +98,7 @@ async fn main() -> miette::Result<()> {
     let listener = TcpListener::bind(&cli.http_server_address)
         .await
         .into_diagnostic()
-        .wrap_err(format!(
-            "tcp listener should bind to {}",
-            cli.http_server_address
-        ))?;
+        .wrap_err("Failed to bind listener for HTTP server")?;
 
     info!("Starting HTTP server on {}", cli.http_server_address);
 
@@ -132,6 +129,9 @@ async fn main() -> miette::Result<()> {
     info!("Stopping HTTP server");
     server_handle.abort();
     let _ = server_handle.await;
+
+    // Disconnect MQTT client
+    mqtt_client.disconnect().await;
 
     Ok(())
 }
