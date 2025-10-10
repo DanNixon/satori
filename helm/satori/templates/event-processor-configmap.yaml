@@ -1,0 +1,51 @@
+{{- if .Values.eventProcessor.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "satori.fullname" . }}-event-processor
+  labels:
+    {{- include "satori.eventProcessor.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    event_file = "{{ .Values.eventProcessor.eventFile }}"
+    interval = {{ .Values.eventProcessor.interval }}
+    event_ttl = {{ .Values.eventProcessor.eventTtl }}
+
+    [mqtt]
+    broker = "{{ .Values.mqtt.broker }}"
+    port = {{ .Values.mqtt.port }}
+    client_id = "{{ include "satori.fullname" . }}-event-processor"
+    username = "{{ .Values.mqtt.username }}"
+    password = "{{ .Values.mqtt.password }}"
+    topic = "{{ .Values.mqtt.topic }}"
+
+    [triggers.fallback]
+    cameras = [
+      {{- range $index, $camera := .Values.eventProcessor.triggers.fallback.cameras }}
+      {{- if $index }},{{ end }}
+      {{ $camera | quote }}
+      {{- end }}
+    ]
+    reason = {{ .Values.eventProcessor.triggers.fallback.reason | quote }}
+    pre = {{ .Values.eventProcessor.triggers.fallback.pre }}
+    post = {{ .Values.eventProcessor.triggers.fallback.post }}
+
+    {{- range $name, $template := .Values.eventProcessor.triggers.templates }}
+    [triggers.templates.{{ $name | quote }}]
+    cameras = [
+      {{- range $index, $camera := $template.cameras }}
+      {{- if $index }},{{ end }}
+      {{ $camera | quote }}
+      {{- end }}
+    ]
+    reason = {{ $template.reason | quote }}
+    pre = {{ $template.pre }}
+    post = {{ $template.post }}
+    {{- end }}
+
+    {{- range .Values.cameras }}
+    [[cameras]]
+    name = {{ .name | quote }}
+    url = "http://{{ include "satori.fullname" $ }}-agent-{{ .name }}:{{ .service.httpPort }}"
+    {{- end }}
+{{- end }}

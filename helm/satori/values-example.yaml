@@ -1,0 +1,218 @@
+# Example values for Satori Helm chart
+# Copy this file and customize it for your deployment
+
+# MQTT broker configuration
+mqtt:
+  broker: "mosquitto.default.svc.cluster.local"  # Change to your MQTT broker service
+  port: 1883
+  username: "satori"
+  password: "your-mqtt-password"  # Use a Kubernetes secret in production
+  topic: "satori"
+
+# Camera configurations
+cameras:
+  - name: front-door
+    url: "rtsp://192.168.1.10/stream"
+    videoDirectory: /data/video
+    ffmpegInputArgs:
+      - "-rtsp_transport"
+      - "tcp"
+    hlsSegmentTime: 6
+    hlsRetainedSegmentCount: 600
+    ffmpegRestartDelay: 5
+    storage:
+      storageClassName: "fast-ssd"  # Use your storage class
+      size: 100Gi
+      accessMode: ReadWriteOnce
+    service:
+      type: ClusterIP
+      httpPort: 8000
+      metricsPort: 9090
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+
+  - name: back-yard
+    url: "rtsp://192.168.1.11/stream"
+    videoDirectory: /data/video
+    ffmpegInputArgs:
+      - "-rtsp_transport"
+      - "tcp"
+    hlsSegmentTime: 6
+    hlsRetainedSegmentCount: 600
+    ffmpegRestartDelay: 5
+    storage:
+      storageClassName: "fast-ssd"
+      size: 100Gi
+      accessMode: ReadWriteOnce
+    service:
+      type: ClusterIP
+      httpPort: 8000
+      metricsPort: 9090
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+
+  - name: garage
+    url: "rtsp://192.168.1.12/stream"
+    videoDirectory: /data/video
+    ffmpegInputArgs:
+      - "-rtsp_transport"
+      - "tcp"
+    hlsSegmentTime: 6
+    hlsRetainedSegmentCount: 600
+    ffmpegRestartDelay: 5
+    storage:
+      storageClassName: "fast-ssd"
+      size: 100Gi
+      accessMode: ReadWriteOnce
+    service:
+      type: ClusterIP
+      httpPort: 8000
+      metricsPort: 9090
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+
+# Event processor configuration
+eventProcessor:
+  enabled: true
+  replicaCount: 1
+  
+  eventFile: /data/events.json
+  interval: 10
+  eventTtl: 300
+  
+  triggers:
+    fallback:
+      cameras:
+        - front-door
+        - back-yard
+        - garage
+      reason: "Unknown event"
+      pre: 60
+      post: 120
+    
+    templates:
+      motion-detection:
+        cameras:
+          - front-door
+          - back-yard
+        reason: "Motion detected"
+        pre: 30
+        post: 60
+      
+      door-open:
+        cameras:
+          - front-door
+          - garage
+        reason: "Door opened"
+        pre: 15
+        post: 30
+      
+      alarm-trigger:
+        cameras:
+          - front-door
+          - back-yard
+          - garage
+        reason: "Alarm triggered"
+        pre: 120
+        post: 300
+  
+  storage:
+    storageClassName: "standard"
+    size: 5Gi
+    accessMode: ReadWriteOnce
+  
+  service:
+    type: ClusterIP
+    httpPort: 8000
+    metricsPort: 9090
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Archiver configurations
+archivers:
+  # Primary S3 archiver
+  - name: s3-primary
+    enabled: true
+    
+    queueFile: /data/queue.json
+    interval: 100
+    
+    storage:
+      kind: s3
+      bucket: "my-nvr-archive"
+      region: "us-west-2"
+      endpoint: ""  # Leave empty for AWS S3, set for MinIO or other S3-compatible
+    
+    volumeStorage:
+      storageClassName: "standard"
+      size: 1Gi
+      accessMode: ReadWriteOnce
+    
+    env:
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: aws-s3-credentials
+            key: access-key-id
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: aws-s3-credentials
+            key: secret-access-key
+    
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+  
+  # Optional: Local backup archiver
+  - name: local-backup
+    enabled: false
+    
+    queueFile: /data/queue.json
+    interval: 100
+    
+    storage:
+      kind: local
+      path: /backup
+    
+    volumeStorage:
+      storageClassName: "standard"
+      size: 1Gi
+      accessMode: ReadWriteOnce
+    
+    env: []
+    
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi

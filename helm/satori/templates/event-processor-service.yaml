@@ -1,0 +1,21 @@
+{{- if .Values.eventProcessor.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "satori.fullname" . }}-event-processor
+  labels:
+    {{- include "satori.eventProcessor.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.eventProcessor.service.type }}
+  ports:
+    - port: {{ .Values.eventProcessor.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.eventProcessor.service.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "satori.eventProcessor.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,260 @@
+# Default values for satori.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global image configuration
+image:
+  registry: ghcr.io/dannixon
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "main"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# MQTT configuration shared across components
+mqtt:
+  broker: "mosquitto"
+  port: 1883
+  username: "satori"
+  password: ""
+  topic: "satori"
+
+# Camera configurations
+# Each camera will result in a separate satori-agent instance
+cameras:
+  - name: camera-1
+    url: "rtsp://camera1.local/stream"
+    # Video directory for storing segments
+    videoDirectory: /data/video
+    # FFmpeg input arguments
+    ffmpegInputArgs:
+      - "-rtsp_transport"
+      - "tcp"
+    # HLS segment time in seconds
+    hlsSegmentTime: 6
+    # Number of HLS segments to retain
+    hlsRetainedSegmentCount: 600
+    # FFmpeg restart delay in seconds
+    ffmpegRestartDelay: 5
+    # Storage configuration
+    storage:
+      # Storage class for PVC
+      storageClassName: ""
+      # Size of the PVC
+      size: 100Gi
+      # Access mode
+      accessMode: ReadWriteOnce
+    # Resource limits and requests
+    resources: {}
+      # limits:
+      #   cpu: 1000m
+      #   memory: 1Gi
+      # requests:
+      #   cpu: 500m
+      #   memory: 512Mi
+    # Service configuration
+    service:
+      type: ClusterIP
+      httpPort: 8000
+      metricsPort: 9090
+    # Node selector
+    nodeSelector: {}
+    # Tolerations
+    tolerations: []
+    # Affinity
+    affinity: {}
+
+  # - name: camera-2
+  #   url: "rtsp://camera2.local/stream"
+  #   videoDirectory: /data/video
+  #   ffmpegInputArgs:
+  #     - "-rtsp_transport"
+  #     - "tcp"
+  #   hlsSegmentTime: 6
+  #   hlsRetainedSegmentCount: 600
+  #   ffmpegRestartDelay: 5
+  #   storage:
+  #     storageClassName: ""
+  #     size: 100Gi
+  #     accessMode: ReadWriteOnce
+  #   resources: {}
+  #   service:
+  #     type: ClusterIP
+  #     httpPort: 8000
+  #     metricsPort: 9090
+  #   nodeSelector: {}
+  #   tolerations: []
+  #   affinity: {}
+
+# Event processor configuration
+eventProcessor:
+  enabled: true
+  replicaCount: 1
+  
+  # Event file path
+  eventFile: /data/events.json
+  
+  # Interval in seconds
+  interval: 10
+  
+  # Event TTL in seconds
+  eventTtl: 300
+  
+  # Trigger templates
+  triggers:
+    # Fallback template used when no matching template is found
+    fallback:
+      cameras:
+        - camera-1
+      reason: "Unknown event"
+      pre: 60
+      post: 120
+    
+    # Named trigger templates
+    templates: {}
+      # motion-detection:
+      #   cameras:
+      #     - camera-1
+      #   reason: "Motion detected"
+      #   pre: 30
+      #   post: 60
+      # door-open:
+      #   cameras:
+      #     - camera-1
+      #     - camera-2
+      #   reason: "Door opened"
+      #   pre: 15
+      #   post: 30
+  
+  # Storage configuration for event file
+  storage:
+    storageClassName: ""
+    size: 1Gi
+    accessMode: ReadWriteOnce
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    httpPort: 8000
+    metricsPort: 9090
+  
+  # Resource limits and requests
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 250m
+    #   memory: 256Mi
+  
+  # Node selector
+  nodeSelector: {}
+  
+  # Tolerations
+  tolerations: []
+  
+  # Affinity
+  affinity: {}
+
+# Archiver configurations
+# Each archive target will result in a separate satori-archiver instance
+archivers:
+  - name: s3-primary
+    enabled: true
+    
+    # Queue file path
+    queueFile: /data/queue.json
+    
+    # Interval in milliseconds
+    interval: 100
+    
+    # Storage configuration
+    storage:
+      kind: s3
+      bucket: "satori"
+      region: "us-east-1"
+      endpoint: ""
+      # Optional encryption configuration
+      # encryption:
+      #   key: ""
+      #   algorithm: "AES256"
+    
+    # PVC for queue file
+    volumeStorage:
+      storageClassName: ""
+      size: 1Gi
+      accessMode: ReadWriteOnce
+    
+    # Environment variables for S3 credentials
+    # Should be provided via Kubernetes secrets
+    env: []
+      # - name: AWS_ACCESS_KEY_ID
+      #   valueFrom:
+      #     secretKeyRef:
+      #       name: s3-credentials
+      #       key: access-key-id
+      # - name: AWS_SECRET_ACCESS_KEY
+      #   valueFrom:
+      #     secretKeyRef:
+      #       name: s3-credentials
+      #       key: secret-access-key
+    
+    # Resource limits and requests
+    resources: {}
+      # limits:
+      #   cpu: 500m
+      #   memory: 512Mi
+      # requests:
+      #   cpu: 250m
+      #   memory: 256Mi
+    
+    # Node selector
+    nodeSelector: {}
+    
+    # Tolerations
+    tolerations: []
+    
+    # Affinity
+    affinity: {}
+
+  # - name: local-backup
+  #   enabled: true
+  #   queueFile: /data/queue.json
+  #   interval: 100
+  #   storage:
+  #     kind: local
+  #     path: /backup
+  #   volumeStorage:
+  #     storageClassName: ""
+  #     size: 1Gi
+  #     accessMode: ReadWriteOnce
+  #   env: []
+  #   resources: {}
+  #   nodeSelector: {}
+  #   tolerations: []
+  #   affinity: {}
+
+# Service account configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Pod security context
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# Container security context
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000

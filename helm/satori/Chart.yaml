@@ -1,0 +1,17 @@
+apiVersion: v2
+name: satori
+description: A Helm chart for deploying the Satori NVR system
+type: application
+version: 0.1.0
+appVersion: "main"
+keywords:
+  - nvr
+  - cctv
+  - video
+  - recording
+home: https://github.com/DanNixon/satori
+sources:
+  - https://github.com/DanNixon/satori
+maintainers:
+  - name: DanNixon
+    url: https://github.com/DanNixon

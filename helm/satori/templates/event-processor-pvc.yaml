@@ -1,0 +1,17 @@
+{{- if .Values.eventProcessor.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "satori.fullname" . }}-event-processor
+  labels:
+    {{- include "satori.eventProcessor.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.eventProcessor.storage.accessMode }}
+  {{- if .Values.eventProcessor.storage.storageClassName }}
+  storageClassName: {{ .Values.eventProcessor.storage.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.eventProcessor.storage.size }}
+{{- end }}

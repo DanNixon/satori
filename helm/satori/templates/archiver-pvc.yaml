@@ -1,0 +1,20 @@
+{{- range .Values.archivers }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "satori.fullname" $ }}-archiver-{{ .name }}
+  labels:
+    {{- include "satori.archiver.labels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "archiver" .) | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .volumeStorage.accessMode }}
+  {{- if .volumeStorage.storageClassName }}
+  storageClassName: {{ .volumeStorage.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .volumeStorage.size }}
+{{- end }}
+{{- end }}

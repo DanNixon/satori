@@ -1,0 +1,24 @@
+{{- range .Values.cameras }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "satori.fullname" $ }}-agent-{{ .name }}
+  labels:
+    {{- include "satori.agent.labels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "camera" .) | nindent 4 }}
+data:
+  config.toml: |
+    video_directory = "{{ .videoDirectory }}"
+    ffmpeg_restart_delay = {{ .ffmpegRestartDelay }}
+
+    [stream]
+    url = "{{ .url }}"
+    ffmpeg_input_args = [
+      {{- range $index, $arg := .ffmpegInputArgs }}
+      {{- if $index }},{{ end }}
+      {{ $arg | quote }}
+      {{- end }}
+    ]
+    hls_segment_time = {{ .hlsSegmentTime }}
+    hls_retained_segment_count = {{ .hlsRetainedSegmentCount }}
+{{- end }}
