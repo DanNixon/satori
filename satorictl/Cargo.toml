@@ -9,12 +9,13 @@ async-trait.workspace = true
 chrono.workspace = true
 clap.workspace = true
 crossterm.workspace = true
+git-version.workspace = true
 miette = { workspace = true, features = ["fancy"] }
 ratatui.workspace = true
 rayon.workspace = true
 satori-common.workspace = true
 satori-storage.workspace = true
 tokio.workspace = true
-tracing.workspace = true
 tracing-subscriber.workspace = true
+tracing.workspace = true
 url.workspace = true

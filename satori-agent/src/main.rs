@@ -36,7 +36,10 @@ type SharedImageData = Arc<Mutex<Option<Bytes>>>;
 ///
 /// Handles restreaming a single camera as HLS with history.
 #[derive(Clone, Parser)]
-#[command(author, version = satori_common::version!(), about, long_about = None)]
+#[command(
+    author,
+    version = satori_common::version!(),
+)]
 pub(crate) struct Cli {
     /// Path to configuration file
     #[arg(short, long, env = "CONFIG_FILE", value_name = "FILE")]
