@@ -1,0 +1,45 @@
+{{- range .Values.archivers }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "satori.fullname" $ }}-archiver-{{ .name }}
+  labels:
+    {{- include "satori.archiver.labels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "archiver" .) | nindent 4 }}
+data:
+  config.toml: |
+    queue_file = "{{ .queueFile }}"
+    interval = {{ .interval }}
+
+    [mqtt]
+    broker = "{{ $.Values.mqtt.broker }}"
+    port = {{ $.Values.mqtt.port }}
+    client_id = "{{ include "satori.fullname" $ }}-archiver-{{ .name }}"
+    username = "{{ $.Values.mqtt.username }}"
+    password = "{{ $.Values.mqtt.password }}"
+    topic = "{{ $.Values.mqtt.topic }}"
+
+    [storage]
+    kind = "{{ .storage.kind }}"
+    {{- if eq .storage.kind "s3" }}
+    bucket = {{ .storage.bucket | quote }}
+    region = {{ .storage.region | quote }}
+    {{- if .storage.endpoint }}
+    endpoint = {{ .storage.endpoint | quote }}
+    {{- end }}
+    {{- if .storage.encryption }}
+    [storage.encryption]
+    key = {{ .storage.encryption.key | quote }}
+    algorithm = {{ .storage.encryption.algorithm | quote }}
+    {{- end }}
+    {{- else if eq .storage.kind "local" }}
+    path = {{ .storage.path | quote }}
+    {{- if .storage.encryption }}
+    [storage.encryption]
+    key = {{ .storage.encryption.key | quote }}
+    algorithm = {{ .storage.encryption.algorithm | quote }}
+    {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}

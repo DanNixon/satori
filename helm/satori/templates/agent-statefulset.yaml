@@ -1,0 +1,93 @@
+{{- range .Values.cameras }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "satori.fullname" $ }}-agent-{{ .name }}
+  labels:
+    {{- include "satori.agent.labels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "camera" .) | nindent 4 }}
+spec:
+  serviceName: {{ include "satori.fullname" $ }}-agent-{{ .name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "satori.agent.selectorLabels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "camera" .) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/agent-configmap.yaml") $ | sha256sum }}
+      labels:
+        {{- include "satori.agent.selectorLabels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "camera" .) | nindent 8 }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "satori.serviceAccountName" $ }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: agent
+        securityContext:
+          {{- toYaml $.Values.securityContext | nindent 10 }}
+        image: {{ include "satori.image" (dict "Chart" $.Chart "Values" $.Values "component" "satori-agent") }}
+        imagePullPolicy: {{ $.Values.image.pullPolicy }}
+        args:
+          - --config
+          - /config/config.toml
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          {{- toYaml .resources | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          readOnly: true
+        - name: video
+          mountPath: {{ .videoDirectory }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "satori.fullname" $ }}-agent-{{ .name }}
+      {{- with .nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: video
+    spec:
+      accessModes:
+        - {{ .storage.accessMode }}
+      {{- if .storage.storageClassName }}
+      storageClassName: {{ .storage.storageClassName }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .storage.size }}
+{{- end }}

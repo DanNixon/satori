@@ -1,0 +1,22 @@
+{{- range .Values.cameras }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "satori.fullname" $ }}-agent-{{ .name }}
+  labels:
+    {{- include "satori.agent.labels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "camera" .) | nindent 4 }}
+spec:
+  type: {{ .service.type }}
+  ports:
+    - port: {{ .service.httpPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .service.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "satori.agent.selectorLabels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "camera" .) | nindent 4 }}
+{{- end }}

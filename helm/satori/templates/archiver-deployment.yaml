@@ -1,0 +1,86 @@
+{{- range .Values.archivers }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "satori.fullname" $ }}-archiver-{{ .name }}
+  labels:
+    {{- include "satori.archiver.labels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "archiver" .) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "satori.archiver.selectorLabels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "archiver" .) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/archiver-configmap.yaml") $ | sha256sum }}
+      labels:
+        {{- include "satori.archiver.selectorLabels" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "archiver" .) | nindent 8 }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "satori.serviceAccountName" $ }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: archiver
+        securityContext:
+          {{- toYaml $.Values.securityContext | nindent 10 }}
+        image: {{ include "satori.image" (dict "Chart" $.Chart "Values" $.Values "component" "satori-archiver") }}
+        imagePullPolicy: {{ $.Values.image.pullPolicy }}
+        args:
+          - --config
+          - /config/config.toml
+        ports:
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: metrics
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: metrics
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- with .env }}
+        env:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        resources:
+          {{- toYaml .resources | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          readOnly: true
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "satori.fullname" $ }}-archiver-{{ .name }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "satori.fullname" $ }}-archiver-{{ .name }}
+      {{- with .nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

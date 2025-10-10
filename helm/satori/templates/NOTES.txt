@@ -1,0 +1,56 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+Components deployed:
+{{- if .Values.eventProcessor.enabled }}
+- Event Processor: {{ include "satori.fullname" . }}-event-processor
+{{- end }}
+
+{{- if .Values.cameras }}
+- Camera Agents:
+{{- range .Values.cameras }}
+  * {{ .name }}: {{ include "satori.fullname" $ }}-agent-{{ .name }}
+{{- end }}
+{{- end }}
+
+{{- $enabledArchivers := list }}
+{{- range .Values.archivers }}
+{{- if .enabled }}
+{{- $enabledArchivers = append $enabledArchivers . }}
+{{- end }}
+{{- end }}
+{{- if $enabledArchivers }}
+- Archivers:
+{{- range $enabledArchivers }}
+  * {{ .name }}: {{ include "satori.fullname" $ }}-archiver-{{ .name }}
+{{- end }}
+{{- end }}
+
+To access the Event Processor trigger API:
+{{- if .Values.eventProcessor.enabled }}
+{{- if eq .Values.eventProcessor.service.type "ClusterIP" }}
+  kubectl port-forward svc/{{ include "satori.fullname" . }}-event-processor {{ .Values.eventProcessor.service.httpPort }}:{{ .Values.eventProcessor.service.httpPort }}
+  
+  Then access the API at:
+  http://localhost:{{ .Values.eventProcessor.service.httpPort }}/trigger
+{{- else }}
+  Get the service URL:
+  kubectl get svc {{ include "satori.fullname" . }}-event-processor
+{{- end }}
+{{- end }}
+
+To access a camera agent web UI:
+{{- range .Values.cameras }}
+{{- if eq .service.type "ClusterIP" }}
+  kubectl port-forward svc/{{ include "satori.fullname" $ }}-agent-{{ .name }} {{ .service.httpPort }}:{{ .service.httpPort }}
+  
+  Then access the web UI at:
+  http://localhost:{{ .service.httpPort }}/player
+{{- else }}
+  Get the service URL:
+  kubectl get svc {{ include "satori.fullname" $ }}-agent-{{ .name }}
+{{- end }}
+{{- end }}
+
+For more information, visit: https://github.com/DanNixon/satori
