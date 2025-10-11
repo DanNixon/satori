@@ -29,7 +29,7 @@ chrono = { version = "0.4.42", features = ["serde"] }
 ciborium = "0.2.2"
 clap = { version = "4.4.18", features = ["cargo", "derive", "env", "string"] }
 crossterm = "0.29.0"
-ctor = "0.5.0"
+ctor = "0.6.0"
 futures = "0.3.31"
 git-version = "0.3.9"
 hex = "0.4.3"
