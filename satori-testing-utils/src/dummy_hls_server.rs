@@ -41,8 +41,8 @@ impl DummyStreamParams {
 
 impl From<DummyStreamParams> for MediaPlaylist {
     fn from(params: DummyStreamParams) -> Self {
-        let segment_duration = params.segment_duration.as_secs() as f32;
-        let target_duration = segment_duration * (params.segment_count as f32);
+        let segment_duration = params.segment_duration.as_secs();
+        let target_duration = segment_duration * (params.segment_count as u64);
 
         let segments = (0..params.segment_count)
             .map(|i| {
@@ -53,7 +53,7 @@ impl From<DummyStreamParams> for MediaPlaylist {
 
                 MediaSegment {
                     uri: filename.to_string(),
-                    duration: segment_duration,
+                    duration: segment_duration as f32,
                     ..Default::default()
                 }
             })

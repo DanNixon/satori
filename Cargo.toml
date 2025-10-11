@@ -35,7 +35,7 @@ hex = "0.4.3"
 hpke = { version = "0.11.0", features = ["std", "serde_impls"] }
 indoc = "2.0.5"
 lazy_static = "1.5.0"
-m3u8-rs = "5.0.5"
+m3u8-rs = "6.0.0"
 metrics = "0.24.2"
 metrics-exporter-prometheus = "0.17.2"
 miette = "7.6.0"
