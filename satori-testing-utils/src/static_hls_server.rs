@@ -1,11 +1,7 @@
 use crate::PodmanDriver;
 use chrono::{DateTime, Utc};
 use m3u8_rs::{MediaPlaylist, MediaSegment};
-use std::{
-    fs,
-    path::Path,
-    time::Duration,
-};
+use std::{fs, path::Path, time::Duration};
 
 pub struct StaticHlsServerParams {
     start_time: DateTime<Utc>,
