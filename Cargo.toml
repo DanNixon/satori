@@ -23,7 +23,6 @@ edition = "2024"
 async-channel = "2.5.0"
 async-trait = "0.1.89"
 axum = "0.8.6"
-byte-unit = { version = "4.0.19", features = ["serde"] }
 bytes = { version = "1.10.0", features = ["serde"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 ciborium = "0.2.2"
