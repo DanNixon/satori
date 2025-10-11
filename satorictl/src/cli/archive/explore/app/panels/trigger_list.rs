@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
-    backend::Backend,
     layout::{Constraint, Rect},
     style::{Modifier, Style},
     widgets::{Block, Borders, Cell, Row, Table},
@@ -67,7 +66,7 @@ impl TriggerListPanel {
     }
 }
 
-pub(crate) fn render<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+pub(crate) fn render(f: &mut Frame, app: &mut App, area: Rect) {
     let header_cells = ["Timestamp", "Reason"].iter().map(|h| Cell::from(*h));
 
     let header = Row::new(header_cells)
@@ -96,16 +95,18 @@ pub(crate) fn render<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 
     let active = app.trigger_list.active();
 
-    let table = Table::new(rows)
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(border_style(active))
-                .title("Triggers"),
-        )
-        .highlight_style(highlight_style(active))
-        .widths(&[Constraint::Percentage(40), Constraint::Percentage(60)]);
+    let table = Table::new(
+        rows,
+        &[Constraint::Percentage(40), Constraint::Percentage(60)],
+    )
+    .header(header)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(border_style(active))
+            .title("Triggers"),
+    )
+    .row_highlight_style(highlight_style(active));
 
     f.render_stateful_widget(table, area, app.trigger_list.state.state());
 }

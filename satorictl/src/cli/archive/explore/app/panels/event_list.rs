@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
-    backend::Backend,
     layout::{Constraint, Rect},
     style::{Modifier, Style},
     widgets::{Block, Borders, Cell, Row, Table},
@@ -120,7 +119,7 @@ impl EventListPanel {
     }
 }
 
-pub(crate) fn render<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+pub(crate) fn render(f: &mut Frame, app: &mut App, area: Rect) {
     let header_cells = ["Timestamp", "ID"].iter().map(|h| Cell::from(*h));
 
     let header = Row::new(header_cells)
@@ -137,16 +136,18 @@ pub(crate) fn render<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 
     let active = app.event_list.active();
 
-    let table = Table::new(rows)
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(border_style(active))
-                .title("Events"),
-        )
-        .highlight_style(highlight_style(active))
-        .widths(&[Constraint::Percentage(40), Constraint::Percentage(60)]);
+    let table = Table::new(
+        rows,
+        &[Constraint::Percentage(40), Constraint::Percentage(60)],
+    )
+    .header(header)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(border_style(active))
+            .title("Events"),
+    )
+    .row_highlight_style(highlight_style(active));
 
     f.render_stateful_widget(table, area, app.event_list.state.state());
 }

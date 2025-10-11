@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
-    backend::Backend,
     layout::{Constraint, Rect},
     widgets::{Block, Borders, Cell, Row, Table},
 };
@@ -131,7 +130,7 @@ impl CameraListPanel {
     }
 }
 
-pub(crate) fn render<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+pub(crate) fn render(f: &mut Frame, app: &mut App, area: Rect) {
     let rows = match &*app.camera_list.selected_event.lock().unwrap() {
         None => vec![],
         Some(event) => event
@@ -143,15 +142,14 @@ pub(crate) fn render<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 
     let active = app.camera_list.active();
 
-    let table = Table::new(rows)
+    let table = Table::new(rows, &[Constraint::Percentage(100)])
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(border_style(active))
                 .title("Cameras"),
         )
-        .highlight_style(highlight_style(active))
-        .widths(&[Constraint::Percentage(100)]);
+        .row_highlight_style(highlight_style(active));
 
     f.render_stateful_widget(table, area, app.camera_list.state.state());
 }

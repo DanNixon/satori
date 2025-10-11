@@ -128,17 +128,17 @@ impl App {
     }
 }
 
-fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+fn ui(f: &mut Frame, app: &mut App) {
     let rects = Layout::default()
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .direction(Direction::Horizontal)
-        .split(f.size());
+        .split(f.area());
 
     panels::event_list::render(f, app, rects[0]);
     render_right_pane(f, app, rects[1]);
 }
 
-fn render_right_pane<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+fn render_right_pane(f: &mut Frame, app: &mut App, area: Rect) {
     let event_info_pane_height = 6;
     let app_info_pane_height = 7;
 
@@ -166,7 +166,7 @@ fn render_right_pane<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     render_app_info_pane(f, app, rects1[2]);
 }
 
-fn render_event_info_pane<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+fn render_event_info_pane(f: &mut Frame, app: &mut App, area: Rect) {
     let text = match &*app.selected_event.lock().unwrap() {
         None => vec![],
         Some(event) => {
@@ -198,7 +198,7 @@ fn render_event_info_pane<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rec
     f.render_widget(info_text, area);
 }
 
-fn render_app_info_pane<B: Backend>(f: &mut Frame<B>, _: &mut App, area: Rect) {
+fn render_app_info_pane(f: &mut Frame, _: &mut App, area: Rect) {
     let title = Line::from(vec![
         Span::styled("satorictl", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" "),
