@@ -18,8 +18,6 @@ impl PodmanDriver {
             "run".to_string(),
             "--detach".to_string(),
             "--rm".to_string(),
-            "--network".to_string(),
-            "host".to_string(),
         ];
 
         for port in ports.iter() {

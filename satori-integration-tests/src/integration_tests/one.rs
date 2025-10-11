@@ -1,6 +1,6 @@
 use satori_common::mqtt::PublishExt;
 use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
+    MinioDriver, MosquittoDriver, StaticHlsServer, StaticHlsServerParams, TestMqttClient,
 };
 use std::{
     io::{Read, Write},
@@ -27,23 +27,20 @@ async fn one() {
         .await
         .unwrap();
 
-    let mut stream_1 = DummyHlsServer::new(
+    let stream_1 = StaticHlsServer::new(
         "stream 1".to_string(),
-        DummyStreamParams::new("2023-01-01T00:00:00Z", Duration::from_secs(6), 100).into(),
-    )
-    .await;
+        StaticHlsServerParams::new("2023-01-01T00:00:00Z", Duration::from_secs(6), 100),
+    );
 
-    let mut stream_2 = DummyHlsServer::new(
+    let stream_2 = StaticHlsServer::new(
         "stream 2".to_string(),
-        DummyStreamParams::new("2023-01-01T00:00:01Z", Duration::from_secs(6), 100).into(),
-    )
-    .await;
+        StaticHlsServerParams::new("2023-01-01T00:00:01Z", Duration::from_secs(6), 100),
+    );
 
-    let mut stream_3 = DummyHlsServer::new(
+    let stream_3 = StaticHlsServer::new(
         "stream 3".to_string(),
-        DummyStreamParams::new("2023-01-01T00:00:02Z", Duration::from_secs(6), 100).into(),
-    )
-    .await;
+        StaticHlsServerParams::new("2023-01-01T00:00:02Z", Duration::from_secs(6), 100),
+    );
 
     let mut event_processor_events_file = NamedTempFile::new().unwrap();
 
@@ -56,7 +53,7 @@ async fn one() {
                 event_ttl = 5
 
                 [mqtt]
-                broker = "localhost"
+                broker = "host.containers.internal"
                 port = {}
                 client_id = "satori-event-processor"
                 username = "test"
@@ -95,7 +92,7 @@ async fn one() {
 
     let satori_event_processor = satori_testing_utils::PodmanDriver::new(
         "localhost/satori-event-processor:latest",
-        &[],
+        &["8000:8000", "9090:9090"],
         &[],
         &[
             &format!(
@@ -111,9 +108,9 @@ async fn one() {
             "--config",
             "/config/config.toml",
             "--http-server-address",
-            "127.0.0.1:8000",
+            "0.0.0.0:8000",
             "--observability-address",
-            "127.0.0.1:9090",
+            "0.0.0.0:9090",
         ],
     );
 
@@ -297,8 +294,7 @@ async fn one() {
 
     drop(satori_event_processor);
     drop(satori_archiver);
-
-    stream_1.stop().await;
-    stream_2.stop().await;
-    stream_3.stop().await;
+    drop(stream_1);
+    drop(stream_2);
+    drop(stream_3);
 }
