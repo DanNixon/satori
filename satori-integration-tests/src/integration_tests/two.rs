@@ -38,7 +38,7 @@ async fn two() {
         let contents = format!(
             indoc::indoc!(
                 r#"
-                event_file = "{}"
+                event_file = "/data/events.json"
                 interval = 10  # seconds
                 event_ttl = 5
 
@@ -61,7 +61,6 @@ async fn two() {
                 url = "{}"
                 "#
             ),
-            event_processor_events_file.path().display(),
             mosquitto.port(),
             stream_1.stream_address(),
         );
@@ -71,17 +70,28 @@ async fn two() {
         file
     };
 
-    let satori_event_processor = satori_testing_utils::CargoBinaryRunner::new(
-        "satori-event-processor".to_string(),
-        vec![
-            "--config".to_string(),
-            event_processor_config_file.path().display().to_string(),
-            "--http-server-address".to_string(),
-            "127.0.0.1:8000".to_string(),
-            "--observability-address".to_string(),
-            "127.0.0.1:9090".to_string(),
+    let satori_event_processor = satori_testing_utils::PodmanDriver::new(
+        "localhost/satori-event-processor:latest",
+        &[],
+        &[],
+        &[
+            &format!(
+                "{}:/config/config.toml:ro",
+                event_processor_config_file.path().display()
+            ),
+            &format!(
+                "{}:/data/events.json",
+                event_processor_events_file.path().display()
+            ),
         ],
-        vec![],
+        &[
+            "--config",
+            "/config/config.toml",
+            "--http-server-address",
+            "127.0.0.1:8000",
+            "--observability-address",
+            "127.0.0.1:9090",
+        ],
     );
 
     // Wait for the event processor to start
@@ -95,7 +105,7 @@ async fn two() {
         let contents = format!(
             indoc::indoc!(
                 r#"
-                queue_file = "{}"
+                queue_file = "/data/queue.json"
                 interval = 10  # milliseconds
 
                 [storage]
@@ -113,7 +123,6 @@ async fn two() {
                 topic = "satori"
                 "#
             ),
-            archiver_queue_file.path().display(),
             minio.endpoint(),
             mosquitto.port(),
         );
@@ -123,20 +132,25 @@ async fn two() {
         file
     };
 
-    let satori_archiver = satori_testing_utils::CargoBinaryRunner::new(
-        "satori-archiver".to_string(),
-        vec![
-            "--config".to_string(),
-            archiver_config_file.path().display().to_string(),
-            "--observability-address".to_string(),
-            "127.0.0.1:9091".to_string(),
+    let satori_archiver = satori_testing_utils::PodmanDriver::new(
+        "localhost/satori-archiver:latest",
+        &[],
+        &[
+            "AWS_ACCESS_KEY_ID=minioadmin",
+            "AWS_SECRET_ACCESS_KEY=minioadmin",
         ],
-        vec![
-            ("AWS_ACCESS_KEY_ID".to_string(), "minioadmin".to_string()),
-            (
-                "AWS_SECRET_ACCESS_KEY".to_string(),
-                "minioadmin".to_string(),
+        &[
+            &format!(
+                "{}:/config/config.toml:ro",
+                archiver_config_file.path().display()
             ),
+            &format!("{}:/data/queue.json", archiver_queue_file.path().display()),
+        ],
+        &[
+            "--config",
+            "/config/config.toml",
+            "--observability-address",
+            "127.0.0.1:9091",
         ],
     );
 
@@ -189,8 +203,8 @@ async fn two() {
 
     mqtt_client.stop().await;
 
-    satori_event_processor.stop();
-    satori_archiver.stop();
+    drop(satori_event_processor);
+    drop(satori_archiver);
 
     stream_1.stop().await;
 }
