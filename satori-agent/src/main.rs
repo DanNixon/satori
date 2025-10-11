@@ -228,7 +228,7 @@ fn update_disk_usage_metric(config: &config::Config) {
 
     match config.get_disk_usage() {
         Ok(disk_usage) => {
-            metrics::gauge!(METRIC_DISK_USAGE).set(disk_usage.get_bytes() as f64);
+            metrics::gauge!(METRIC_DISK_USAGE).set(disk_usage as f64);
         }
         Err(e) => {
             warn!("Failed to update disk usage, err={}", e);

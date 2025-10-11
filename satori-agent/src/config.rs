@@ -1,4 +1,3 @@
-use byte_unit::Byte;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use std::{path::PathBuf, time::Duration};
@@ -16,7 +15,7 @@ pub(crate) struct Config {
 }
 
 impl Config {
-    pub(crate) fn get_disk_usage(&self) -> std::io::Result<Byte> {
+    pub(crate) fn get_disk_usage(&self) -> std::io::Result<u64> {
         crate::utils::get_size(&self.video_directory)
     }
 }
