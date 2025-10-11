@@ -75,7 +75,7 @@ pub struct DummyHlsServer {
 impl DummyHlsServer {
     pub async fn new(name: String, playlist: MediaPlaylist) -> Self {
         let app = Router::new().route(
-            "/:filename",
+            "/{filename}",
             get(move |Path(filename): Path<String>| handler(name, filename, playlist.clone())),
         );
 
