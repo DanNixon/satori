@@ -1,4 +1,4 @@
-use crate::utils::ThrottledErrorLogger;
+use crate::ThrottledErrorLogger;
 use async_trait::async_trait;
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, MqttOptions, Outgoing, Publish, QoS};
 use serde::Deserialize;
