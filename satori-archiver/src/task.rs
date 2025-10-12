@@ -1,8 +1,6 @@
-use crate::{
-    AppContext,
-    error::{ArchiverError, ArchiverResult},
-};
+use crate::AppContext;
 use bytes::Bytes;
+use miette::IntoDiagnostic;
 use satori_common::Event;
 use satori_storage::StorageProvider;
 use serde::{Deserialize, Serialize};
@@ -18,7 +16,7 @@ pub(crate) enum ArchiveTask {
 
 impl ArchiveTask {
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn run(&self, context: &AppContext) -> ArchiverResult<()> {
+    pub(crate) async fn run(&self, context: &AppContext) -> miette::Result<()> {
         match &self {
             Self::EventMetadata(event) => self.run_event(context, event).await,
             Self::CameraSegment(segment) => self.run_segment(context, segment).await,
@@ -26,9 +24,9 @@ impl ArchiveTask {
     }
 
     #[tracing::instrument(skip(context))]
-    async fn run_event(&self, context: &AppContext, event: &Event) -> ArchiverResult<()> {
+    async fn run_event(&self, context: &AppContext, event: &Event) -> miette::Result<()> {
         info!("Saving event");
-        Ok(context.storage.put_event(event).await?)
+        context.storage.put_event(event).await.into_diagnostic()
     }
 
     #[tracing::instrument(skip(context))]
@@ -36,13 +34,14 @@ impl ArchiveTask {
         &self,
         context: &AppContext,
         segment: &CameraSegment,
-    ) -> ArchiverResult<()> {
+    ) -> miette::Result<()> {
         info!("Saving segment");
         let data = segment.get(context).await?;
-        Ok(context
+        context
             .storage
             .put_segment(&segment.camera_name, &segment.filename, data)
-            .await?)
+            .await
+            .into_diagnostic()
     }
 }
 
@@ -55,21 +54,30 @@ pub(crate) struct CameraSegment {
 
 impl CameraSegment {
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn get(&self, context: &AppContext) -> ArchiverResult<Bytes> {
+    pub(crate) async fn get(&self, context: &AppContext) -> miette::Result<Bytes> {
         let url = get_segment_url(self.camera_url.clone(), &self.filename)?;
         debug!("Segment URL: {url}");
 
-        let req = context.http_client.get(url).send().await?;
-        Ok(req.bytes().await?)
+        let req = context
+            .http_client
+            .get(url)
+            .send()
+            .await
+            .into_diagnostic()?;
+        req.bytes().await.into_diagnostic()
     }
 }
 
-fn get_segment_url(hls_url: Url, segment_filename: &Path) -> ArchiverResult<Url> {
+fn get_segment_url(hls_url: Url, segment_filename: &Path) -> miette::Result<Url> {
     let mut url = hls_url;
     url.path_segments_mut()
-        .map_err(|_| ArchiverError::Url)?
+        .map_err(|_| miette::miette!("Failed to get URL path segments"))?
         .pop()
-        .push(segment_filename.to_str().ok_or(ArchiverError::Url)?);
+        .push(
+            segment_filename
+                .to_str()
+                .ok_or_else(|| miette::miette!("Failed to convert segment filename to string"))?,
+        );
     Ok(url)
 }
 

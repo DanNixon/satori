@@ -1,4 +1,5 @@
-use crate::{AppContext, error::ArchiverResult, task::ArchiveTask};
+use crate::{AppContext, task::ArchiveTask};
+use miette::IntoDiagnostic;
 use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event, mqtt::PublishExt};
 use std::{
     collections::VecDeque,
@@ -38,10 +39,10 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument]
-    fn load(path: &Path) -> ArchiverResult<Self> {
-        let file = File::open(path)?;
+    fn load(path: &Path) -> miette::Result<Self> {
+        let file = File::open(path).into_diagnostic()?;
         let queue = Self {
-            queue: serde_json::from_reader(file)?,
+            queue: serde_json::from_reader(file).into_diagnostic()?,
             backing_file_name: path.into(),
         };
         queue.update_queue_length_metrics();
@@ -49,10 +50,10 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    fn save(&self) -> ArchiverResult<()> {
+    fn save(&self) -> miette::Result<()> {
         info!("Saving job queue to {}", self.backing_file_name.display());
-        let file = File::create(&self.backing_file_name)?;
-        Ok(serde_json::to_writer(file, &self.queue)?)
+        let file = File::create(&self.backing_file_name).into_diagnostic()?;
+        serde_json::to_writer(file, &self.queue).into_diagnostic()
     }
 
     #[tracing::instrument(skip_all)]
