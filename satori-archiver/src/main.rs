@@ -1,5 +1,4 @@
 mod config;
-mod error;
 mod queue;
 mod task;
 
