@@ -6,6 +6,7 @@ use nix::{
     unistd::{self, Pid},
 };
 use std::{
+    path::PathBuf,
     process::Stdio,
     sync::{Arc, Mutex},
 };
@@ -17,8 +18,6 @@ use tokio::{
 };
 use tokio_util::codec::FramedRead;
 use tracing::{debug, error, info, warn};
-
-const HLS_PLAYLIST_FILENAME: &str = "stream.m3u8";
 
 pub(crate) struct Streamer {
     config: Config,
@@ -39,12 +38,17 @@ impl Streamer {
         }
     }
 
+    pub(crate) fn playlist_filename(&self) -> PathBuf {
+        self.config.video_directory.join("stream.m3u8")
+    }
+
     #[tracing::instrument(skip_all)]
     pub(crate) async fn start(&mut self) {
         let config = self.config.clone();
         let ffmpeg_pid = self.ffmpeg_pid.clone();
         let terminate = self.terminate.clone();
         let jpeg_tx = self.jpeg_tx.clone();
+        let playlist_filename = self.playlist_filename();
 
         self.handle = Some(tokio::spawn(async move {
             loop {
@@ -78,7 +82,7 @@ impl Streamer {
                         )
                         .arg("-strftime")
                         .arg("1")
-                        .arg(config.video_directory.join(HLS_PLAYLIST_FILENAME))
+                        .arg(playlist_filename.clone())
                         // Output preview frames as JPEG
                         .arg("-vf")
                         .arg("fps=1")
@@ -115,7 +119,7 @@ impl Streamer {
                 };
 
                 // Increment ffmpeg invocation count
-                metrics::counter!(crate::METRIC_FFMPEG_INVOCATIONS).increment(1);
+                metrics::counter!(crate::o11y::METRIC_FFMPEG_INVOCATIONS).increment(1);
 
                 let stdout = ffmpeg_process.stdout.take().unwrap();
                 let mut stdout_frame = FramedRead::new(stdout, JpegFrameDecoder);
