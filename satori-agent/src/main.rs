@@ -63,7 +63,7 @@ async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
-    let config: config::Config = satori_common::load_config_file(&cli.config);
+    let config: config::Config = satori_common::load_config_file(&cli.config)?;
 
     info!("FFmpeg version: {}", ffmpeg::get_ffmpeg_version());
 
