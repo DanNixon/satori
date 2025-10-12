@@ -1,5 +1,4 @@
 mod config;
-mod error;
 mod event_set;
 mod hls_client;
 mod segments;

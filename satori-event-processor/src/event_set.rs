@@ -1,4 +1,5 @@
-use crate::{error::EventProcessorResult, hls_client::HlsClient, segments::Playlist};
+use crate::{hls_client::HlsClient, segments::Playlist};
+use miette::IntoDiagnostic;
 use satori_common::{
     ArchiveCommand, ArchiveSegmentsCommand, CameraSegments, Event, EventReason, Message, Trigger,
     mqtt::{AsyncClientExt, MqttClient},
@@ -41,15 +42,15 @@ impl EventSet {
     }
 
     #[tracing::instrument]
-    fn load(path: &Path) -> EventProcessorResult<Vec<Event>> {
-        let file = File::open(path)?;
-        Ok(serde_json::from_reader(&file)?)
+    fn load(path: &Path) -> miette::Result<Vec<Event>> {
+        let file = File::open(path).into_diagnostic()?;
+        serde_json::from_reader(&file).into_diagnostic()
     }
 
     #[tracing::instrument(skip_all)]
-    fn save(&self) -> EventProcessorResult<()> {
-        let file = File::create(&self.backing_file_name)?;
-        Ok(serde_json::to_writer(&file, &self.events)?)
+    fn save(&self) -> miette::Result<()> {
+        let file = File::create(&self.backing_file_name).into_diagnostic()?;
+        serde_json::to_writer(&file, &self.events).into_diagnostic()
     }
 
     #[tracing::instrument(skip_all)]

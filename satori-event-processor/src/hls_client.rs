@@ -1,7 +1,7 @@
-use crate::error::{EventProcessorError, EventProcessorResult};
+use m3u8_rs::MediaPlaylist;
+use miette::IntoDiagnostic;
 use satori_common::camera_config::CamerasConfig;
 use std::collections::HashMap;
-use tracing::{debug, error};
 use url::Url;
 
 pub(crate) struct HlsClient {
@@ -23,39 +23,27 @@ impl HlsClient {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn get_camera_url(&self, camera: &str) -> EventProcessorResult<Url> {
+    pub(crate) fn get_camera_url(&self, camera: &str) -> miette::Result<Url> {
         self.camera_urls
             .get(camera)
-            .ok_or_else(|| EventProcessorError::NoSuchCamera(camera.into()))
+            .ok_or_else(|| miette::miette!("No such camera: {camera}"))
             .cloned()
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) async fn get_playlist(
-        &self,
-        camera: &str,
-    ) -> EventProcessorResult<m3u8_rs::MediaPlaylist> {
+    pub(crate) async fn get_playlist(&self, camera: &str) -> miette::Result<MediaPlaylist> {
         let url = self.get_camera_url(camera)?;
-        let body = self.http_client.get(url).send().await?.bytes().await?;
-        parse_playlist(body)
-    }
-}
 
-#[tracing::instrument(skip_all)]
-fn parse_playlist(data: bytes::Bytes) -> EventProcessorResult<m3u8_rs::MediaPlaylist> {
-    match m3u8_rs::parse_playlist_res(&data) {
-        Ok(pl) => {
-            if let m3u8_rs::Playlist::MediaPlaylist(pl) = pl {
-                debug!("Playlist length: {}", pl.segments.len());
-                Ok(pl)
-            } else {
-                error!("Did not find a media playlist");
-                Err(EventProcessorError::PlaylistParseError)
-            }
-        }
-        Err(err) => {
-            error!("Failed to parse playlist, reason: {}", err);
-            Err(EventProcessorError::PlaylistParseError)
-        }
+        let body = self
+            .http_client
+            .get(url)
+            .send()
+            .await
+            .into_diagnostic()?
+            .bytes()
+            .await
+            .into_diagnostic()?;
+
+        satori_common::parse_m3u8_media_playlist(&body)
     }
 }
