@@ -40,7 +40,7 @@ async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
-    let config: Config = satori_common::load_config_file(&cli.config);
+    let config: Config = satori_common::load_config_file(&cli.config)?;
 
     let mut mqtt_client: MqttClient = config.mqtt.into();
 

@@ -30,7 +30,7 @@ pub(crate) struct ArchiveCommand {
 #[async_trait]
 impl CliExecute for ArchiveCommand {
     async fn execute(&self) -> miette::Result<()> {
-        let storage_config: StorageConfig = satori_common::load_config_file(&self.storage);
+        let storage_config: StorageConfig = satori_common::load_config_file(&self.storage)?;
         let storage = storage_config.create_provider();
 
         match &self.command {
