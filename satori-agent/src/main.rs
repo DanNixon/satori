@@ -1,18 +1,19 @@
 mod config;
 mod ffmpeg;
 mod jpeg_frame_decoder;
+mod o11y;
 mod utils;
 
 use axum::{
     Router,
     body::Body,
-    http::header,
-    response::{Html, IntoResponse},
+    extract::State,
+    http::{StatusCode, header},
+    response::{Html, IntoResponse, Response},
     routing::get,
 };
 use bytes::{BufMut, Bytes};
 use clap::Parser;
-use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
 use std::{
     fs,
@@ -24,11 +25,7 @@ use std::{
 use tokio::net::TcpListener;
 use tokio_stream::wrappers::BroadcastStream;
 use tower_http::services::ServeDir;
-use tracing::{debug, info, warn};
-
-const METRIC_DISK_USAGE: &str = "satori_agent_disk_usage";
-const METRIC_FFMPEG_INVOCATIONS: &str = "satori_agent_ffmpeg_invocations";
-const METRIC_SEGMENTS: &str = "satori_agent_segments";
+use tracing::{error, info, warn};
 
 type SharedImageData = Arc<Mutex<Option<Bytes>>>;
 
@@ -54,6 +51,13 @@ pub(crate) struct Cli {
     observability_address: SocketAddr,
 }
 
+#[derive(Clone)]
+struct AppContext {
+    frame_image: Arc<Mutex<Option<Bytes>>>,
+    jpeg_multipart_tx: tokio::sync::broadcast::Sender<Bytes>,
+    playlist_filename: PathBuf,
+}
+
 #[tokio::main]
 async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
@@ -63,31 +67,7 @@ async fn main() -> miette::Result<()> {
 
     info!("FFmpeg version: {}", ffmpeg::get_ffmpeg_version());
 
-    // Set up metrics server
-    let builder = PrometheusBuilder::new();
-    builder
-        .with_http_listener(cli.observability_address)
-        .install()
-        .into_diagnostic()
-        .wrap_err("Failed to start prometheus metrics exporter")?;
-
-    metrics::describe_gauge!(
-        METRIC_DISK_USAGE,
-        metrics::Unit::Bytes,
-        "Disk usage of this camera's output video directory"
-    );
-
-    metrics::describe_counter!(
-        METRIC_FFMPEG_INVOCATIONS,
-        metrics::Unit::Count,
-        "Number of times ffmpeg has been invoked"
-    );
-
-    metrics::describe_gauge!(
-        METRIC_SEGMENTS,
-        metrics::Unit::Count,
-        "Number of MPEG-TS segments generated"
-    );
+    o11y::init(cli.observability_address)?;
 
     // Create video output directory
     fs::create_dir_all(&config.video_directory)
@@ -99,6 +79,7 @@ async fn main() -> miette::Result<()> {
 
     // Start streamer
     let mut streamer = ffmpeg::Streamer::new(config.clone(), jpeg_tx);
+    let playlist_filename = streamer.playlist_filename();
     streamer.start().await;
 
     // Configure HTTP server listener
@@ -106,7 +87,7 @@ async fn main() -> miette::Result<()> {
         .await
         .into_diagnostic()
         .wrap_err(format!(
-            "tcp listener should bind to {}",
+            "Failed to bind API server to {}",
             cli.http_server_address
         ))?;
 
@@ -114,41 +95,19 @@ async fn main() -> miette::Result<()> {
     let frame_image = SharedImageData::default();
     let (jpeg_multipart_tx, _) = tokio::sync::broadcast::channel::<Bytes>(8);
 
-    let app = {
-        let frame_image = frame_image.clone();
-        let jpeg_multipart_tx = jpeg_multipart_tx.clone();
-
-        Router::new()
-            .route("/player", get(Html(include_str!("player.html"))))
-            .route(
-                "/jpeg",
-                get(move || async move {
-                    match frame_image.lock().unwrap().as_ref() {
-                        Some(image) => {
-                            ([(header::CONTENT_TYPE, "image/jpeg")], image.clone()).into_response()
-                        }
-                        None => axum::http::StatusCode::NOT_FOUND.into_response(),
-                    }
-                }),
-            )
-            .route(
-                "/mjpeg",
-                get(move || async move {
-                    let stream = BroadcastStream::new(jpeg_multipart_tx.subscribe());
-                    let body = Body::from_stream(stream);
-
-                    (
-                        [(
-                            header::CONTENT_TYPE,
-                            "multipart/x-mixed-replace; boundary=frame",
-                        )],
-                        body,
-                    )
-                        .into_response()
-                }),
-            )
-            .nest_service("/", ServeDir::new(config.video_directory.clone()))
+    let context = AppContext {
+        frame_image: frame_image.clone(),
+        jpeg_multipart_tx: jpeg_multipart_tx.clone(),
+        playlist_filename: playlist_filename.clone(),
     };
+
+    let app = Router::new()
+        .route("/player", get(player_handler))
+        .route("/jpeg", get(jpeg_handler))
+        .route("/mjpeg", get(mjpeg_handler))
+        .route("/hls", get(hls_handler))
+        .nest_service("/hls/", ServeDir::new(config.video_directory.clone()))
+        .with_state(context);
 
     // Start HTTP server
     info!("Starting HTTP server on {}", cli.http_server_address);
@@ -171,8 +130,13 @@ async fn main() -> miette::Result<()> {
                 frame_image.lock().unwrap().replace(image);
             }
             _ = metrics_interval.tick() => {
-                update_segment_count_metric(&config);
-                update_disk_usage_metric(&config);
+                if let Err(e) = o11y::update_segment_count_metric(&playlist_filename).await {
+                    warn!("Failed to update segment count metric: {e}");
+                }
+
+                if let Err(e) = o11y::update_disk_usage_metric(&config) {
+                    warn!("Failed to update disk usage metric: {e}");
+                }
             }
             _ = tokio::signal::ctrl_c() => {
                 info!("Exiting");
@@ -192,46 +156,61 @@ async fn main() -> miette::Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip_all)]
-fn update_segment_count_metric(config: &config::Config) {
-    debug!("Updating segment count metric");
+async fn player_handler(State(_ctx): State<AppContext>) -> Response {
+    metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/player").increment(1);
 
-    match std::fs::read_dir(&config.video_directory) {
-        Ok(contents) => {
-            let ts_file_count = contents
-                .filter_map(|i| i.ok())
-                .map(|i| i.path())
-                .filter(|i| {
-                    if i.is_file() {
-                        if let Some(ext) = i.extension() {
-                            ext.to_str() == Some("ts")
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                })
-                .count();
+    Html(include_str!("player.html")).into_response()
+}
 
-            metrics::gauge!(METRIC_SEGMENTS).set(ts_file_count as f64);
-        }
-        Err(e) => {
-            warn!("Failed to read video directory, err={}", e);
-        }
+async fn jpeg_handler(State(ctx): State<AppContext>) -> Response {
+    metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/jpeg").increment(1);
+
+    match ctx.frame_image.lock().unwrap().as_ref() {
+        Some(image) => ([(header::CONTENT_TYPE, "image/jpeg")], image.clone()).into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
-#[tracing::instrument(skip_all)]
-fn update_disk_usage_metric(config: &config::Config) {
-    debug!("Updating disk usage metric");
+async fn mjpeg_handler(State(ctx): State<AppContext>) -> Response {
+    metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/mjpeg").increment(1);
 
-    match config.get_disk_usage() {
-        Ok(disk_usage) => {
-            metrics::gauge!(METRIC_DISK_USAGE).set(disk_usage as f64);
+    let stream = BroadcastStream::new(ctx.jpeg_multipart_tx.subscribe());
+    let body = Body::from_stream(stream);
+
+    let response = (
+        [(
+            header::CONTENT_TYPE,
+            "multipart/x-mixed-replace; boundary=frame",
+        )],
+        body,
+    );
+    response.into_response()
+}
+
+async fn hls_handler(State(ctx): State<AppContext>) -> Response {
+    metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/hls").increment(1);
+
+    let f = async || -> miette::Result<Response> {
+        let mut playlist = utils::load_playlist(&ctx.playlist_filename).await?;
+
+        // Prefix "hls/" to all paths in playlist
+        for segment in &mut playlist.segments {
+            if !segment.uri.starts_with("hls/") {
+                segment.uri = format!("hls/{}", segment.uri);
+            }
         }
-        Err(e) => {
-            warn!("Failed to update disk usage, err={}", e);
-        }
-    }
+
+        // TODO: cropping/filtering
+
+        let mut s = Vec::new();
+        playlist.write_to(&mut s).into_diagnostic()?;
+
+        let response = ([(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")], s);
+        Ok(response.into_response())
+    };
+
+    f().await.unwrap_or_else(|e| {
+        error!("{e}");
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    })
 }

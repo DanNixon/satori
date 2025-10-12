@@ -1,7 +1,7 @@
 use crate::error::{EventProcessorError, EventProcessorResult};
 use satori_common::camera_config::CamerasConfig;
 use std::collections::HashMap;
-use tracing::error;
+use tracing::{debug, error};
 use url::Url;
 
 pub(crate) struct HlsClient {
@@ -46,7 +46,7 @@ fn parse_playlist(data: bytes::Bytes) -> EventProcessorResult<m3u8_rs::MediaPlay
     match m3u8_rs::parse_playlist_res(&data) {
         Ok(pl) => {
             if let m3u8_rs::Playlist::MediaPlaylist(pl) = pl {
-                tracing::debug!("Playlist length: {}", pl.segments.len());
+                debug!("Playlist length: {}", pl.segments.len());
                 Ok(pl)
             } else {
                 error!("Did not find a media playlist");

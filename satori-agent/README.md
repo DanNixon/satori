@@ -25,15 +25,15 @@ An example config file is shown below:
 # power failure or want a long history of consistent recording, or
 # volatile/in-memory (e.g. tmpfs or ramfs) if you only care about as much video
 # as you can fit in memory and can live with the loss of video on power cycle.
-# video_directory = "/mnt/video/this-camera".
+video_directory = "/mnt/video/this-camera"
 
 [stream]
 # The URL of the video source as passed to `ffmpeg`.
-# (this example works well for Reolink PoE cameras)
+# See `supported-cameras.md` for known working settings for specific cameras.
 url = "http://<this-camera>/flv?port=1935&app=bcs&stream=channel0_main.bcs&user=<user>&password=<pass>"
 
 # Extra arguments passed to the input of `ffmpeg`.
-# (this example works well for Reolink PoE cameras)
+# See `supported-cameras.md` for known working settings for specific cameras.
 ffmpeg_input_args = [
   "-timeout",
   "5000000",
@@ -60,6 +60,7 @@ hls_retained_segment_count = 14400
 
 The following endpoints are available on the HTTP server address of a running agent:
 
-- `frame.jpg`: a single frame in JPEG format, updated every second
-- `/stream.m3u8`: HLS stream for the cache of recorded video
-- `player`: a basic browser based player for the HLS stream
+- `/jpeg`: a single frame in JPEG format, updated every second
+- `/mjpeg`: an MJPEG stream, updated every second
+- `/hls`: HLS stream for the recorded video
+- `/player`: a basic browser based player for the HLS stream

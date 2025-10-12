@@ -20,7 +20,7 @@
       <video id="video" controls="true"></video>
       <script>
         var video = document.getElementById('video');
-        var videoSrc = 'stream.m3u8';
+        var videoSrc = './hls';
         if (Hls.isSupported()) {
           var hls = new Hls(startPosition=0, worker=true);
           hls.loadSource(videoSrc);
