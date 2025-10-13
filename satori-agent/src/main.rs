@@ -212,6 +212,7 @@ async fn mjpeg_handler(State(ctx): State<AppContext>) -> Response {
 struct HlsQueryParams {
     /// Start timestamp in RFC3339 format
     since: Option<String>,
+
     /// End timestamp in RFC3339 format
     until: Option<String>,
 }
@@ -225,22 +226,23 @@ async fn hls_handler(
     let f = async || -> miette::Result<Response> {
         let mut playlist = utils::load_playlist(&ctx.playlist_filename).await?;
 
-        // Parse 'since' and 'until' if provided
-        let start = if let Some(since_str) = &params.since {
+        // Parse 'since' if provided
+        let start = if let Some(since) = &params.since {
             Some(
-                DateTime::parse_from_rfc3339(since_str)
+                DateTime::parse_from_rfc3339(since)
                     .into_diagnostic()
-                    .wrap_err("Failed to parse 'since' timestamp")?,
+                    .wrap_err(format!("Failed to parse 'since' timestamp: {since}"))?,
             )
         } else {
             None
         };
 
-        let end = if let Some(until_str) = &params.until {
+        // Parse 'until' if provided
+        let end = if let Some(until) = &params.until {
             Some(
-                DateTime::parse_from_rfc3339(until_str)
+                DateTime::parse_from_rfc3339(until)
                     .into_diagnostic()
-                    .wrap_err("Failed to parse 'until' timestamp")?,
+                    .wrap_err(format!("Failed to parse 'until' timestamp: {until}"))?,
             )
         } else {
             None
@@ -256,10 +258,13 @@ async fn hls_handler(
             }
         }
 
-        let mut s = Vec::new();
-        playlist.write_to(&mut s).into_diagnostic()?;
+        let mut playlist_str = Vec::new();
+        playlist.write_to(&mut playlist_str).into_diagnostic()?;
 
-        let response = ([(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")], s);
+        let response = (
+            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+            playlist_str,
+        );
         Ok(response.into_response())
     };
 
