@@ -62,5 +62,20 @@ The following endpoints are available on the HTTP server address of a running ag
 
 - `/jpeg`: a single frame in JPEG format, updated every second
 - `/mjpeg`: an MJPEG stream, updated every second
-- `/hls`: HLS stream for the recorded video
+- `/hls`: HLS stream for the recorded video (supports time-based filtering, see below)
 - `/player`: a basic browser based player for the HLS stream
+
+### HLS and Player Endpoint Query Parameters
+
+The `/hls` and `/player` endpoints support optional query parameters to filter the returned playlist by time:
+
+- `since`: Start timestamp in RFC3339 format (e.g., `2022-12-30T18:10:00+00:00`). Only segments that end at or after this time are included.
+- `until`: End timestamp in RFC3339 format (e.g., `2022-12-30T18:20:00+00:00`). Only segments that start at or before this time are included.
+
+Examples:
+
+- `/hls?since=2022-12-30T18:10:00+00:00` - Get all segments from 18:10:00 onwards
+- `/hls?until=2022-12-30T18:20:00+00:00` - Get all segments up to 18:20:00
+- `/hls?since=2022-12-30T18:10:00+00:00&until=2022-12-30T18:20:00+00:00` - Get segments between 18:10:00 and 18:20:00
+- `/hls` - Get all available segments (no filtering)
+- `/player?since=2022-12-30T18:10:00+00:00&until=2022-12-30T18:20:00+00:00` - Open player with filtered segments

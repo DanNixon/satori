@@ -7,14 +7,16 @@ mod utils;
 use axum::{
     Router,
     body::Body,
-    extract::State,
+    extract::{Query, State},
     http::{StatusCode, header},
     response::{Html, IntoResponse, Response},
     routing::get,
 };
 use bytes::{BufMut, Bytes};
+use chrono::DateTime;
 use clap::Parser;
 use miette::{Context, IntoDiagnostic};
+use serde::Deserialize;
 use std::{
     fs,
     net::SocketAddr,
@@ -156,10 +158,29 @@ async fn main() -> miette::Result<()> {
     Ok(())
 }
 
-async fn player_handler(State(_ctx): State<AppContext>) -> Response {
+async fn player_handler(
+    State(_ctx): State<AppContext>,
+    Query(params): Query<HlsQueryParams>,
+) -> Response {
     metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/player").increment(1);
 
-    Html(include_str!("player.html")).into_response()
+    // Build query string for HLS endpoint
+    let mut query_params = Vec::new();
+    if let Some(since) = &params.since {
+        query_params.push(format!("since={}", since.replace('+', "%2B")));
+    }
+    if let Some(until) = &params.until {
+        query_params.push(format!("until={}", until.replace('+', "%2B")));
+    }
+    let query_string = if query_params.is_empty() {
+        String::new()
+    } else {
+        format!("?{}", query_params.join("&"))
+    };
+
+    // Inject the query string into the HTML
+    let html = include_str!("player.html").replace("'./hls'", &format!("'./hls{}'", query_string));
+    Html(html).into_response()
 }
 
 async fn jpeg_handler(State(ctx): State<AppContext>) -> Response {
@@ -187,11 +208,48 @@ async fn mjpeg_handler(State(ctx): State<AppContext>) -> Response {
     response.into_response()
 }
 
-async fn hls_handler(State(ctx): State<AppContext>) -> Response {
+#[derive(Debug, Deserialize)]
+struct HlsQueryParams {
+    /// Start timestamp in RFC3339 format
+    since: Option<String>,
+
+    /// End timestamp in RFC3339 format
+    until: Option<String>,
+}
+
+async fn hls_handler(
+    State(ctx): State<AppContext>,
+    Query(params): Query<HlsQueryParams>,
+) -> Response {
     metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/hls").increment(1);
 
     let f = async || -> miette::Result<Response> {
         let mut playlist = utils::load_playlist(&ctx.playlist_filename).await?;
+
+        // Parse 'since' if provided
+        let start = if let Some(since) = &params.since {
+            Some(
+                DateTime::parse_from_rfc3339(since)
+                    .into_diagnostic()
+                    .wrap_err(format!("Failed to parse 'since' timestamp: {since}"))?,
+            )
+        } else {
+            None
+        };
+
+        // Parse 'until' if provided
+        let end = if let Some(until) = &params.until {
+            Some(
+                DateTime::parse_from_rfc3339(until)
+                    .into_diagnostic()
+                    .wrap_err(format!("Failed to parse 'until' timestamp: {until}"))?,
+            )
+        } else {
+            None
+        };
+
+        // Apply time filtering
+        playlist = satori_common::filter_playlist_by_time(playlist, start, end)?;
 
         // Prefix "hls/" to all paths in playlist
         for segment in &mut playlist.segments {
@@ -200,12 +258,13 @@ async fn hls_handler(State(ctx): State<AppContext>) -> Response {
             }
         }
 
-        // TODO: cropping/filtering
+        let mut playlist_str = Vec::new();
+        playlist.write_to(&mut playlist_str).into_diagnostic()?;
 
-        let mut s = Vec::new();
-        playlist.write_to(&mut s).into_diagnostic()?;
-
-        let response = ([(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")], s);
+        let response = (
+            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+            playlist_str,
+        );
         Ok(response.into_response())
     };
 
@@ -213,4 +272,36 @@ async fn hls_handler(State(ctx): State<AppContext>) -> Response {
         error!("{e}");
         StatusCode::INTERNAL_SERVER_ERROR.into_response()
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hls_query_params_deserialization() {
+        // Test with 'since' parameter
+        let query = "since=2022-12-30T18:10:00%2B00:00";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_some());
+        assert!(params.until.is_none());
+
+        // Test with 'until' parameter
+        let query = "until=2022-12-30T18:10:00%2B00:00";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_none());
+        assert!(params.until.is_some());
+
+        // Test with both 'since' and 'until'
+        let query = "since=2022-12-30T18:10:00%2B00:00&until=2022-12-30T18:20:00%2B00:00";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_some());
+        assert!(params.until.is_some());
+
+        // Test with no parameters
+        let query = "";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_none());
+        assert!(params.until.is_none());
+    }
 }
