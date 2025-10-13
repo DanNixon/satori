@@ -1,41 +1,297 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Live View</title>
+    <title>Video Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-      div video {
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      
+      .container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        max-width: 100%;
+      }
+      
+      .controls-panel {
+        background-color: #2a2a2a;
+        padding: 15px;
+        border-bottom: 1px solid #3a3a3a;
+        flex-shrink: 0;
+      }
+      
+      .controls-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #fff;
+      }
+      
+      .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: center;
+      }
+      
+      .filter-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 200px;
+      }
+      
+      .filter-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .filter-header input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+      
+      .filter-header label {
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+      }
+      
+      input[type="datetime-local"] {
+        padding: 8px 12px;
+        font-size: 14px;
+        background-color: #3a3a3a;
+        color: #e0e0e0;
+        border: 1px solid #4a4a4a;
+        border-radius: 4px;
+        width: 100%;
+        max-width: 250px;
+      }
+      
+      input[type="datetime-local"]:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      input[type="datetime-local"]:focus {
+        outline: none;
+        border-color: #5a8dee;
+      }
+      
+      .video-container {
+        flex: 1;
+        position: relative;
+        background-color: #000;
+        overflow: hidden;
+      }
+      
+      .video-container video {
         position: absolute;
-        z-index: -1;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         object-fit: contain;
       }
+      
+      /* Responsive layout for mobile */
+      @media (max-width: 768px) {
+        .controls-panel {
+          padding: 12px;
+        }
+        
+        .controls-title {
+          font-size: 16px;
+          margin-bottom: 12px;
+        }
+        
+        .filter-group {
+          gap: 15px;
+        }
+        
+        .filter-item {
+          min-width: 100%;
+        }
+        
+        input[type="datetime-local"] {
+          max-width: 100%;
+        }
+      }
     </style>
   </head>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <body>
-    <div>
-      <video id="video" controls="true"></video>
-      <script>
-        var video = document.getElementById('video');
-        var videoSrc = './hls';
+    <div class="container">
+      <div class="controls-panel">
+        <div class="controls-title">Time Filter</div>
+        <div class="filter-group">
+          <div class="filter-item">
+            <div class="filter-header">
+              <input type="checkbox" id="enableStart" checked>
+              <label for="enableStart">Start Time</label>
+            </div>
+            <input type="datetime-local" id="startTime" step="1">
+          </div>
+          <div class="filter-item">
+            <div class="filter-header">
+              <input type="checkbox" id="enableEnd">
+              <label for="enableEnd">End Time</label>
+            </div>
+            <input type="datetime-local" id="endTime" step="1">
+          </div>
+        </div>
+      </div>
+      <div class="video-container">
+        <video id="video" controls="true"></video>
+      </div>
+    </div>
+    <script>
+      // Parse URL parameters to get initial values
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialSince = urlParams.get('since');
+      const initialUntil = urlParams.get('until');
+      
+      // Get DOM elements
+      const startTimeInput = document.getElementById('startTime');
+      const endTimeInput = document.getElementById('endTime');
+      const enableStartCheckbox = document.getElementById('enableStart');
+      const enableEndCheckbox = document.getElementById('enableEnd');
+      const video = document.getElementById('video');
+      
+      // Function to convert RFC3339 to datetime-local format
+      function rfc3339ToDatetimeLocal(rfc3339) {
+        if (!rfc3339) return '';
+        // Parse the RFC3339 string and format for datetime-local input
+        const date = new Date(rfc3339);
+        if (isNaN(date.getTime())) return '';
+        
+        // Get local datetime string in the format required by datetime-local
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      }
+      
+      // Function to convert datetime-local to RFC3339 format
+      function datetimeLocalToRfc3339(datetimeLocal) {
+        if (!datetimeLocal) return '';
+        const date = new Date(datetimeLocal);
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().replace(/\.\d{3}Z$/, '+00:00');
+      }
+      
+      // Initialize UI with URL parameters
+      if (initialSince) {
+        startTimeInput.value = rfc3339ToDatetimeLocal(initialSince);
+        enableStartCheckbox.checked = true;
+      } else {
+        enableStartCheckbox.checked = false;
+        startTimeInput.disabled = true;
+      }
+      
+      if (initialUntil) {
+        endTimeInput.value = rfc3339ToDatetimeLocal(initialUntil);
+        enableEndCheckbox.checked = true;
+      } else {
+        enableEndCheckbox.checked = false;
+        endTimeInput.disabled = true;
+      }
+      
+      // Function to reload video with current filter settings
+      function reloadVideo() {
+        const params = new URLSearchParams();
+        
+        if (enableStartCheckbox.checked && startTimeInput.value) {
+          params.set('since', datetimeLocalToRfc3339(startTimeInput.value));
+        }
+        
+        if (enableEndCheckbox.checked && endTimeInput.value) {
+          params.set('until', datetimeLocalToRfc3339(endTimeInput.value));
+        }
+        
+        // Update URL without page reload
+        const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+        window.history.pushState({}, '', newUrl);
+        
+        // Build HLS URL with parameters
+        const hlsParams = new URLSearchParams();
+        if (enableStartCheckbox.checked && startTimeInput.value) {
+          hlsParams.set('since', datetimeLocalToRfc3339(startTimeInput.value));
+        }
+        if (enableEndCheckbox.checked && endTimeInput.value) {
+          hlsParams.set('until', datetimeLocalToRfc3339(endTimeInput.value));
+        }
+        
+        const videoSrc = hlsParams.toString() ? `./hls?${hlsParams.toString()}` : './hls';
+        
+        // Reload video with new source
+        if (window.hls) {
+          window.hls.destroy();
+        }
+        
         if (Hls.isSupported()) {
-          var hls = new Hls(startPosition=0, worker=true);
-          hls.loadSource(videoSrc);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          window.hls = new Hls({startPosition: 0, worker: true});
+          window.hls.loadSource(videoSrc);
+          window.hls.attachMedia(video);
+          window.hls.on(Hls.Events.MANIFEST_PARSED, function() {
             video.play();
           });
-        }
-        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
           video.src = videoSrc;
           video.addEventListener('loadedmetadata', function() {
             video.play();
           });
         }
-      </script>
-    </div>
+      }
+      
+      // Enable/disable start time input
+      enableStartCheckbox.addEventListener('change', function() {
+        startTimeInput.disabled = !this.checked;
+        reloadVideo();
+      });
+      
+      // Enable/disable end time input
+      enableEndCheckbox.addEventListener('change', function() {
+        endTimeInput.disabled = !this.checked;
+        reloadVideo();
+      });
+      
+      // Reload video when start time changes
+      startTimeInput.addEventListener('change', function() {
+        if (enableStartCheckbox.checked) {
+          reloadVideo();
+        }
+      });
+      
+      // Reload video when end time changes
+      endTimeInput.addEventListener('change', function() {
+        if (enableEndCheckbox.checked) {
+          reloadVideo();
+        }
+      });
+      
+      // Initial video load
+      reloadVideo();
+    </script>
   </body>
 </html>
