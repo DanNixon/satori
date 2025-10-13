@@ -74,6 +74,7 @@ The `/hls` endpoint supports optional query parameters to filter the returned pl
 - `last`: Duration in the past (e.g., `10s`, `5m`, `1h`, `30m`). Only segments from the last N time are included. This parameter cannot be used together with `since` or `until`.
 
 Examples:
+
 - `/hls?since=2022-12-30T18:10:00+00:00` - Get all segments from 18:10:00 onwards
 - `/hls?until=2022-12-30T18:20:00+00:00` - Get all segments up to 18:20:00
 - `/hls?since=2022-12-30T18:10:00+00:00&until=2022-12-30T18:20:00+00:00` - Get segments between 18:10:00 and 18:20:00

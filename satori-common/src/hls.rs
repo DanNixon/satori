@@ -45,13 +45,11 @@ pub fn filter_playlist_by_time(
 
     playlist.segments.retain(|segment| {
         // Parse the segment timestamp from the filename
-        let segment_start = match DateTime::<FixedOffset>::parse_from_str(
-            &segment.uri,
-            SEGMENT_FILENAME_FORMAT,
-        ) {
-            Ok(dt) => dt,
-            Err(_) => return false, // Skip segments we can't parse
-        };
+        let segment_start =
+            match DateTime::<FixedOffset>::parse_from_str(&segment.uri, SEGMENT_FILENAME_FORMAT) {
+                Ok(dt) => dt,
+                Err(_) => return false, // Skip segments we can't parse
+            };
 
         let segment_duration = Duration::from_secs_f32(segment.duration);
         let segment_end =
@@ -64,10 +62,7 @@ pub fn filter_playlist_by_time(
         after_start && before_end
     });
 
-    trace!(
-        "Filtered playlist to {} segments",
-        playlist.segments.len()
-    );
+    trace!("Filtered playlist to {} segments", playlist.segments.len());
 
     Ok(playlist)
 }
