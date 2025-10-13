@@ -13,7 +13,7 @@ use axum::{
     routing::get,
 };
 use bytes::{BufMut, Bytes};
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::DateTime;
 use clap::Parser;
 use miette::{Context, IntoDiagnostic};
 use serde::Deserialize;
@@ -158,10 +158,29 @@ async fn main() -> miette::Result<()> {
     Ok(())
 }
 
-async fn player_handler(State(_ctx): State<AppContext>) -> Response {
+async fn player_handler(
+    State(_ctx): State<AppContext>,
+    Query(params): Query<HlsQueryParams>,
+) -> Response {
     metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/player").increment(1);
 
-    Html(include_str!("player.html")).into_response()
+    // Build query string for HLS endpoint
+    let mut query_params = Vec::new();
+    if let Some(since) = &params.since {
+        query_params.push(format!("since={}", since.replace('+', "%2B")));
+    }
+    if let Some(until) = &params.until {
+        query_params.push(format!("until={}", until.replace('+', "%2B")));
+    }
+    let query_string = if query_params.is_empty() {
+        String::new()
+    } else {
+        format!("?{}", query_params.join("&"))
+    };
+
+    // Inject the query string into the HTML
+    let html = include_str!("player.html").replace("'./hls'", &format!("'./hls{}'", query_string));
+    Html(html).into_response()
 }
 
 async fn jpeg_handler(State(ctx): State<AppContext>) -> Response {
@@ -195,8 +214,6 @@ struct HlsQueryParams {
     since: Option<String>,
     /// End timestamp in RFC3339 format
     until: Option<String>,
-    /// Duration in the past (e.g., "10s", "5m", "1h")
-    last: Option<String>,
 }
 
 async fn hls_handler(
@@ -206,51 +223,27 @@ async fn hls_handler(
     metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/hls").increment(1);
 
     let f = async || -> miette::Result<Response> {
-        // Validate that 'last' is not used with 'since' or 'until'
-        if params.last.is_some() && (params.since.is_some() || params.until.is_some()) {
-            return Err(miette::miette!(
-                "The 'last' parameter cannot be used with 'since' or 'until'"
-            ));
-        }
-
         let mut playlist = utils::load_playlist(&ctx.playlist_filename).await?;
 
-        // Determine time range for filtering
-        let (start, end) = if let Some(last_duration_str) = &params.last {
-            // Parse the duration
-            let duration = humantime::parse_duration(last_duration_str)
-                .into_diagnostic()
-                .wrap_err("Failed to parse 'last' duration")?;
-
-            let now = Utc::now();
-            let start_time = now - chrono::Duration::from_std(duration).into_diagnostic()?;
-
-            // Convert to FixedOffset
-            let start: DateTime<FixedOffset> = start_time.into();
-            (Some(start), None)
+        // Parse 'since' and 'until' if provided
+        let start = if let Some(since_str) = &params.since {
+            Some(
+                DateTime::parse_from_rfc3339(since_str)
+                    .into_diagnostic()
+                    .wrap_err("Failed to parse 'since' timestamp")?,
+            )
         } else {
-            // Parse 'since' and 'until' if provided
-            let start = if let Some(since_str) = &params.since {
-                Some(
-                    DateTime::parse_from_rfc3339(since_str)
-                        .into_diagnostic()
-                        .wrap_err("Failed to parse 'since' timestamp")?,
-                )
-            } else {
-                None
-            };
+            None
+        };
 
-            let end = if let Some(until_str) = &params.until {
-                Some(
-                    DateTime::parse_from_rfc3339(until_str)
-                        .into_diagnostic()
-                        .wrap_err("Failed to parse 'until' timestamp")?,
-                )
-            } else {
-                None
-            };
-
-            (start, end)
+        let end = if let Some(until_str) = &params.until {
+            Some(
+                DateTime::parse_from_rfc3339(until_str)
+                    .into_diagnostic()
+                    .wrap_err("Failed to parse 'until' timestamp")?,
+            )
+        } else {
+            None
         };
 
         // Apply time filtering
@@ -287,35 +280,23 @@ mod tests {
         let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
         assert!(params.since.is_some());
         assert!(params.until.is_none());
-        assert!(params.last.is_none());
 
         // Test with 'until' parameter
         let query = "until=2022-12-30T18:10:00%2B00:00";
         let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
         assert!(params.since.is_none());
         assert!(params.until.is_some());
-        assert!(params.last.is_none());
-
-        // Test with 'last' parameter
-        let query = "last=5m";
-        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
-        assert!(params.since.is_none());
-        assert!(params.until.is_none());
-        assert!(params.last.is_some());
-        assert_eq!(params.last.unwrap(), "5m");
 
         // Test with both 'since' and 'until'
         let query = "since=2022-12-30T18:10:00%2B00:00&until=2022-12-30T18:20:00%2B00:00";
         let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
         assert!(params.since.is_some());
         assert!(params.until.is_some());
-        assert!(params.last.is_none());
 
         // Test with no parameters
         let query = "";
         let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
         assert!(params.since.is_none());
         assert!(params.until.is_none());
-        assert!(params.last.is_none());
     }
 }
