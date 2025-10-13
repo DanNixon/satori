@@ -2,7 +2,7 @@ use chrono::{DateTime, FixedOffset};
 use m3u8_rs::MediaPlaylist;
 use miette::Context;
 use std::time::Duration;
-use tracing::trace;
+use tracing::{trace, warn};
 
 pub const SEGMENT_FILENAME_FORMAT: &str = "%Y-%m-%dT%H_%M_%S%z.ts";
 
@@ -48,7 +48,13 @@ pub fn filter_playlist_by_time(
         let segment_start =
             match DateTime::<FixedOffset>::parse_from_str(&segment.uri, SEGMENT_FILENAME_FORMAT) {
                 Ok(dt) => dt,
-                Err(_) => return false, // Skip segments we can't parse
+                Err(e) => {
+                    warn!(
+                        "Failed to parse datetime from segment filename: {0} ({e})",
+                        segment.uri
+                    );
+                    return false; // Skip segments we can't parse
+                }
             };
 
         let segment_duration = Duration::from_secs_f32(segment.duration);
