@@ -33,6 +33,7 @@ futures = "0.3.31"
 git-version = "0.3.9"
 hex = "0.4.3"
 hpke = { version = "0.11.0", features = ["std", "serde_impls"] }
+humantime = "2.1.0"
 indoc = "2.0.5"
 lazy_static = "1.5.0"
 m3u8-rs = "6.0.0"

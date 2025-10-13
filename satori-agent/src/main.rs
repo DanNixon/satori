@@ -7,14 +7,16 @@ mod utils;
 use axum::{
     Router,
     body::Body,
-    extract::State,
+    extract::{Query, State},
     http::{StatusCode, header},
     response::{Html, IntoResponse, Response},
     routing::get,
 };
 use bytes::{BufMut, Bytes};
+use chrono::{DateTime, FixedOffset, Utc};
 use clap::Parser;
 use miette::{Context, IntoDiagnostic};
+use serde::Deserialize;
 use std::{
     fs,
     net::SocketAddr,
@@ -187,11 +189,72 @@ async fn mjpeg_handler(State(ctx): State<AppContext>) -> Response {
     response.into_response()
 }
 
-async fn hls_handler(State(ctx): State<AppContext>) -> Response {
+#[derive(Debug, Deserialize)]
+struct HlsQueryParams {
+    /// Start timestamp in RFC3339 format
+    since: Option<String>,
+    /// End timestamp in RFC3339 format
+    until: Option<String>,
+    /// Duration in the past (e.g., "10s", "5m", "1h")
+    last: Option<String>,
+}
+
+async fn hls_handler(
+    State(ctx): State<AppContext>,
+    Query(params): Query<HlsQueryParams>,
+) -> Response {
     metrics::counter!(o11y::METRIC_HTTP_REQUESTS, "path" => "/hls").increment(1);
 
     let f = async || -> miette::Result<Response> {
+        // Validate that 'last' is not used with 'since' or 'until'
+        if params.last.is_some() && (params.since.is_some() || params.until.is_some()) {
+            return Err(miette::miette!(
+                "The 'last' parameter cannot be used with 'since' or 'until'"
+            ));
+        }
+
         let mut playlist = utils::load_playlist(&ctx.playlist_filename).await?;
+
+        // Determine time range for filtering
+        let (start, end) = if let Some(last_duration_str) = &params.last {
+            // Parse the duration
+            let duration = humantime::parse_duration(last_duration_str)
+                .into_diagnostic()
+                .wrap_err("Failed to parse 'last' duration")?;
+
+            let now = Utc::now();
+            let start_time = now - chrono::Duration::from_std(duration).into_diagnostic()?;
+
+            // Convert to FixedOffset
+            let start: DateTime<FixedOffset> = start_time.into();
+            (Some(start), None)
+        } else {
+            // Parse 'since' and 'until' if provided
+            let start = if let Some(since_str) = &params.since {
+                Some(
+                    DateTime::parse_from_rfc3339(since_str)
+                        .into_diagnostic()
+                        .wrap_err("Failed to parse 'since' timestamp")?,
+                )
+            } else {
+                None
+            };
+
+            let end = if let Some(until_str) = &params.until {
+                Some(
+                    DateTime::parse_from_rfc3339(until_str)
+                        .into_diagnostic()
+                        .wrap_err("Failed to parse 'until' timestamp")?,
+                )
+            } else {
+                None
+            };
+
+            (start, end)
+        };
+
+        // Apply time filtering
+        playlist = satori_common::filter_playlist_by_time(playlist, start, end)?;
 
         // Prefix "hls/" to all paths in playlist
         for segment in &mut playlist.segments {
@@ -199,8 +262,6 @@ async fn hls_handler(State(ctx): State<AppContext>) -> Response {
                 segment.uri = format!("hls/{}", segment.uri);
             }
         }
-
-        // TODO: cropping/filtering
 
         let mut s = Vec::new();
         playlist.write_to(&mut s).into_diagnostic()?;
