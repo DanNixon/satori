@@ -275,3 +275,47 @@ async fn hls_handler(
         StatusCode::INTERNAL_SERVER_ERROR.into_response()
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hls_query_params_deserialization() {
+        // Test with 'since' parameter
+        let query = "since=2022-12-30T18:10:00%2B00:00";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_some());
+        assert!(params.until.is_none());
+        assert!(params.last.is_none());
+
+        // Test with 'until' parameter
+        let query = "until=2022-12-30T18:10:00%2B00:00";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_none());
+        assert!(params.until.is_some());
+        assert!(params.last.is_none());
+
+        // Test with 'last' parameter
+        let query = "last=5m";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_none());
+        assert!(params.until.is_none());
+        assert!(params.last.is_some());
+        assert_eq!(params.last.unwrap(), "5m");
+
+        // Test with both 'since' and 'until'
+        let query = "since=2022-12-30T18:10:00%2B00:00&until=2022-12-30T18:20:00%2B00:00";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_some());
+        assert!(params.until.is_some());
+        assert!(params.last.is_none());
+
+        // Test with no parameters
+        let query = "";
+        let params: HlsQueryParams = serde_urlencoded::from_str(query).unwrap();
+        assert!(params.since.is_none());
+        assert!(params.until.is_none());
+        assert!(params.last.is_none());
+    }
+}

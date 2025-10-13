@@ -58,8 +58,8 @@ pub fn filter_playlist_by_time(
             segment_start + chrono::Duration::from_std(segment_duration).unwrap_or_default();
 
         // Check if segment overlaps with the requested time range
-        let after_start = start.map_or(true, |s| segment_end >= s);
-        let before_end = end.map_or(true, |e| segment_start <= e);
+        let after_start = start.is_none_or(|s| segment_end >= s);
+        let before_end = end.is_none_or(|e| segment_start <= e);
 
         after_start && before_end
     });

@@ -2870,6 +2870,7 @@ dependencies = [
  "regex",
  "satori-common",
  "serde",
+ "serde_urlencoded",
  "serde_with",
  "tokio",
  "tokio-stream",

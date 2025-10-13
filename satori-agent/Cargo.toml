@@ -28,3 +28,6 @@ tower-http.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
 url.workspace = true
+
+[dev-dependencies]
+serde_urlencoded = "0.7"
