@@ -31,15 +31,8 @@
       .controls-panel {
         background-color: #2a2a2a;
         padding: 15px;
-        border-bottom: 1px solid #3a3a3a;
+        border-top: 1px solid #3a3a3a;
         flex-shrink: 0;
-      }
-      
-      .controls-title {
-        font-size: 18px;
-        font-weight: 600;
-        margin-bottom: 15px;
-        color: #fff;
       }
       
       .filter-group {
@@ -218,8 +211,10 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <body>
     <div class="container">
+      <div class="video-container">
+        <video id="video" controls="true"></video>
+      </div>
       <div class="controls-panel">
-        <div class="controls-title">Time Filter</div>
         <div class="filter-group">
           <div class="filter-item">
             <div class="filter-header">
@@ -242,9 +237,6 @@
             </select>
           </div>
         </div>
-      </div>
-      <div class="video-container">
-        <video id="video" controls="true"></video>
       </div>
     </div>
     <script>
