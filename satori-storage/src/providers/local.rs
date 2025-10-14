@@ -146,13 +146,10 @@ impl StorageProvider for LocalStorage {
         let info =
             crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
 
-        // Ensure camera directory exists
-        let camera_dir = self.base_path.join("segments").join(camera_name);
-        std::fs::create_dir_all(&camera_dir)?;
-
         let path = self.get_segment_path(camera_name, filename);
         let data = self.encryption.segment.encrypt(info, data)?;
 
+        // object_store LocalFileSystem automatically creates parent directories
         self.store.put(&path, data.into()).await?;
 
         Ok(())
