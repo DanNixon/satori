@@ -56,6 +56,36 @@
         min-width: 200px;
       }
       
+      .timezone-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 200px;
+      }
+      
+      .timezone-item label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #e0e0e0;
+      }
+      
+      select.timezone-select {
+        padding: 8px 12px;
+        font-size: 14px;
+        background-color: #3a3a3a;
+        color: #e0e0e0;
+        border: 1px solid #4a4a4a;
+        border-radius: 4px;
+        width: 100%;
+        max-width: 250px;
+        cursor: pointer;
+      }
+      
+      select.timezone-select:focus {
+        outline: none;
+        border-color: #5a8dee;
+      }
+      
       .filter-header {
         display: flex;
         align-items: center;
@@ -170,7 +200,15 @@
           min-width: 100%;
         }
         
+        .timezone-item {
+          min-width: 100%;
+        }
+        
         input[type="text"].datetime-input {
+          max-width: 100%;
+        }
+        
+        select.timezone-select {
           max-width: 100%;
         }
       }
@@ -197,6 +235,12 @@
             </div>
             <input type="text" class="datetime-input" id="endTime" placeholder="Select date and time" readonly>
           </div>
+          <div class="timezone-item">
+            <label for="timezoneSelect">Time Zone</label>
+            <select id="timezoneSelect" class="timezone-select">
+              <!-- Populated by JavaScript -->
+            </select>
+          </div>
         </div>
       </div>
       <div class="video-container">
@@ -214,7 +258,55 @@
       const endTimeInput = document.getElementById('endTime');
       const enableStartCheckbox = document.getElementById('enableStart');
       const enableEndCheckbox = document.getElementById('enableEnd');
+      const timezoneSelect = document.getElementById('timezoneSelect');
       const video = document.getElementById('video');
+      
+      // Get browser's timezone offset in minutes
+      const browserTimezoneOffset = -new Date().getTimezoneOffset();
+      
+      // Populate timezone selector with common timezones
+      const timezones = [
+        { offset: -720, label: 'UTC-12:00' },
+        { offset: -660, label: 'UTC-11:00' },
+        { offset: -600, label: 'UTC-10:00' },
+        { offset: -540, label: 'UTC-09:00' },
+        { offset: -480, label: 'UTC-08:00' },
+        { offset: -420, label: 'UTC-07:00' },
+        { offset: -360, label: 'UTC-06:00' },
+        { offset: -300, label: 'UTC-05:00' },
+        { offset: -240, label: 'UTC-04:00' },
+        { offset: -180, label: 'UTC-03:00' },
+        { offset: -120, label: 'UTC-02:00' },
+        { offset: -60, label: 'UTC-01:00' },
+        { offset: 0, label: 'UTC+00:00' },
+        { offset: 60, label: 'UTC+01:00' },
+        { offset: 120, label: 'UTC+02:00' },
+        { offset: 180, label: 'UTC+03:00' },
+        { offset: 240, label: 'UTC+04:00' },
+        { offset: 300, label: 'UTC+05:00' },
+        { offset: 330, label: 'UTC+05:30' },
+        { offset: 360, label: 'UTC+06:00' },
+        { offset: 420, label: 'UTC+07:00' },
+        { offset: 480, label: 'UTC+08:00' },
+        { offset: 540, label: 'UTC+09:00' },
+        { offset: 600, label: 'UTC+10:00' },
+        { offset: 660, label: 'UTC+11:00' },
+        { offset: 720, label: 'UTC+12:00' },
+        { offset: 780, label: 'UTC+13:00' },
+      ];
+      
+      // Find and set browser's timezone as default
+      let selectedTimezoneOffset = browserTimezoneOffset;
+      timezones.forEach(tz => {
+        const option = document.createElement('option');
+        option.value = tz.offset;
+        option.textContent = tz.label;
+        if (tz.offset === browserTimezoneOffset) {
+          option.textContent += ' (Browser)';
+          option.selected = true;
+        }
+        timezoneSelect.appendChild(option);
+      });
       
       // Function to convert RFC3339 to Date object
       function rfc3339ToDate(rfc3339) {
@@ -223,10 +315,36 @@
         return isNaN(date.getTime()) ? null : date;
       }
       
-      // Function to convert Date to RFC3339 format
-      function dateToRfc3339(date) {
+      // Function to format offset as RFC3339 timezone string
+      function formatTimezoneOffset(offsetMinutes) {
+        const sign = offsetMinutes >= 0 ? '+' : '-';
+        const absOffset = Math.abs(offsetMinutes);
+        const hours = Math.floor(absOffset / 60);
+        const minutes = absOffset % 60;
+        return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+      
+      // Function to convert Date to RFC3339 format with specified timezone offset
+      function dateToRfc3339(date, timezoneOffsetMinutes) {
         if (!date) return '';
-        return date.toISOString().replace(/\.\d{3}Z$/, '+00:00');
+        
+        // Get UTC timestamp
+        const utcTime = date.getTime();
+        
+        // Apply timezone offset to get local time
+        const localTime = new Date(utcTime + (timezoneOffsetMinutes * 60000));
+        
+        // Format as RFC3339 with timezone offset
+        const year = localTime.getUTCFullYear();
+        const month = String(localTime.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(localTime.getUTCDate()).padStart(2, '0');
+        const hours = String(localTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(localTime.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(localTime.getUTCSeconds()).padStart(2, '0');
+        
+        const tzOffset = formatTimezoneOffset(timezoneOffsetMinutes);
+        
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${tzOffset}`;
       }
       
       // Initialize Flatpickr for start time
@@ -275,13 +393,14 @@
       // Function to reload video with current filter settings
       function reloadVideo() {
         const params = new URLSearchParams();
+        const tzOffset = parseInt(timezoneSelect.value);
         
         if (enableStartCheckbox.checked && startTimePicker.selectedDates.length > 0) {
-          params.set('since', dateToRfc3339(startTimePicker.selectedDates[0]));
+          params.set('since', dateToRfc3339(startTimePicker.selectedDates[0], tzOffset));
         }
         
         if (enableEndCheckbox.checked && endTimePicker.selectedDates.length > 0) {
-          params.set('until', dateToRfc3339(endTimePicker.selectedDates[0]));
+          params.set('until', dateToRfc3339(endTimePicker.selectedDates[0], tzOffset));
         }
         
         // Update URL without page reload
@@ -291,10 +410,10 @@
         // Build HLS URL with parameters
         const hlsParams = new URLSearchParams();
         if (enableStartCheckbox.checked && startTimePicker.selectedDates.length > 0) {
-          hlsParams.set('since', dateToRfc3339(startTimePicker.selectedDates[0]));
+          hlsParams.set('since', dateToRfc3339(startTimePicker.selectedDates[0], tzOffset));
         }
         if (enableEndCheckbox.checked && endTimePicker.selectedDates.length > 0) {
-          hlsParams.set('until', dateToRfc3339(endTimePicker.selectedDates[0]));
+          hlsParams.set('until', dateToRfc3339(endTimePicker.selectedDates[0], tzOffset));
         }
         
         const videoSrc = hlsParams.toString() ? `./hls?${hlsParams.toString()}` : './hls';
@@ -334,6 +453,11 @@
         if (this.checked) {
           endTimePicker.open();
         }
+        reloadVideo();
+      });
+      
+      // Reload video when timezone changes
+      timezoneSelect.addEventListener('change', function() {
         reloadVideo();
       });
       
