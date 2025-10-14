@@ -3,6 +3,8 @@
   <head>
     <title>Video Player</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
     <style>
       * {
         box-sizing: border-box;
@@ -73,7 +75,7 @@
         user-select: none;
       }
       
-      input[type="datetime-local"] {
+      input[type="text"].datetime-input {
         padding: 8px 12px;
         font-size: 14px;
         background-color: #3a3a3a;
@@ -82,15 +84,54 @@
         border-radius: 4px;
         width: 100%;
         max-width: 250px;
+        cursor: pointer;
       }
       
-      input[type="datetime-local"]:disabled {
+      input[type="text"].datetime-input:disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
       
-      input[type="datetime-local"]:focus {
+      input[type="text"].datetime-input:focus {
         outline: none;
+        border-color: #5a8dee;
+      }
+      
+      /* Flatpickr custom styling */
+      .flatpickr-calendar {
+        background-color: #2a2a2a;
+        border: 1px solid #4a4a4a;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      }
+      
+      .flatpickr-months {
+        background-color: #3a3a3a;
+      }
+      
+      .flatpickr-current-month {
+        color: #e0e0e0;
+      }
+      
+      .flatpickr-day {
+        color: #e0e0e0;
+      }
+      
+      .flatpickr-day.selected {
+        background-color: #5a8dee;
+        border-color: #5a8dee;
+      }
+      
+      .flatpickr-day:hover {
+        background-color: #4a4a4a;
+      }
+      
+      .flatpickr-time input {
+        background-color: #3a3a3a;
+        color: #e0e0e0;
+        border: 1px solid #4a4a4a;
+      }
+      
+      .flatpickr-time input:focus {
         border-color: #5a8dee;
       }
       
@@ -129,13 +170,14 @@
           min-width: 100%;
         }
         
-        input[type="datetime-local"] {
+        input[type="text"].datetime-input {
           max-width: 100%;
         }
       }
     </style>
   </head>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <body>
     <div class="container">
       <div class="controls-panel">
@@ -146,14 +188,14 @@
               <input type="checkbox" id="enableStart" checked>
               <label for="enableStart">Start Time</label>
             </div>
-            <input type="datetime-local" id="startTime" step="1">
+            <input type="text" class="datetime-input" id="startTime" placeholder="Select date and time" readonly>
           </div>
           <div class="filter-item">
             <div class="filter-header">
               <input type="checkbox" id="enableEnd">
               <label for="enableEnd">End Time</label>
             </div>
-            <input type="datetime-local" id="endTime" step="1">
+            <input type="text" class="datetime-input" id="endTime" placeholder="Select date and time" readonly>
           </div>
         </div>
       </div>
@@ -174,35 +216,49 @@
       const enableEndCheckbox = document.getElementById('enableEnd');
       const video = document.getElementById('video');
       
-      // Function to convert RFC3339 to datetime-local format
-      function rfc3339ToDatetimeLocal(rfc3339) {
-        if (!rfc3339) return '';
-        // Parse the RFC3339 string and format for datetime-local input
+      // Function to convert RFC3339 to Date object
+      function rfc3339ToDate(rfc3339) {
+        if (!rfc3339) return null;
         const date = new Date(rfc3339);
-        if (isNaN(date.getTime())) return '';
-        
-        // Get local datetime string in the format required by datetime-local
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        return isNaN(date.getTime()) ? null : date;
       }
       
-      // Function to convert datetime-local to RFC3339 format
-      function datetimeLocalToRfc3339(datetimeLocal) {
-        if (!datetimeLocal) return '';
-        const date = new Date(datetimeLocal);
-        if (isNaN(date.getTime())) return '';
+      // Function to convert Date to RFC3339 format
+      function dateToRfc3339(date) {
+        if (!date) return '';
         return date.toISOString().replace(/\.\d{3}Z$/, '+00:00');
       }
       
-      // Initialize UI with URL parameters
+      // Initialize Flatpickr for start time
+      const startTimePicker = flatpickr(startTimeInput, {
+        enableTime: true,
+        enableSeconds: true,
+        dateFormat: "Y-m-d H:i:S",
+        time_24hr: true,
+        defaultDate: initialSince ? rfc3339ToDate(initialSince) : null,
+        onChange: function(selectedDates, dateStr, instance) {
+          if (enableStartCheckbox.checked && selectedDates.length > 0) {
+            reloadVideo();
+          }
+        }
+      });
+      
+      // Initialize Flatpickr for end time
+      const endTimePicker = flatpickr(endTimeInput, {
+        enableTime: true,
+        enableSeconds: true,
+        dateFormat: "Y-m-d H:i:S",
+        time_24hr: true,
+        defaultDate: initialUntil ? rfc3339ToDate(initialUntil) : null,
+        onChange: function(selectedDates, dateStr, instance) {
+          if (enableEndCheckbox.checked && selectedDates.length > 0) {
+            reloadVideo();
+          }
+        }
+      });
+      
+      // Initialize checkbox states
       if (initialSince) {
-        startTimeInput.value = rfc3339ToDatetimeLocal(initialSince);
         enableStartCheckbox.checked = true;
       } else {
         enableStartCheckbox.checked = false;
@@ -210,7 +266,6 @@
       }
       
       if (initialUntil) {
-        endTimeInput.value = rfc3339ToDatetimeLocal(initialUntil);
         enableEndCheckbox.checked = true;
       } else {
         enableEndCheckbox.checked = false;
@@ -221,12 +276,12 @@
       function reloadVideo() {
         const params = new URLSearchParams();
         
-        if (enableStartCheckbox.checked && startTimeInput.value) {
-          params.set('since', datetimeLocalToRfc3339(startTimeInput.value));
+        if (enableStartCheckbox.checked && startTimePicker.selectedDates.length > 0) {
+          params.set('since', dateToRfc3339(startTimePicker.selectedDates[0]));
         }
         
-        if (enableEndCheckbox.checked && endTimeInput.value) {
-          params.set('until', datetimeLocalToRfc3339(endTimeInput.value));
+        if (enableEndCheckbox.checked && endTimePicker.selectedDates.length > 0) {
+          params.set('until', dateToRfc3339(endTimePicker.selectedDates[0]));
         }
         
         // Update URL without page reload
@@ -235,11 +290,11 @@
         
         // Build HLS URL with parameters
         const hlsParams = new URLSearchParams();
-        if (enableStartCheckbox.checked && startTimeInput.value) {
-          hlsParams.set('since', datetimeLocalToRfc3339(startTimeInput.value));
+        if (enableStartCheckbox.checked && startTimePicker.selectedDates.length > 0) {
+          hlsParams.set('since', dateToRfc3339(startTimePicker.selectedDates[0]));
         }
-        if (enableEndCheckbox.checked && endTimeInput.value) {
-          hlsParams.set('until', datetimeLocalToRfc3339(endTimeInput.value));
+        if (enableEndCheckbox.checked && endTimePicker.selectedDates.length > 0) {
+          hlsParams.set('until', dateToRfc3339(endTimePicker.selectedDates[0]));
         }
         
         const videoSrc = hlsParams.toString() ? `./hls?${hlsParams.toString()}` : './hls';
@@ -267,27 +322,19 @@
       // Enable/disable start time input
       enableStartCheckbox.addEventListener('change', function() {
         startTimeInput.disabled = !this.checked;
+        if (this.checked) {
+          startTimePicker.open();
+        }
         reloadVideo();
       });
       
       // Enable/disable end time input
       enableEndCheckbox.addEventListener('change', function() {
         endTimeInput.disabled = !this.checked;
+        if (this.checked) {
+          endTimePicker.open();
+        }
         reloadVideo();
-      });
-      
-      // Reload video when start time changes
-      startTimeInput.addEventListener('change', function() {
-        if (enableStartCheckbox.checked) {
-          reloadVideo();
-        }
-      });
-      
-      // Reload video when end time changes
-      endTimeInput.addEventListener('change', function() {
-        if (enableEndCheckbox.checked) {
-          reloadVideo();
-        }
       });
       
       // Initial video load
