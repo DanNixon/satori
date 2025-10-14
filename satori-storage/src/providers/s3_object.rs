@@ -31,18 +31,14 @@ pub struct S3Storage {
 
 impl S3Storage {
     pub fn new(config: S3Config) -> Self {
-        let mut builder = AmazonS3Builder::new()
+        // TODO: error handling
+        let store = AmazonS3Builder::from_env()
+            .with_endpoint(&config.endpoint)
+            .with_allow_http(true)
+            .with_region(&config.region)
             .with_bucket_name(&config.bucket)
-            .with_region(&config.region);
-
-        if !config.endpoint.is_empty() {
-            builder = builder
-                .with_endpoint(&config.endpoint)
-                .with_allow_http(true);
-        }
-
-        // Use credentials from environment (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, etc.)
-        let store = builder.build().unwrap();
+            .build()
+            .unwrap();
 
         Self {
             store: Arc::new(store),
