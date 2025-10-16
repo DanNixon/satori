@@ -1,6 +1,4 @@
-use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MosquittoDriver, TestMqttClient,
-};
+use satori_testing_utils::{DummyHlsServer, DummyStreamParams, MosquittoDriver, TestMqttClient};
 use std::{
     io::{Read, Write},
     time::Duration,
