@@ -9,7 +9,6 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tracing::warn;
 
 #[derive(Debug, Deserialize)]
 pub struct LocalConfig {
@@ -27,7 +26,7 @@ pub struct LocalStorage {
 impl LocalStorage {
     pub fn new(config: LocalConfig) -> Self {
         // TODO: error handling
-        let store = Arc::new(LocalFileSystem::new_with_prefix(&config.path.clone()).unwrap());
+        let store = Arc::new(LocalFileSystem::new_with_prefix(config.path.clone()).unwrap());
 
         Self {
             store,
