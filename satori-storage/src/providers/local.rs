@@ -21,23 +21,16 @@ pub struct LocalConfig {
 #[derive(Clone)]
 pub struct LocalStorage {
     store: Arc<LocalFileSystem>,
-    base_path: PathBuf,
     encryption: EncryptionConfig,
 }
 
 impl LocalStorage {
     pub fn new(config: LocalConfig) -> Self {
-        let base_path = config.path.clone();
-
-        // Create directories
-        std::fs::create_dir_all(base_path.join("events")).unwrap();
-        std::fs::create_dir_all(base_path.join("segments")).unwrap();
-
-        let store = Arc::new(LocalFileSystem::new_with_prefix(&base_path).unwrap());
+        // TODO: error handling
+        let store = Arc::new(LocalFileSystem::new_with_prefix(&config.path.clone()).unwrap());
 
         Self {
             store,
-            base_path,
             encryption: config.encryption,
         }
     }
@@ -192,21 +185,6 @@ impl StorageProvider for LocalStorage {
     async fn delete_segment(&self, camera_name: &str, filename: &Path) -> StorageResult<()> {
         let path = self.get_segment_path(camera_name, filename);
         self.store.delete(&path).await?;
-
-        let camera_directory = self.base_path.join("segments").join(camera_name);
-        // Check if the directory is empty
-        if camera_directory
-            .read_dir()
-            .map(|mut i| i.next().is_none())
-            .unwrap_or(false)
-            && let Err(err) = std::fs::remove_dir(&camera_directory)
-        {
-            warn!(
-                "Failed to remove directory ({}) for camera that no longer has any video segments. {err}",
-                camera_directory.display()
-            );
-        }
-
         Ok(())
     }
 }
