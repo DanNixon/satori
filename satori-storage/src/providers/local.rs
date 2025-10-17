@@ -26,7 +26,11 @@ pub struct LocalStorage {
 impl LocalStorage {
     pub fn new(config: LocalConfig) -> Self {
         // TODO: error handling
-        let store = Arc::new(LocalFileSystem::new_with_prefix(config.path.clone()).unwrap());
+        let store = Arc::new(
+            LocalFileSystem::new_with_prefix(config.path.clone())
+                .unwrap()
+                .with_automatic_cleanup(true),
+        );
 
         Self {
             store,
