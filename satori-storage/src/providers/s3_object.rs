@@ -30,20 +30,18 @@ pub struct S3Storage {
 }
 
 impl S3Storage {
-    pub fn new(config: S3Config) -> Self {
-        // TODO: error handling
+    pub fn new(config: S3Config) -> StorageResult<Self> {
         let store = AmazonS3Builder::from_env()
             .with_endpoint(&config.endpoint)
             .with_allow_http(true)
             .with_region(&config.region)
             .with_bucket_name(&config.bucket)
-            .build()
-            .unwrap();
+            .build()?;
 
-        Self {
+        Ok(Self {
             store: Arc::new(store),
             encryption: config.encryption,
-        }
+        })
     }
 
     fn get_event_path(&self, event: &Event) -> ObjectPath {
@@ -256,7 +254,8 @@ mod test {
                         endpoint: minio.endpoint(),
                         encryption: EncryptionConfig::default(),
                     })
-                    .create_provider();
+                    .create_provider()
+                    .unwrap();
 
                     crate::providers::test::$test(provider).await;
                 }
@@ -315,7 +314,8 @@ MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
                         )
                         .unwrap(),
                     })
-                    .create_provider();
+                    .create_provider()
+                    .unwrap();
 
                     crate::providers::test::$test(provider).await;
                 }

@@ -24,18 +24,15 @@ pub struct LocalStorage {
 }
 
 impl LocalStorage {
-    pub fn new(config: LocalConfig) -> Self {
-        // TODO: error handling
+    pub fn new(config: LocalConfig) -> StorageResult<Self> {
         let store = Arc::new(
-            LocalFileSystem::new_with_prefix(config.path.clone())
-                .unwrap()
-                .with_automatic_cleanup(true),
+            LocalFileSystem::new_with_prefix(config.path.clone())?.with_automatic_cleanup(true),
         );
 
-        Self {
+        Ok(Self {
             store,
             encryption: config.encryption,
-        }
+        })
     }
 
     fn get_event_path(&self, event: &Event) -> ObjectPath {
@@ -212,7 +209,8 @@ mod test {
                         path: temp_dir.path().to_owned(),
                         encryption: EncryptionConfig::default(),
                     })
-                    .create_provider();
+                    .create_provider()
+                    .unwrap();
 
                     crate::providers::test::$test(provider).await;
                 }
@@ -266,7 +264,8 @@ MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
                         )
                         .unwrap(),
                     })
-                    .create_provider();
+                    .create_provider()
+                    .unwrap();
 
                     crate::providers::test::$test(provider).await;
                 }

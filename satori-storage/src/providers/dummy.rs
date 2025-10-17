@@ -176,8 +176,9 @@ mod test {
             ( $test:ident ) => {
                 #[tokio::test]
                 async fn $test() {
-                    let provider =
-                        crate::StorageConfig::Dummy(DummyConfig::default()).create_provider();
+                    let provider = crate::StorageConfig::Dummy(DummyConfig::default())
+                        .create_provider()
+                        .unwrap();
 
                     crate::providers::test::$test(provider).await;
                 }

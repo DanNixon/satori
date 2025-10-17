@@ -24,11 +24,13 @@ pub enum StorageConfig {
 }
 
 impl StorageConfig {
-    pub fn create_provider(self) -> Provider {
+    pub fn create_provider(self) -> StorageResult<Provider> {
         match self {
-            Self::Dummy(config) => Provider::Dummy(providers::dummy::DummyStorage::new(config)),
-            Self::Local(config) => Provider::Local(providers::local::LocalStorage::new(config)),
-            Self::S3(config) => Provider::S3(providers::s3_object::S3Storage::new(config)),
+            Self::Dummy(config) => Ok(Provider::Dummy(providers::dummy::DummyStorage::new(config))),
+            Self::Local(config) => Ok(Provider::Local(providers::local::LocalStorage::new(
+                config,
+            )?)),
+            Self::S3(config) => Ok(Provider::S3(providers::s3_object::S3Storage::new(config)?)),
         }
     }
 }
