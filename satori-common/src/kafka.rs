@@ -132,15 +132,8 @@ mod test {
     use super::*;
     use satori_testing_utils::RedpandaDriver;
 
-    #[ctor::ctor]
-    fn init() {
-        tracing_subscriber::fmt()
-            .with_test_writer()
-            .with_max_level(tracing::Level::DEBUG)
-            .init();
-    }
-
     #[tokio::test]
+    #[ignore] // Requires Redpanda to be running
     async fn producer_consumer_test() {
         let redpanda = RedpandaDriver::default();
         redpanda.wait_for_ready().await;

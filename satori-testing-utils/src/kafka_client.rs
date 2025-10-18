@@ -90,15 +90,8 @@ mod test {
     use super::*;
     use crate::RedpandaDriver;
 
-    #[ctor::ctor]
-    fn init() {
-        tracing_subscriber::fmt()
-            .with_test_writer()
-            .with_max_level(tracing::Level::DEBUG)
-            .init();
-    }
-
     #[tokio::test]
+    #[ignore] // Requires Redpanda to be running
     async fn test_kafka_client() {
         let redpanda = RedpandaDriver::default();
         redpanda.wait_for_ready().await;
