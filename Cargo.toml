@@ -20,35 +20,19 @@ version = "0.3.1"
 edition = "2024"
 
 [workspace.dependencies]
-async-channel = "2.5.0"
 async-trait = "0.1.89"
 axum = "0.8.6"
 bytes = { version = "1.10.0", features = ["serde"] }
 chrono = { version = "0.4.42", features = ["serde"] }
-ciborium = "0.2.2"
 clap = { version = "4.4.18", features = ["cargo", "derive", "env", "string"] }
-crossterm = "0.29.0"
 ctor = "0.6.0"
-futures = "0.3.31"
 git-version = "0.3.9"
-hex = "0.4.3"
-hpke = { version = "0.11.0", features = ["std", "serde_impls"] }
-indoc = "2.0.5"
-lazy_static = "1.5.0"
 m3u8-rs = "6.0.0"
 metrics = "0.24.2"
 metrics-exporter-prometheus = "0.17.2"
 miette = "7.6.0"
-nix = { version = "0.30.1", features = ["process", "signal"] }
-object_store = { version = "0.12.4", features = ["aws"] }
-pem-rfc7468 = { version = "0.7.0", features = ["alloc"] }
-rand = "0.8.5"
-ratatui = { version = "0.29.0", features = ["all-widgets"]}
-rayon = "1.11.0"
-regex = "1.11.3"
 reqwest = { version = "0.12.23", default-features = false, features = ["rustls-tls"] }
 rumqttc = "0.25.0"
-rust-s3 = { version = "0.37.0", default-features = false, features = ["tokio-rustls-tls"] }
 satori-common = { path = "./satori-common" }
 satori-storage = { path = "./satori-storage" }
 satori-testing-utils = { path = "./satori-testing-utils" }
@@ -56,12 +40,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.145"
 serde_with = "3.14"
 tempfile = "3.23.0"
-thiserror = "2.0.17"
 tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "signal", "process"] }
-tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-util = { version = "0.7.16", features = ["codec"] }
-toml = "0.9.7"
-tower-http = { version = "0.6.6", features = ["fs"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 url = { version = "2.5", features = ["serde"] }
