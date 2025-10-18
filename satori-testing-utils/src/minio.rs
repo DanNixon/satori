@@ -1,5 +1,4 @@
 use crate::PodmanDriver;
-use s3::{Bucket, BucketConfiguration, Region, creds::Credentials};
 use std::time::Duration;
 
 pub struct MinioDriver {
@@ -58,18 +57,21 @@ impl MinioDriver {
         }
     }
 
-    pub async fn create_bucket(&self, name: &str) -> Box<Bucket> {
-        Bucket::create_with_path_style(
-            name,
-            Region::Custom {
-                region: "".to_string(),
-                endpoint: self.endpoint(),
-            },
-            Credentials::default().unwrap(),
-            BucketConfiguration::default(),
-        )
-        .await
-        .unwrap()
-        .bucket
+    pub async fn create_bucket(&self, name: &str) {
+        // Create bucket using MinIO's HTTP API
+        let client = reqwest::Client::new();
+        let url = format!("{}/{}", self.endpoint(), name);
+        
+        let response = client
+            .put(&url)
+            .header("Host", format!("localhost:{}", self.endpoint().split(':').last().unwrap()))
+            .basic_auth(&self.key_id, Some(&self.secret_key))
+            .send()
+            .await
+            .expect("Failed to create bucket");
+
+        if !response.status().is_success() {
+            panic!("Failed to create bucket: {:?}", response.status());
+        }
     }
 }

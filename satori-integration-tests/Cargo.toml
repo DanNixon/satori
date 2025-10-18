@@ -6,7 +6,9 @@ edition.workspace = true
 
 [dev-dependencies]
 ctor.workspace = true
+futures.workspace = true
 indoc.workspace = true
+object_store.workspace = true
 reqwest.workspace = true
 rumqttc.workspace = true
 satori-common.workspace = true

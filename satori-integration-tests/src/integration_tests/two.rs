@@ -1,8 +1,11 @@
+use futures::stream::StreamExt;
+use object_store::{ObjectStore, aws::AmazonS3Builder, path::Path as ObjectPath};
 use satori_testing_utils::{
     DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
 };
 use std::{
     io::{Read, Write},
+    sync::Arc,
     time::Duration,
 };
 use tempfile::NamedTempFile;
@@ -15,7 +18,18 @@ async fn two() {
     let minio = MinioDriver::default();
     minio.wait_for_ready().await;
     minio.set_credential_env_vars();
-    let s3_bucket = minio.create_bucket("satori").await;
+    minio.create_bucket("satori").await;
+
+    // Create S3 client for verification
+    let s3_store = Arc::new(
+        AmazonS3Builder::from_env()
+            .with_endpoint(&minio.endpoint())
+            .with_allow_http(true)
+            .with_region("")
+            .with_bucket_name("satori")
+            .build()
+            .unwrap()
+    );
 
     let mosquitto = MosquittoDriver::default();
 
@@ -167,18 +181,24 @@ async fn two() {
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     // Check event metadata is stored in S3
-    let s3_events = s3_bucket
-        .list("events/".to_string(), Some("/".to_string()))
-        .await
-        .unwrap();
-    assert_eq!(s3_events[0].contents.len(), 1);
+    let events_prefix = ObjectPath::from("events");
+    let mut events_stream = s3_store.list(Some(&events_prefix));
+    let mut event_count = 0;
+    while let Some(result) = events_stream.next().await {
+        result.unwrap();
+        event_count += 1;
+    }
+    assert_eq!(event_count, 1);
 
     // Check segments are stored in S3
-    let s3_segments_camera1 = s3_bucket
-        .list("segments/camera1/".to_string(), Some("/".to_string()))
-        .await
-        .unwrap();
-    assert_eq!(s3_segments_camera1[0].contents.len(), 8);
+    let segments_prefix = ObjectPath::from("segments/camera1");
+    let mut segments_stream = s3_store.list(Some(&segments_prefix));
+    let mut segment_count = 0;
+    while let Some(result) = segments_stream.next().await {
+        result.unwrap();
+        segment_count += 1;
+    }
+    assert_eq!(segment_count, 8);
 
     // Wait for event to expire
     // <= post + ttl + interval

@@ -1,9 +1,11 @@
+use object_store::{ObjectStore, aws::AmazonS3Builder, path::Path as ObjectPath};
 use satori_common::mqtt::PublishExt;
 use satori_testing_utils::{
     DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
 };
 use std::{
     io::{Read, Write},
+    sync::Arc,
     time::Duration,
 };
 use tempfile::NamedTempFile;
@@ -16,7 +18,18 @@ async fn one() {
     let minio = MinioDriver::default();
     minio.wait_for_ready().await;
     minio.set_credential_env_vars();
-    let s3_bucket = minio.create_bucket("satori").await;
+    minio.create_bucket("satori").await;
+
+    // Create S3 client for verification
+    let s3_store = Arc::new(
+        AmazonS3Builder::from_env()
+            .with_endpoint(&minio.endpoint())
+            .with_allow_http(true)
+            .with_region("")
+            .with_bucket_name("satori")
+            .build()
+            .unwrap()
+    );
 
     let mosquitto = MosquittoDriver::default();
 
@@ -231,26 +244,24 @@ async fn one() {
     assert_eq!(events_file_contents, r#"[]"#);
 
     // Check correct event metadata is stored in S3
-    let s3_event = s3_bucket
-        .get_object("events/2023-01-01T00:02:15+00:00_test.json")
-        .await
-        .unwrap();
-    let s3_event = s3_event.as_str().unwrap();
+    let s3_event_path = ObjectPath::from("events/2023-01-01T00:02:15+00:00_test.json");
+    let s3_event = s3_store.get(&s3_event_path).await.unwrap();
+    let s3_event_bytes = s3_event.bytes().await.unwrap();
+    let s3_event = std::str::from_utf8(&s3_event_bytes).unwrap();
     assert_eq!(
         s3_event,
         "{\n  \"metadata\": {\n    \"id\": \"test\",\n    \"timestamp\": \"2023-01-01T00:02:15Z\"\n  },\n  \"reasons\": [\n    {\n      \"timestamp\": \"2023-01-01T00:02:15Z\",\n      \"reason\": \"test\"\n    }\n  ],\n  \"start\": \"2023-01-01T00:01:25Z\",\n  \"end\": \"2023-01-01T00:02:45Z\",\n  \"cameras\": [\n    {\n      \"name\": \"camera1\",\n      \"segment_list\": [\n        \"2023-01-01T00_01_24+0000.ts\",\n        \"2023-01-01T00_01_30+0000.ts\",\n        \"2023-01-01T00_01_36+0000.ts\",\n        \"2023-01-01T00_01_42+0000.ts\",\n        \"2023-01-01T00_01_48+0000.ts\",\n        \"2023-01-01T00_01_54+0000.ts\",\n        \"2023-01-01T00_02_00+0000.ts\",\n        \"2023-01-01T00_02_06+0000.ts\",\n        \"2023-01-01T00_02_12+0000.ts\",\n        \"2023-01-01T00_02_18+0000.ts\",\n        \"2023-01-01T00_02_24+0000.ts\",\n        \"2023-01-01T00_02_30+0000.ts\",\n        \"2023-01-01T00_02_36+0000.ts\",\n        \"2023-01-01T00_02_42+0000.ts\"\n      ]\n    },\n    {\n      \"name\": \"camera3\",\n      \"segment_list\": [\n        \"2023-01-01T00_01_20+0000.ts\",\n        \"2023-01-01T00_01_26+0000.ts\",\n        \"2023-01-01T00_01_32+0000.ts\",\n        \"2023-01-01T00_01_38+0000.ts\",\n        \"2023-01-01T00_01_44+0000.ts\",\n        \"2023-01-01T00_01_50+0000.ts\",\n        \"2023-01-01T00_01_56+0000.ts\",\n        \"2023-01-01T00_02_02+0000.ts\",\n        \"2023-01-01T00_02_08+0000.ts\",\n        \"2023-01-01T00_02_14+0000.ts\",\n        \"2023-01-01T00_02_20+0000.ts\",\n        \"2023-01-01T00_02_26+0000.ts\",\n        \"2023-01-01T00_02_32+0000.ts\",\n        \"2023-01-01T00_02_38+0000.ts\",\n        \"2023-01-01T00_02_44+0000.ts\"\n      ]\n    }\n  ]\n}"
     );
 
     // Check correct segments are stored in S3
-    let s3_segments_camera1 = s3_bucket
-        .list("segments/camera1/".to_string(), Some("/".to_string()))
-        .await
-        .unwrap();
-    let s3_segments_camera1 = s3_segments_camera1[0]
-        .contents
+    let s3_segments_prefix = ObjectPath::from("segments/camera1");
+    let s3_segments_list = s3_store.list_with_delimiter(Some(&s3_segments_prefix)).await.unwrap();
+    let mut s3_segments_camera1 = s3_segments_list
+        .objects
         .iter()
-        .map(|s| s.key.clone())
+        .map(|obj| obj.location.to_string())
         .collect::<Vec<_>>();
+    s3_segments_camera1.sort();
     assert_eq!(
         s3_segments_camera1,
         vec![
