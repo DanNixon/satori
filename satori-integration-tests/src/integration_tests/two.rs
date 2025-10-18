@@ -28,7 +28,7 @@ async fn two() {
             .with_region("")
             .with_bucket_name("satori")
             .build()
-            .unwrap()
+            .unwrap(),
     );
 
     let mosquitto = MosquittoDriver::default();

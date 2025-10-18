@@ -61,10 +61,13 @@ impl MinioDriver {
         // Create bucket using MinIO's HTTP API
         let client = reqwest::Client::new();
         let url = format!("{}/{}", self.endpoint(), name);
-        
+
         let response = client
             .put(&url)
-            .header("Host", format!("localhost:{}", self.endpoint().split(':').last().unwrap()))
+            .header(
+                "Host",
+                format!("localhost:{}", self.endpoint().split(':').last().unwrap()),
+            )
             .basic_auth(&self.key_id, Some(&self.secret_key))
             .send()
             .await

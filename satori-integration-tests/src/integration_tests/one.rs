@@ -28,7 +28,7 @@ async fn one() {
             .with_region("")
             .with_bucket_name("satori")
             .build()
-            .unwrap()
+            .unwrap(),
     );
 
     let mosquitto = MosquittoDriver::default();
@@ -255,7 +255,10 @@ async fn one() {
 
     // Check correct segments are stored in S3
     let s3_segments_prefix = ObjectPath::from("segments/camera1");
-    let s3_segments_list = s3_store.list_with_delimiter(Some(&s3_segments_prefix)).await.unwrap();
+    let s3_segments_list = s3_store
+        .list_with_delimiter(Some(&s3_segments_prefix))
+        .await
+        .unwrap();
     let mut s3_segments_camera1 = s3_segments_list
         .objects
         .iter()
