@@ -62,12 +62,15 @@ impl MinioDriver {
         let client = reqwest::Client::new();
         let url = format!("{}/{}", self.endpoint(), name);
 
+        let endpoint = self.endpoint();
+        let port = endpoint
+            .rsplit_once(':')
+            .map(|(_, port)| port)
+            .unwrap();
+
         let response = client
             .put(&url)
-            .header(
-                "Host",
-                format!("localhost:{}", self.endpoint().split(':').next_back().unwrap()),
-            )
+            .header("Host", format!("localhost:{}", port))
             .basic_auth(&self.key_id, Some(&self.secret_key))
             .send()
             .await
