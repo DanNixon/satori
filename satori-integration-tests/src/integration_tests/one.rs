@@ -1,6 +1,5 @@
-use satori_common::mqtt::PublishExt;
 use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
+    DummyHlsServer, DummyStreamParams, MinioDriver, RedpandaDriver, TestKafkaClient,
 };
 use std::{
     io::{Read, Write},
@@ -8,7 +7,7 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-const MQTT_TOPIC: &str = "satori";
+const KAFKA_TOPIC: &str = "satori";
 
 #[tokio::test]
 #[ignore]
@@ -18,14 +17,10 @@ async fn one() {
     minio.set_credential_env_vars();
     let s3_bucket = minio.create_bucket("satori").await;
 
-    let mosquitto = MosquittoDriver::default();
+    let redpanda = RedpandaDriver::default();
+    redpanda.wait_for_ready().await;
 
-    let mut mqtt_client = TestMqttClient::new(mosquitto.port()).await;
-    mqtt_client
-        .client()
-        .subscribe(MQTT_TOPIC, rumqttc::QoS::ExactlyOnce)
-        .await
-        .unwrap();
+    let mut kafka_client = TestKafkaClient::new(redpanda.kafka_port(), KAFKA_TOPIC).await;
 
     let mut stream_1 = DummyHlsServer::new(
         "stream 1".to_string(),
@@ -55,12 +50,8 @@ async fn one() {
                 interval = 10  # seconds
                 event_ttl = 5
 
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-event-processor"
-                username = "test"
-                password = ""
+                [kafka]
+                brokers = "localhost:{}"
                 topic = "satori"
 
                 [triggers.fallback]
@@ -83,7 +74,7 @@ async fn one() {
                 "#
             ),
             event_processor_events_file.path().display(),
-            mosquitto.port(),
+            redpanda.kafka_port(),
             stream_1.stream_address(),
             stream_2.stream_address(),
             stream_3.stream_address(),
@@ -130,18 +121,15 @@ async fn one() {
                 region = ""
                 endpoint = "{}"
 
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-archiver-s3"
-                username = "test"
-                password = ""
+                [kafka]
+                brokers = "localhost:{}"
                 topic = "satori"
+                group_id = "satori-archiver-s3"
                 "#
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
-            mosquitto.port(),
+            redpanda.kafka_port(),
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -183,7 +171,7 @@ async fn one() {
 
     // Segment archive command for camera1 should be sent
     assert_eq!(
-        mqtt_client
+        kafka_client
             .wait_for_message(Duration::from_secs(5))
             .await
             .unwrap()
@@ -197,7 +185,7 @@ async fn one() {
 
     // Segment archive command for camera3 should be sent
     assert_eq!(
-        mqtt_client
+        kafka_client
             .wait_for_message(Duration::from_secs(5))
             .await
             .unwrap()
@@ -211,7 +199,7 @@ async fn one() {
 
     // Event metadata archive command should be sent
     assert_eq!(
-        mqtt_client
+        kafka_client
             .wait_for_message(Duration::from_secs(5))
             .await
             .unwrap()
@@ -271,15 +259,13 @@ async fn one() {
         ]
     );
 
-    // There should be no more MQTT messages at this point
+    // There should be no more Kafka messages at this point
     assert!(
-        mqtt_client
+        kafka_client
             .wait_for_message(Duration::from_secs(5))
             .await
             .is_err()
     );
-
-    mqtt_client.stop().await;
 
     satori_event_processor.stop();
     satori_archiver.stop();

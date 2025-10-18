@@ -1,5 +1,5 @@
 use satori_common::{
-    Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig, mqtt::MqttConfig,
+    Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig, kafka::KafkaConfig,
 };
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
@@ -17,7 +17,7 @@ pub(crate) struct Config {
     #[serde_as(as = "DurationSeconds<u64>")]
     pub(crate) event_ttl: Duration,
 
-    pub(crate) mqtt: MqttConfig,
+    pub(crate) kafka: KafkaConfig,
 
     #[serde(flatten)]
     pub(crate) cameras: CamerasConfig,

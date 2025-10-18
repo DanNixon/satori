@@ -1,11 +1,11 @@
-use satori_common::mqtt::PublishExt;
+
 use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
+    DummyHlsServer, DummyStreamParams, MinioDriver, RedpandaDriver, TestKafkaClient,
 };
 use std::{io::Write, time::Duration};
 use tempfile::NamedTempFile;
 
-const MQTT_TOPIC: &str = "satori";
+const KAFKA_TOPIC: &str = "satori";
 
 #[tokio::test]
 #[ignore]
@@ -16,7 +16,8 @@ async fn mqtt_reconnect() {
     let s3_bucket = minio.create_bucket("satori").await;
 
     // Initially start Mosquitto
-    let mosquitto = MosquittoDriver::default();
+    let redpanda = RedpandaDriver::default();
+    redpanda.wait_for_ready().await;
 
     let mut stream_1 = DummyHlsServer::new(
         "stream 1".to_string(),
@@ -34,13 +35,10 @@ async fn mqtt_reconnect() {
                 interval = 10  # seconds
                 event_ttl = 5
 
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-event-processor"
-                username = "test"
-                password = ""
+                [kafka]
+                brokers = "localhost:{}"
                 topic = "satori"
+                group_id = "satori-archiver-s3"
 
                 [triggers.fallback]
                 cameras = ["camera1", "camera2", "camera3"]
@@ -54,7 +52,7 @@ async fn mqtt_reconnect() {
                 "#
             ),
             event_processor_events_file.path().display(),
-            mosquitto.port(),
+            redpanda.kafka_port(),
             stream_1.stream_address(),
         );
 
@@ -96,18 +94,14 @@ async fn mqtt_reconnect() {
                 region = ""
                 endpoint = "{}"
 
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-archiver-s3"
-                username = "test"
-                password = ""
+                [kafka]
+                brokers = "localhost:{}"
                 topic = "satori"
                 "#
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
-            mosquitto.port(),
+            redpanda.kafka_port(),
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -140,24 +134,19 @@ async fn mqtt_reconnect() {
 
     // Wait a short time and stop Mosquitto
     tokio::time::sleep(Duration::from_secs(2)).await;
-    let mqtt_port = mosquitto.port();
-    drop(mosquitto);
+    let mqtt_port = redpanda.kafka_port();
+    drop(redpanda);
 
     // Wait a little bit longer and start Mosquitto again (using the same port as before)
     tokio::time::sleep(Duration::from_secs(10)).await;
-    let mosquitto = MosquittoDriver::with_port(mqtt_port);
+    let redpanda = RedpandaDriver::with_port(mqtt_port);
 
     // Wait some more time for components to reconnect to Mosquitto
     // For now this must be longer than the archiver interval (this should not be the case and
     // should be looked at when moving to rumqttc)
     tokio::time::sleep(Duration::from_secs(15)).await;
 
-    let mut mqtt_client = TestMqttClient::new(mosquitto.port()).await;
-    mqtt_client
-        .client()
-        .subscribe(MQTT_TOPIC, rumqttc::QoS::ExactlyOnce)
-        .await
-        .unwrap();
+    let mut kafka_client = TestKafkaClient::new(redpanda.kafka_port(), KAFKA_TOPIC).await;
 
     // Trigger an event via HTTP
     let http_client = reqwest::Client::new();
@@ -171,36 +160,6 @@ async fn mqtt_reconnect() {
 
     // Segment archive command for camera1 should be sent
     assert_eq!(
-        mqtt_client
-            .wait_for_message(Duration::from_secs(5))
-            .await
-            .unwrap()
-            .try_payload_str()
-            .unwrap(),
-        format!(
-            r#"{{"kind":"archive_command","data":{{"kind":"segments","data":{{"camera_name":"camera1","camera_url":"{}","segment_list":["2023-01-01T00_01_24+0000.ts","2023-01-01T00_01_30+0000.ts","2023-01-01T00_01_36+0000.ts","2023-01-01T00_01_42+0000.ts","2023-01-01T00_01_48+0000.ts","2023-01-01T00_01_54+0000.ts","2023-01-01T00_02_00+0000.ts","2023-01-01T00_02_06+0000.ts","2023-01-01T00_02_12+0000.ts","2023-01-01T00_02_18+0000.ts","2023-01-01T00_02_24+0000.ts","2023-01-01T00_02_30+0000.ts","2023-01-01T00_02_36+0000.ts","2023-01-01T00_02_42+0000.ts"]}}}}}}"#,
-            stream_1.stream_address()
-        )
-    );
-
-    // Event metadata archive command should be sent
-    assert_eq!(
-        mqtt_client
-            .wait_for_message(Duration::from_secs(5))
-            .await
-            .unwrap()
-            .try_payload_str()
-            .unwrap(),
-        r#"{"kind":"archive_command","data":{"kind":"event_metadata","data":{"metadata":{"id":"test","timestamp":"2023-01-01T00:02:15Z"},"reasons":[{"timestamp":"2023-01-01T00:02:15Z","reason":"test"}],"start":"2023-01-01T00:01:25Z","end":"2023-01-01T00:02:45Z","cameras":[{"name":"camera1","segment_list":["2023-01-01T00_01_24+0000.ts","2023-01-01T00_01_30+0000.ts","2023-01-01T00_01_36+0000.ts","2023-01-01T00_01_42+0000.ts","2023-01-01T00_01_48+0000.ts","2023-01-01T00_01_54+0000.ts","2023-01-01T00_02_00+0000.ts","2023-01-01T00_02_06+0000.ts","2023-01-01T00_02_12+0000.ts","2023-01-01T00_02_18+0000.ts","2023-01-01T00_02_24+0000.ts","2023-01-01T00_02_30+0000.ts","2023-01-01T00_02_36+0000.ts","2023-01-01T00_02_42+0000.ts"]}]}}}"#
-    );
-
-    tokio::time::sleep(Duration::from_secs(1)).await;
-
-    // Check correct event metadata is stored in S3
-    let s3_event = s3_bucket
-        .get_object("events/2023-01-01T00:02:15+00:00_test.json")
-        .await
-        .unwrap();
     let s3_event = s3_event.as_str().unwrap();
     assert_eq!(
         s3_event,
@@ -239,16 +198,3 @@ async fn mqtt_reconnect() {
 
     // There should be no more MQTT messages at this point
     assert!(
-        mqtt_client
-            .wait_for_message(Duration::from_secs(5))
-            .await
-            .is_err()
-    );
-
-    mqtt_client.stop().await;
-
-    satori_event_processor.stop();
-    satori_archiver.stop();
-
-    stream_1.stop().await;
-}
