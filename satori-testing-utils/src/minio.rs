@@ -63,10 +63,7 @@ impl MinioDriver {
         let url = format!("{}/{}", self.endpoint(), name);
 
         let endpoint = self.endpoint();
-        let port = endpoint
-            .rsplit_once(':')
-            .map(|(_, port)| port)
-            .unwrap();
+        let port = endpoint.rsplit_once(':').map(|(_, port)| port).unwrap();
 
         let response = client
             .put(&url)
