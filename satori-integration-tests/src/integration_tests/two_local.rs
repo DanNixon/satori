@@ -1,11 +1,11 @@
-use satori_testing_utils::{DummyHlsServer, DummyStreamParams, MosquittoDriver, TestMqttClient};
+use satori_testing_utils::{DummyHlsServer, DummyStreamParams, RedpandaDriver, TestKafkaClient};
 use std::{
     io::{Read, Write},
     time::Duration,
 };
 use tempfile::NamedTempFile;
 
-const MQTT_TOPIC: &str = "satori";
+const KAFKA_TOPIC: &str = "satori";
 
 #[tokio::test]
 #[ignore]
@@ -15,14 +15,10 @@ async fn two_local() {
         .tempdir()
         .unwrap();
 
-    let mosquitto = MosquittoDriver::default();
+    let redpanda = RedpandaDriver::default();
+    redpanda.wait_for_ready().await;
 
-    let mut mqtt_client = TestMqttClient::new(mosquitto.port()).await;
-    mqtt_client
-        .client()
-        .subscribe(MQTT_TOPIC, rumqttc::QoS::ExactlyOnce)
-        .await
-        .unwrap();
+    let mut kafka_client = TestKafkaClient::new(redpanda.kafka_port(), KAFKA_TOPIC).await;
 
     let mut stream_1 = DummyHlsServer::new(
         "stream 1".to_string(),
@@ -40,13 +36,10 @@ async fn two_local() {
                 interval = 10  # seconds
                 event_ttl = 5
 
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-event-processor"
-                username = "test"
-                password = ""
+                [kafka]
+                brokers = "localhost:{}"
                 topic = "satori"
+                group_id = "satori-archiver-local"
 
                 [triggers.fallback]
                 cameras = ["camera1"]
@@ -60,7 +53,7 @@ async fn two_local() {
                 "#
             ),
             event_processor_events_file.path().display(),
-            mosquitto.port(),
+            redpanda.kafka_port(),
             stream_1.stream_address(),
         );
 
@@ -100,18 +93,15 @@ async fn two_local() {
                 kind = "local"
                 path = "{}"
 
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-archiver-local"
-                username = "test"
-                password = ""
+                [kafka]
+                brokers = "localhost:{}"
                 topic = "satori"
+                group_id = "satori-archiver-local"
                 "#
             ),
             archiver_queue_file.path().display(),
             storage_dir.path().display(),
-            mosquitto.port(),
+            redpanda.kafka_port(),
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -181,7 +171,6 @@ async fn two_local() {
     // Ensure event state file is empty
     assert!(events_file_contents != "[]");
 
-    mqtt_client.stop().await;
 
     satori_event_processor.stop();
     satori_archiver.stop();

@@ -3148,6 +3148,7 @@ dependencies = [
  "m3u8-rs",
  "nix",
  "rand 0.8.5",
+ "rdkafka",
  "reqwest",
  "rumqttc",
  "rust-s3",

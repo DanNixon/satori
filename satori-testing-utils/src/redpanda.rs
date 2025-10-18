@@ -3,45 +3,58 @@ use std::time::Duration;
 use tracing::info;
 
 pub struct RedpandaDriver {
-    driver: PodmanDriver,
+    _driver: PodmanDriver,
+    kafka_port: u16,
+    schema_registry_port: u16,
+    http_proxy_port: u16,
 }
 
 impl Default for RedpandaDriver {
     fn default() -> Self {
+        let kafka_port = rand::random::<u16>() % 1000 + 19000;
+        let schema_registry_port = kafka_port + 1;
+        let http_proxy_port = kafka_port + 2;
+
         let driver = PodmanDriver::new(
-            "redpanda".to_string(),
-            "docker.redpanda.com/redpandadata/redpanda:latest".to_string(),
-            vec![
-                "redpanda".to_string(),
-                "start".to_string(),
-                "--smp".to_string(),
-                "1".to_string(),
-                "--overprovisioned".to_string(),
-                "--kafka-addr".to_string(),
-                "internal://0.0.0.0:9092,external://0.0.0.0:19092".to_string(),
-                "--advertise-kafka-addr".to_string(),
-                "internal://redpanda:9092,external://localhost:19092".to_string(),
-                "--pandaproxy-addr".to_string(),
-                "internal://0.0.0.0:8082,external://0.0.0.0:18082".to_string(),
-                "--advertise-pandaproxy-addr".to_string(),
-                "internal://redpanda:8082,external://localhost:18082".to_string(),
-                "--schema-registry-addr".to_string(),
-                "internal://0.0.0.0:8081,external://0.0.0.0:18081".to_string(),
-                "--rpc-addr".to_string(),
-                "redpanda:33145".to_string(),
-                "--advertise-rpc-addr".to_string(),
-                "redpanda:33145".to_string(),
-                "--mode".to_string(),
-                "dev-container".to_string(),
+            "docker.redpanda.com/redpandadata/redpanda:latest",
+            &[
+                &format!("{}:19092", kafka_port),
+                &format!("{}:18081", schema_registry_port),
+                &format!("{}:18082", http_proxy_port),
             ],
-            vec![
-                ("19092".to_string(), "19092".to_string()), // Kafka port
-                ("18081".to_string(), "18081".to_string()), // Schema registry port
-                ("18082".to_string(), "18082".to_string()), // HTTP Proxy port
+            &[],
+            &[],
+            &[
+                "redpanda",
+                "start",
+                "--smp",
+                "1",
+                "--overprovisioned",
+                "--kafka-addr",
+                "internal://0.0.0.0:9092,external://0.0.0.0:19092",
+                "--advertise-kafka-addr",
+                &format!("internal://redpanda:9092,external://localhost:{}", kafka_port),
+                "--pandaproxy-addr",
+                "internal://0.0.0.0:8082,external://0.0.0.0:18082",
+                "--advertise-pandaproxy-addr",
+                &format!("internal://redpanda:8082,external://localhost:{}", http_proxy_port),
+                "--schema-registry-addr",
+                "internal://0.0.0.0:8081,external://0.0.0.0:18081",
+                "--rpc-addr",
+                "redpanda:33145",
+                "--advertise-rpc-addr",
+                "redpanda:33145",
+                "--mode",
+                "dev-container",
             ],
         );
 
-        Self { driver }
+        Self {
+            _driver: driver,
+            kafka_port,
+            schema_registry_port,
+            http_proxy_port,
+        }
     }
 }
 
@@ -53,14 +66,14 @@ impl RedpandaDriver {
     }
 
     pub fn kafka_port(&self) -> u16 {
-        self.driver.get_host_port("19092").unwrap()
+        self.kafka_port
     }
 
     pub fn schema_registry_port(&self) -> u16 {
-        self.driver.get_host_port("18081").unwrap()
+        self.schema_registry_port
     }
 
     pub fn http_proxy_port(&self) -> u16 {
-        self.driver.get_host_port("18082").unwrap()
+        self.http_proxy_port
     }
 }
