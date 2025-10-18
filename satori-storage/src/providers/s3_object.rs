@@ -1,14 +1,17 @@
-use crate::{
-    EncryptionConfig, StorageError, StorageProvider, StorageResult, encryption::KeyOperations,
-};
+use crate::{EncryptionConfig, StorageProvider, StorageResult, encryption::KeyOperations};
 use async_trait::async_trait;
 use bytes::Bytes;
-use s3::{Bucket, creds::Credentials, region::Region};
+use futures::stream::StreamExt;
+use object_store::{
+    ObjectStore,
+    aws::{AmazonS3, AmazonS3Builder},
+    path::Path as ObjectPath,
+};
 use satori_common::Event;
 use serde::Deserialize;
 use std::{
-    collections::HashSet,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 #[derive(Debug, Deserialize)]
@@ -22,80 +25,38 @@ pub struct S3Config {
 
 #[derive(Clone)]
 pub struct S3Storage {
-    bucket: Box<Bucket>,
+    store: Arc<AmazonS3>,
     encryption: EncryptionConfig,
 }
 
 impl S3Storage {
-    pub fn new(config: S3Config) -> Self {
-        let bucket = Bucket::new(
-            &config.bucket,
-            Region::Custom {
-                region: config.region,
-                endpoint: config.endpoint,
-            },
-            Credentials::default().unwrap(),
-        )
-        .unwrap()
-        .with_path_style();
+    pub fn new(config: S3Config) -> StorageResult<Self> {
+        let store = AmazonS3Builder::from_env()
+            .with_endpoint(&config.endpoint)
+            .with_allow_http(true)
+            .with_region(&config.region)
+            .with_bucket_name(&config.bucket)
+            .build()?;
 
-        Self {
-            bucket,
+        Ok(Self {
+            store: Arc::new(store),
             encryption: config.encryption,
-        }
+        })
     }
 
-    fn get_events_path(&self) -> PathBuf {
-        PathBuf::from("events")
+    fn get_event_path(&self, event: &Event) -> ObjectPath {
+        ObjectPath::from(format!(
+            "events/{}",
+            event.metadata.get_filename().display()
+        ))
     }
 
-    fn get_event_filename(&self, event: &Event) -> PathBuf {
-        self.get_events_path().join(event.metadata.get_filename())
+    fn get_event_path_from_filename(&self, filename: &Path) -> ObjectPath {
+        ObjectPath::from(format!("events/{}", filename.display()))
     }
 
-    fn get_segments_root_path(&self) -> PathBuf {
-        PathBuf::from("segments/")
-    }
-
-    fn get_segments_path(&self, camera_name: &str) -> PathBuf {
-        self.get_segments_root_path().join(camera_name)
-    }
-
-    fn get_segment_filename(&self, camera_name: &str, filename: &Path) -> PathBuf {
-        self.get_segments_path(camera_name).join(filename)
-    }
-
-    #[tracing::instrument(skip(self))]
-    async fn list_path(&self, path: &Path) -> StorageResult<Vec<PathBuf>> {
-        let response = self
-            .bucket
-            .list(path.to_str().unwrap().into(), None)
-            .await?;
-
-        Ok(response
-            .into_iter()
-            .flat_map(|i| {
-                i.contents
-                    .into_iter()
-                    .map(|i| PathBuf::from(i.key))
-                    .collect::<Vec<PathBuf>>()
-            })
-            .collect())
-    }
-
-    #[tracing::instrument(skip(self))]
-    async fn delete_path(&self, path: &Path) -> StorageResult<()> {
-        let status_code = self
-            .bucket
-            .delete_object(path.to_str().unwrap())
-            .await?
-            .status_code();
-
-        if status_code == 204 {
-            Ok(())
-        } else {
-            Err(StorageError::S3Failure(status_code))
-        }
+    fn get_segment_path(&self, camera_name: &str, filename: &Path) -> ObjectPath {
+        ObjectPath::from(format!("segments/{}/{}", camera_name, filename.display()))
     }
 }
 
@@ -103,7 +64,7 @@ impl S3Storage {
 impl StorageProvider for S3Storage {
     #[tracing::instrument(skip(self))]
     async fn put_event(&self, event: &Event) -> StorageResult<()> {
-        let path = self.get_event_filename(event);
+        let path = self.get_event_path(event);
 
         let data = serde_json::to_vec_pretty(&event)?;
 
@@ -111,73 +72,69 @@ impl StorageProvider for S3Storage {
             crate::encryption::info::event_info_from_filename(&event.metadata.get_filename());
         let data = self.encryption.event.encrypt(info, data.into())?;
 
-        let status_code = self
-            .bucket
-            .put_object(path.to_str().unwrap(), &data)
-            .await?
-            .status_code();
+        self.store.put(&path, data.into()).await?;
 
-        if status_code == 200 {
-            Ok(())
-        } else {
-            Err(StorageError::S3Failure(status_code))
-        }
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]
     async fn list_events(&self) -> StorageResult<Vec<PathBuf>> {
-        Ok(self
-            .list_path(&self.get_events_path())
-            .await?
-            .into_iter()
-            .map(|p| PathBuf::from(p.file_name().unwrap().to_str().unwrap()))
-            .collect())
+        let prefix = ObjectPath::from("events");
+        let mut list_stream = self.store.list(Some(&prefix));
+        let mut results = Vec::new();
+
+        while let Some(item) = list_stream.next().await {
+            let meta = item?;
+            if let Some(filename) = meta.location.filename()
+                && filename.ends_with(".json")
+            {
+                results.push(PathBuf::from(filename));
+            }
+        }
+
+        results.sort();
+        Ok(results)
     }
 
     #[tracing::instrument(skip(self))]
     async fn get_event(&self, filename: &Path) -> StorageResult<Event> {
-        let path = self.get_events_path().join(filename);
+        let path = self.get_event_path_from_filename(filename);
 
-        let response = self.bucket.get_object(path.to_str().unwrap()).await?;
+        let get_result = self.store.get(&path).await?;
+        let data = get_result.bytes().await?;
 
-        if response.status_code() == 200 {
-            let data = response.bytes().to_owned();
+        let info = crate::encryption::info::event_info_from_filename(filename);
+        let data = self.encryption.event.decrypt(info, data)?;
 
-            let info = crate::encryption::info::event_info_from_filename(filename);
-            let data = self.encryption.event.decrypt(info, data)?;
-
-            Ok(serde_json::from_slice(&data)?)
-        } else {
-            Err(StorageError::S3Failure(response.status_code()))
-        }
+        Ok(serde_json::from_slice(&data)?)
     }
 
     #[tracing::instrument(skip(self))]
     async fn delete_event(&self, event: &Event) -> StorageResult<()> {
-        self.delete_path(&self.get_event_filename(event)).await
+        let path = self.get_event_path(event);
+        self.store.delete(&path).await?;
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]
     async fn delete_event_filename(&self, filename: &Path) -> StorageResult<()> {
-        self.delete_path(&self.get_events_path().join(filename))
-            .await
+        let path = self.get_event_path_from_filename(filename);
+        self.store.delete(&path).await?;
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]
     async fn list_cameras(&self) -> StorageResult<Vec<String>> {
-        let mut cameras = HashSet::new();
+        let prefix = ObjectPath::from("segments");
+        let list_result = self.store.list_with_delimiter(Some(&prefix)).await?;
 
-        for path in self.list_path(&self.get_segments_root_path()).await? {
-            let comps: Vec<std::path::Component> = path.components().collect();
+        let mut cameras: Vec<String> = list_result
+            .common_prefixes
+            .into_iter()
+            .filter_map(|p| p.filename().map(|s| s.to_string()))
+            .collect();
 
-            if let std::path::Component::Normal(camera_name) = comps[1] {
-                cameras.insert(camera_name.to_str().unwrap().to_owned());
-            }
-        }
-
-        let mut cameras: Vec<String> = cameras.drain().collect();
         cameras.sort();
-
         Ok(cameras)
     }
 
@@ -188,60 +145,55 @@ impl StorageProvider for S3Storage {
         filename: &Path,
         data: Bytes,
     ) -> StorageResult<()> {
-        let path = self.get_segment_filename(camera_name, filename);
+        let path = self.get_segment_path(camera_name, filename);
 
         let info =
             crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
         let data = self.encryption.segment.encrypt(info, data)?;
 
-        let status_code = self
-            .bucket
-            .put_object(path.to_str().unwrap(), &data)
-            .await?
-            .status_code();
+        self.store.put(&path, data.into()).await?;
 
-        if status_code == 200 {
-            Ok(())
-        } else {
-            Err(StorageError::S3Failure(status_code))
-        }
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]
     async fn list_segments(&self, camera_name: &str) -> StorageResult<Vec<PathBuf>> {
-        Ok(self
-            .list_path(&self.get_segments_path(camera_name))
-            .await?
-            .into_iter()
-            .map(|p| PathBuf::from(p.file_name().unwrap().to_str().unwrap()))
-            .collect())
+        let prefix = ObjectPath::from(format!("segments/{}", camera_name));
+        let mut list_stream = self.store.list(Some(&prefix));
+        let mut results = Vec::new();
+
+        while let Some(item) = list_stream.next().await {
+            let meta = item?;
+            if let Some(filename) = meta.location.filename()
+                && filename.ends_with(".ts")
+            {
+                results.push(PathBuf::from(filename));
+            }
+        }
+
+        results.sort();
+        Ok(results)
     }
 
     #[tracing::instrument(skip(self))]
     async fn get_segment(&self, camera_name: &str, filename: &Path) -> StorageResult<Bytes> {
-        let path = self.get_segment_filename(camera_name, filename);
+        let path = self.get_segment_path(camera_name, filename);
 
-        let response = self.bucket.get_object(path.to_str().unwrap()).await?;
+        let get_result = self.store.get(&path).await?;
+        let data = get_result.bytes().await?;
 
-        if response.status_code() == 200 {
-            let data = response.bytes().to_owned();
+        let info =
+            crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
+        let data = self.encryption.segment.decrypt(info, data)?;
 
-            let info = crate::encryption::info::segment_info_from_camera_and_filename(
-                camera_name,
-                filename,
-            );
-            let data = self.encryption.segment.decrypt(info, data)?;
-
-            Ok(data)
-        } else {
-            Err(StorageError::S3Failure(response.status_code()))
-        }
+        Ok(data)
     }
 
     #[tracing::instrument(skip(self))]
     async fn delete_segment(&self, camera_name: &str, filename: &Path) -> StorageResult<()> {
-        self.delete_path(&self.get_segment_filename(camera_name, filename))
-            .await
+        let path = self.get_segment_path(camera_name, filename);
+        self.store.delete(&path).await?;
+        Ok(())
     }
 }
 
@@ -302,7 +254,8 @@ mod test {
                         endpoint: minio.endpoint(),
                         encryption: EncryptionConfig::default(),
                     })
-                    .create_provider();
+                    .create_provider()
+                    .unwrap();
 
                     crate::providers::test::$test(provider).await;
                 }
@@ -361,7 +314,8 @@ MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
                         )
                         .unwrap(),
                     })
-                    .create_provider();
+                    .create_provider()
+                    .unwrap();
 
                     crate::providers::test::$test(provider).await;
                 }

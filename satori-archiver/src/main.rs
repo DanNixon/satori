@@ -44,7 +44,11 @@ async fn main() -> miette::Result<()> {
     let mut mqtt_client: MqttClient = config.mqtt.into();
 
     let context = AppContext {
-        storage: config.storage.create_provider(),
+        storage: config
+            .storage
+            .create_provider()
+            .into_diagnostic()
+            .wrap_err("Failed to create storage provider")?,
         http_client: reqwest::Client::new(),
     };
 

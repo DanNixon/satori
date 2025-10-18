@@ -18,11 +18,8 @@ pub enum StorageError {
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
 
-    #[error("S3 storage error: {0}")]
-    S3Error(#[from] s3::error::S3Error),
-
-    #[error("S3 storage failure code {0}")]
-    S3Failure(u16),
+    #[error("Object store error: {0}")]
+    ObjectStoreError(#[from] object_store::Error),
 
     #[error("Camera with name \"{0}\" was not found")]
     NoSuchCamera(String),

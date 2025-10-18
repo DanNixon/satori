@@ -259,7 +259,9 @@ mod test {
     use std::path::{Path, PathBuf};
 
     async fn build_test_storage() -> Provider {
-        let provider = crate::StorageConfig::Dummy(DummyConfig::default()).create_provider();
+        let provider = crate::StorageConfig::Dummy(DummyConfig::default())
+            .create_provider()
+            .unwrap();
 
         provider
             .put_segment("camera1", Path::new("1_1.ts"), Bytes::default())

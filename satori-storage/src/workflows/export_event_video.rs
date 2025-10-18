@@ -130,7 +130,9 @@ mod test {
 
     #[tokio::test]
     async fn test_export_event_video() {
-        let provider = crate::StorageConfig::Dummy(DummyConfig::default()).create_provider();
+        let provider = crate::StorageConfig::Dummy(DummyConfig::default())
+            .create_provider()
+            .unwrap();
 
         provider
             .put_segment("camera1", Path::new("1_1.ts"), Bytes::from("one"))

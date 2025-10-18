@@ -50,7 +50,9 @@ mod test {
     use satori_common::{Event, EventMetadata};
 
     async fn build_test_storage() -> Provider {
-        let provider = crate::StorageConfig::Dummy(DummyConfig::default()).create_provider();
+        let provider = crate::StorageConfig::Dummy(DummyConfig::default())
+            .create_provider()
+            .unwrap();
 
         provider
             .put_event(&Event {
