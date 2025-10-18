@@ -66,7 +66,7 @@ impl MinioDriver {
             .put(&url)
             .header(
                 "Host",
-                format!("localhost:{}", self.endpoint().split(':').last().unwrap()),
+                format!("localhost:{}", self.endpoint().split(':').next_back().unwrap()),
             )
             .basic_auth(&self.key_id, Some(&self.secret_key))
             .send()

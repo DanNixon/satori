@@ -23,7 +23,7 @@ async fn two() {
     // Create S3 client for verification
     let s3_store = Arc::new(
         AmazonS3Builder::from_env()
-            .with_endpoint(&minio.endpoint())
+            .with_endpoint(minio.endpoint())
             .with_allow_http(true)
             .with_region("")
             .with_bucket_name("satori")
