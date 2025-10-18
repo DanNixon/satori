@@ -129,7 +129,7 @@ async fn main() -> miette::Result<()> {
                 body.put_slice(&image);
                 let _ = jpeg_multipart_tx.send(body.into());
 
-                frame_image.lock().unwrap().replace(image);
+                let _ = frame_image.lock().unwrap().replace(image);
             }
             _ = metrics_interval.tick() => {
                 if let Err(e) = o11y::update_segment_count_metric(&playlist_filename).await {

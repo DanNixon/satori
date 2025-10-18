@@ -98,7 +98,7 @@ impl Streamer {
                         .stderr(Stdio::piped())
                         // Call setsid, required for correct exit signal handling
                         .pre_exec(|| {
-                            unistd::setsid()?;
+                            let _ = unistd::setsid()?;
                             Ok(())
                         })
                         .spawn()

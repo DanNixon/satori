@@ -6,7 +6,7 @@ edition.workspace = true
 
 [dev-dependencies]
 ctor.workspace = true
-indoc.workspace = true
+indoc = "2.0.5"
 reqwest.workspace = true
 rumqttc.workspace = true
 satori-common.workspace = true
@@ -15,3 +15,7 @@ tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+
+[lints.rust]
+# https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+unused-crate-dependencies = "deny"

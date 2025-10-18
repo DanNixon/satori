@@ -8,14 +8,17 @@ edition.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 clap.workspace = true
-crossterm.workspace = true
+crossterm = "0.29.0"
 git-version.workspace = true
 miette = { workspace = true, features = ["fancy"] }
-ratatui.workspace = true
-rayon.workspace = true
+ratatui = { version = "0.29.0", features = ["all-widgets"]}
+rayon = "1.11.0"
 satori-common.workspace = true
 satori-storage.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
-url.workspace = true
+
+[lints.rust]
+# https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+unused-crate-dependencies = "deny"

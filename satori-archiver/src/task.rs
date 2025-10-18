@@ -70,7 +70,8 @@ impl CameraSegment {
 
 fn get_segment_url(hls_url: Url, segment_filename: &Path) -> miette::Result<Url> {
     let mut url = hls_url;
-    url.path_segments_mut()
+    let _ = url
+        .path_segments_mut()
         .map_err(|_| miette::miette!("Failed to get URL path segments"))?
         .pop()
         .push(

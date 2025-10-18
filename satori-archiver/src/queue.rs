@@ -168,7 +168,7 @@ impl ArchiveTaskQueue {
                     info!("Successfully processed task: {:?}", task);
 
                     // Remove the task from the queue
-                    self.queue.pop_front();
+                    let _ = self.queue.pop_front();
                     self.attempt_save();
                     self.update_queue_length_metrics();
                 }
