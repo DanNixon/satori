@@ -8,8 +8,8 @@ edition.workspace = true
 axum.workspace = true
 chrono.workspace = true
 m3u8-rs.workspace = true
-nix = { version = "0.30.1", features = ["process", "signal"] }
-rand = "0.8.5"
+nix.workspace = true
+rand.workspace = true
 reqwest.workspace = true
 rumqttc.workspace = true
 rust-s3 = { version = "0.37.0", default-features = false, features = ["tokio-rustls-tls"] }

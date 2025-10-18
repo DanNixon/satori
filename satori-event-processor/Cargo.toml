@@ -21,7 +21,7 @@ serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
 tokio.workspace = true
-tower-http = { version = "0.6.6", features = ["fs"] }
+tower-http.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
 url.workspace = true
