@@ -2976,7 +2976,6 @@ dependencies = [
  "async-trait",
  "chrono",
  "ctor",
- "git-version",
  "m3u8-rs",
  "miette",
  "regex",
