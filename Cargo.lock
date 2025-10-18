@@ -2996,7 +2996,6 @@ name = "satori-event-processor"
 version = "0.3.1"
 dependencies = [
  "axum",
- "bytes",
  "chrono",
  "clap",
  "git-version",
@@ -3005,13 +3004,11 @@ dependencies = [
  "metrics-exporter-prometheus",
  "miette",
  "reqwest",
- "rumqttc",
  "satori-common",
  "serde",
  "serde_json",
  "serde_with",
  "tokio",
- "tower-http",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -3098,7 +3095,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "url",
 ]
 
 [[package]]

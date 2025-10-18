@@ -22,3 +22,8 @@ tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
 url.workspace = true
+
+[lints.rust]
+# https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+unused_results = "warn"
+unused-crate-dependencies = "deny"

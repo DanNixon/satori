@@ -29,3 +29,7 @@ hex = "0.4.3"
 lazy_static = "1.5.0"
 satori-testing-utils.workspace = true
 tempfile.workspace = true
+
+[lints.rust]
+# https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+unused-crate-dependencies = "deny"
