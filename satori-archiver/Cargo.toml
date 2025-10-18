@@ -12,7 +12,6 @@ metrics-exporter-prometheus.workspace = true
 metrics.workspace = true
 miette = { workspace = true, features = ["fancy"] }
 reqwest.workspace = true
-rumqttc.workspace = true
 satori-common.workspace = true
 satori-storage.workspace = true
 serde.workspace = true

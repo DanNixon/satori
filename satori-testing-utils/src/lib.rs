@@ -5,6 +5,7 @@ mod mosquitto;
 mod mqtt_client;
 mod network;
 mod podman;
+mod redpanda;
 
 pub use self::{
     cargo::CargoBinaryRunner,
@@ -14,4 +15,5 @@ pub use self::{
     mqtt_client::TestMqttClient,
     network::wait_for_url,
     podman::PodmanDriver,
+    redpanda::RedpandaDriver,
 };

@@ -1,6 +1,6 @@
 use crate::{AppContext, task::ArchiveTask};
 use miette::IntoDiagnostic;
-use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event, mqtt::PublishExt};
+use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event, kafka::PayloadExt};
 use std::{
     collections::VecDeque,
     fs::File,
@@ -94,7 +94,7 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn handle_mqtt_message(&mut self, msg: rumqttc::Publish) {
+    pub(crate) fn handle_kafka_message(&mut self, msg: Vec<u8>) {
         match msg.try_payload_from_json::<satori_common::Message>() {
             Ok(msg) => {
                 if let satori_common::Message::ArchiveCommand(cmd) = msg {
@@ -183,7 +183,6 @@ impl ArchiveTaskQueue {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rumqttc::{Publish, QoS};
     use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Message};
     use url::Url;
 
@@ -204,8 +203,8 @@ mod test {
             camera_url: Url::parse("http://localhost:8080/stream.m3u8").unwrap(),
             segment_list: vec![],
         }));
-        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
-        queue.handle_mqtt_message(msg);
+        let msg = serde_json::to_vec(&msg).unwrap();
+        queue.handle_kafka_message(msg);
         assert!(queue.queue.is_empty());
     }
 
@@ -219,8 +218,8 @@ mod test {
             camera_url: Url::parse("http://localhost:8080/stream.m3u8").unwrap(),
             segment_list: vec!["one.ts".into(), "two.ts".into()],
         }));
-        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
-        queue.handle_mqtt_message(msg);
+        let msg = serde_json::to_vec(&msg).unwrap();
+        queue.handle_kafka_message(msg);
         assert_eq!(queue.queue.len(), 2);
     }
 }

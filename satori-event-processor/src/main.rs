@@ -11,7 +11,7 @@ use axum::{Json, Router, extract::State, http::StatusCode, response::IntoRespons
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::{TriggerCommand, mqtt::MqttClient};
+use satori_common::{TriggerCommand, kafka::KafkaProducer};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::Mutex, time::Instant};
 use tracing::{debug, error, info};
@@ -53,8 +53,8 @@ async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config)?;
 
-    // Set up and connect MQTT client
-    let mut mqtt_client: MqttClient = config.mqtt.into();
+    // Set up Kafka producer
+    let kafka_producer: KafkaProducer = config.kafka.into();
 
     // Set up camera stream client
     let camera_client = self::hls_client::HlsClient::new(config.cameras);
@@ -124,18 +124,15 @@ async fn main() -> miette::Result<()> {
                 info!("Exiting.");
                 break;
             }
-            _ = mqtt_client.poll() => {
-                // Do not need to receive MQTT messages
-            }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");
                 let mut events = events.lock().await;
-                events.process(&camera_client, &mqtt_client).await;
+                events.process(&camera_client, &kafka_producer).await;
             }
             _ = trigger_rx.changed() => {
                 debug!("Processing events due to trigger");
                 let mut events = events.lock().await;
-                events.process(&camera_client, &mqtt_client).await;
+                events.process(&camera_client, &kafka_producer).await;
             }
         }
     }
@@ -144,9 +141,6 @@ async fn main() -> miette::Result<()> {
     info!("Stopping HTTP server");
     server_handle.abort();
     let _ = server_handle.await;
-
-    // Disconnect MQTT client
-    mqtt_client.disconnect().await;
 
     Ok(())
 }

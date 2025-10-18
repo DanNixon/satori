@@ -2,6 +2,7 @@ pub mod camera_config;
 mod config_file;
 mod event;
 mod hls;
+pub mod kafka;
 mod message_schema;
 pub mod mqtt;
 mod throttled_error;

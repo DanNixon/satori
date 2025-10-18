@@ -6,7 +6,7 @@ use crate::config::Config;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::mqtt::MqttClient;
+use satori_common::kafka::KafkaConsumer;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::info;
 
@@ -41,7 +41,7 @@ async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config)?;
 
-    let mut mqtt_client: MqttClient = config.mqtt.into();
+    let mut kafka_consumer: KafkaConsumer = config.kafka.into();
 
     let context = AppContext {
         storage: config
@@ -81,9 +81,9 @@ async fn main() -> miette::Result<()> {
                 info!("Exiting");
                 break;
             }
-            msg = mqtt_client.poll() => {
+            msg = kafka_consumer.poll() => {
                 if let Some(msg) = msg {
-                    queue.handle_mqtt_message(msg);
+                    queue.handle_kafka_message(msg);
                 }
             }
             _ = queue_process_interval.tick() => {
@@ -91,9 +91,6 @@ async fn main() -> miette::Result<()> {
             }
         }
     }
-
-    // Disconnect MQTT client
-    mqtt_client.disconnect().await;
 
     Ok(())
 }
