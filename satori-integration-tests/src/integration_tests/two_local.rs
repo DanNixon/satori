@@ -18,7 +18,7 @@ async fn two_local() {
     let redpanda = RedpandaDriver::default();
     redpanda.wait_for_ready().await;
 
-    let mut kafka_client = TestKafkaClient::new(redpanda.kafka_port(), KAFKA_TOPIC).await;
+    let kafka_client = TestKafkaClient::new(redpanda.kafka_port(), KAFKA_TOPIC).await;
 
     let mut stream_1 = DummyHlsServer::new(
         "stream 1".to_string(),

@@ -92,11 +92,7 @@ impl KafkaConsumer {
     pub async fn poll(&mut self) -> Option<Vec<u8>> {
         match tokio::time::timeout(Duration::from_millis(100), self.consumer.recv()).await {
             Ok(Ok(message)) => {
-                if let Some(payload) = message.payload() {
-                    Some(payload.to_vec())
-                } else {
-                    None
-                }
+                message.payload().map(|payload| payload.to_vec())
             }
             Ok(Err(e)) => {
                 if let Some(e) = self.poll_error_logger.log(format!("{e:?}")) {
