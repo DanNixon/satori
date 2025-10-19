@@ -3,7 +3,6 @@ mod dummy_hls_server;
 mod kafka_client;
 mod minio;
 mod mosquitto;
-mod mqtt_client;
 mod network;
 mod podman;
 mod redpanda;

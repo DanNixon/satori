@@ -33,11 +33,17 @@ impl Default for RedpandaDriver {
                 "--kafka-addr",
                 "internal://0.0.0.0:9092,external://0.0.0.0:19092",
                 "--advertise-kafka-addr",
-                &format!("internal://redpanda:9092,external://localhost:{}", kafka_port),
+                &format!(
+                    "internal://redpanda:9092,external://localhost:{}",
+                    kafka_port
+                ),
                 "--pandaproxy-addr",
                 "internal://0.0.0.0:8082,external://0.0.0.0:18082",
                 "--advertise-pandaproxy-addr",
-                &format!("internal://redpanda:8082,external://localhost:{}", http_proxy_port),
+                &format!(
+                    "internal://redpanda:8082,external://localhost:{}",
+                    http_proxy_port
+                ),
                 "--schema-registry-addr",
                 "internal://0.0.0.0:8081,external://0.0.0.0:18081",
                 "--rpc-addr",

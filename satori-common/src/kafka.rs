@@ -13,7 +13,7 @@ use tracing::{error, info, warn};
 pub struct KafkaConfig {
     brokers: String,
     topic: String,
-    
+
     #[serde(default)]
     group_id: Option<String>,
 }
@@ -46,8 +46,7 @@ impl KafkaProducer {
     pub async fn send_json<T: serde::Serialize + Sync>(&self, payload: &T) {
         let payload = serde_json::to_vec(payload).expect("Message should be serialized to JSON");
 
-        let record: FutureRecord<(), Vec<u8>> = FutureRecord::to(&self.topic)
-            .payload(&payload);
+        let record: FutureRecord<(), Vec<u8>> = FutureRecord::to(&self.topic).payload(&payload);
 
         if let Err((e, _)) = self.producer.send(record, Duration::from_secs(0)).await {
             error!("Failed to send message: {:?}", e);
@@ -63,8 +62,10 @@ pub struct KafkaConsumer {
 
 impl From<KafkaConfig> for KafkaConsumer {
     fn from(config: KafkaConfig) -> Self {
-        let group_id = config.group_id.unwrap_or_else(|| "satori-consumer".to_string());
-        
+        let group_id = config
+            .group_id
+            .unwrap_or_else(|| "satori-consumer".to_string());
+
         let consumer: StreamConsumer = ClientConfig::new()
             .set("bootstrap.servers", &config.brokers)
             .set("group.id", &group_id)
@@ -133,13 +134,12 @@ mod test {
     use satori_testing_utils::RedpandaDriver;
 
     #[tokio::test]
-    #[ignore] // Requires Redpanda to be running
     async fn producer_consumer_test() {
         let redpanda = RedpandaDriver::default();
         redpanda.wait_for_ready().await;
 
         let topic = "test-topic";
-        
+
         let producer_config = KafkaConfig {
             brokers: format!("localhost:{}", redpanda.kafka_port()),
             topic: topic.to_string(),

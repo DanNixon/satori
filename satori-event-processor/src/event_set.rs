@@ -93,7 +93,11 @@ impl EventSet {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn process(&mut self, camera_client: &HlsClient, kafka_producer: &KafkaProducer) {
+    pub(crate) async fn process(
+        &mut self,
+        camera_client: &HlsClient,
+        kafka_producer: &KafkaProducer,
+    ) {
         // Do nothing if there are no events in the queue
         if self.events.is_empty() {
             return;
@@ -140,15 +144,13 @@ impl EventSet {
                 if !new_segments.is_empty() {
                     // Send archive command for segments
                     kafka_producer
-                        .send_json(
-                            &Message::ArchiveCommand(ArchiveCommand::Segments(
-                                ArchiveSegmentsCommand {
-                                    camera_name: camera.name.clone(),
-                                    camera_url: camera_client.get_camera_url(&camera.name).unwrap(),
-                                    segment_list: new_segments.clone(),
-                                },
-                            )),
-                        )
+                        .send_json(&Message::ArchiveCommand(ArchiveCommand::Segments(
+                            ArchiveSegmentsCommand {
+                                camera_name: camera.name.clone(),
+                                camera_url: camera_client.get_camera_url(&camera.name).unwrap(),
+                                segment_list: new_segments.clone(),
+                            },
+                        )))
                         .await;
                 }
 
@@ -158,9 +160,9 @@ impl EventSet {
 
             // Send archive command for event
             kafka_producer
-                .send_json(
-                    &Message::ArchiveCommand(ArchiveCommand::EventMetadata(event.clone())),
-                )
+                .send_json(&Message::ArchiveCommand(ArchiveCommand::EventMetadata(
+                    event.clone(),
+                )))
                 .await;
         }
 

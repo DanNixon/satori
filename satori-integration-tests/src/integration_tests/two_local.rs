@@ -171,7 +171,6 @@ async fn two_local() {
     // Ensure event state file is empty
     assert!(events_file_contents != "[]");
 
-
     satori_event_processor.stop();
     satori_archiver.stop();
 

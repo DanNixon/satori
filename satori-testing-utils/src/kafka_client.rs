@@ -16,7 +16,7 @@ pub struct TestKafkaClient {
 impl TestKafkaClient {
     pub async fn new(kafka_port: u16, topic: &str) -> Self {
         let brokers = format!("localhost:{}", kafka_port);
-        
+
         let producer: FutureProducer = ClientConfig::new()
             .set("bootstrap.servers", &brokers)
             .set("message.timeout.ms", "5000")
@@ -46,14 +46,14 @@ impl TestKafkaClient {
 
     pub async fn wait_for_message(&mut self, timeout: Duration) -> Result<TestMessage, String> {
         let start = std::time::Instant::now();
-        
+
         while start.elapsed() < timeout {
             match tokio::time::timeout(Duration::from_millis(100), self.consumer.recv()).await {
                 Ok(Ok(message)) => {
                     if let Some(payload) = message.payload() {
                         let payload_str = std::str::from_utf8(payload)
                             .map_err(|e| format!("Failed to decode message: {}", e))?;
-                        
+
                         return Ok(TestMessage {
                             topic: message.topic().to_string(),
                             payload: payload_str.to_string(),
@@ -69,7 +69,7 @@ impl TestKafkaClient {
                 }
             }
         }
-        
+
         Err(format!("Timeout waiting for message after {:?}", timeout))
     }
 }
@@ -104,13 +104,19 @@ mod test {
 
         // Send a test message using the producer
         let test_payload = "Hello Kafka!";
-        let record: FutureRecord<(), &str> = FutureRecord::to(topic)
-            .payload(test_payload);
-        
-        client.producer.send(record, Duration::from_secs(0)).await.unwrap();
+        let record: FutureRecord<(), &str> = FutureRecord::to(topic).payload(test_payload);
+
+        client
+            .producer
+            .send(record, Duration::from_secs(0))
+            .await
+            .unwrap();
 
         // Wait for the message
-        let msg = client.wait_for_message(Duration::from_secs(5)).await.unwrap();
+        let msg = client
+            .wait_for_message(Duration::from_secs(5))
+            .await
+            .unwrap();
         assert_eq!(msg.topic, topic);
         assert_eq!(msg.payload, test_payload);
     }
