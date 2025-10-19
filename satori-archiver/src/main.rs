@@ -6,7 +6,7 @@ use crate::config::Config;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::kafka::KafkaConsumer;
+use rdkafka::{ClientConfig, consumer::StreamConsumer};
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::info;
 
