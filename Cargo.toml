@@ -37,7 +37,6 @@ rand = "0.8.5"
 rdkafka = { version = "0.38.0", default-features = false, features = ["tokio", "cmake-build", "ssl-vendored", "gssapi-vendored", "sasl", "zstd"] }
 regex = "1.11.3"
 reqwest = { version = "0.12.23", default-features = false, features = ["rustls-tls"] }
-rumqttc = "0.25.0"
 satori-common = { path = "./satori-common" }
 satori-storage = { path = "./satori-storage" }
 satori-testing-utils = { path = "./satori-testing-utils" }

@@ -2,7 +2,7 @@ use rdkafka::{
     Message as KafkaMessage,
     config::ClientConfig,
     consumer::{Consumer, StreamConsumer},
-    producer::{FutureProducer, FutureRecord},
+    producer::FutureProducer,
 };
 use std::time::Duration;
 use tracing::info;

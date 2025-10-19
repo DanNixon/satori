@@ -2,6 +2,8 @@
   packages = with pkgs; [
     # Rust toolchain
     rustup
+    clang
+    cmake
 
     # Code formatting
     treefmt

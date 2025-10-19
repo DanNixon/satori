@@ -12,10 +12,8 @@ nix.workspace = true
 rand.workspace = true
 rdkafka.workspace = true
 reqwest.workspace = true
-rumqttc.workspace = true
 rust-s3 = { version = "0.37.0", default-features = false, features = ["tokio-rustls-tls"] }
 satori-common.workspace = true
-tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
