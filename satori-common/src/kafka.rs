@@ -10,13 +10,7 @@ use std::time::Duration;
 use tracing::{error, info, warn};
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct KafkaConfig {
-    brokers: String,
-    topic: String,
-
-    #[serde(default)]
-    group_id: Option<String>,
-}
+pub struct KafkaConfig {}
 
 pub struct KafkaProducer {
     producer: FutureProducer,
@@ -91,9 +85,7 @@ impl From<KafkaConfig> for KafkaConsumer {
 impl KafkaConsumer {
     pub async fn poll(&mut self) -> Option<Vec<u8>> {
         match tokio::time::timeout(Duration::from_millis(100), self.consumer.recv()).await {
-            Ok(Ok(message)) => {
-                message.payload().map(|payload| payload.to_vec())
-            }
+            Ok(Ok(message)) => message.payload().map(|payload| payload.to_vec()),
             Ok(Err(e)) => {
                 if let Some(e) = self.poll_error_logger.log(format!("{e:?}")) {
                     warn!("Kafka consumer error: {}", e);

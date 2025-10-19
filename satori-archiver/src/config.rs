@@ -1,4 +1,3 @@
-use satori_common::kafka::KafkaConfig;
 use satori_storage::StorageConfig;
 use serde::Deserialize;
 use serde_with::{DurationMilliSeconds, serde_as};
@@ -15,4 +14,12 @@ pub(crate) struct Config {
     pub(crate) kafka: KafkaConfig,
 
     pub(crate) storage: StorageConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct KafkaConfig {
+    pub(crate) brokers: String,
+    pub(crate) consumer_group: String,
+
+    pub(crate) archive_command_topic: String,
 }

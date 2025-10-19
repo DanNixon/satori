@@ -41,7 +41,17 @@ async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config)?;
 
-    let mut kafka_consumer: KafkaConsumer = config.kafka.into();
+    let kafka_consumer: StreamConsumer = ClientConfig::new()
+        .set("bootstrap.servers", &config.kafka.brokers)
+        .set("group.id", &config.kafka.consumer_group)
+        .set("enable.auto.commit", "true")
+        // .set("auto.offset.reset", "earliest")
+        .create()
+        .into_diagnostic()?;
+
+    kafka_consumer
+        .subscribe(&[&config.topic])
+        .into_diagnostic()?;
 
     let context = AppContext {
         storage: config

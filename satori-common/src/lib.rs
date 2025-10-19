@@ -2,7 +2,6 @@ pub mod camera_config;
 mod config_file;
 mod event;
 mod hls;
-pub mod kafka;
 mod message_schema;
 mod throttled_error;
 mod trigger;
