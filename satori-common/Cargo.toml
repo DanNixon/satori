@@ -5,14 +5,11 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-async-trait.workspace = true
 chrono.workspace = true
 m3u8-rs.workspace = true
 miette.workspace = true
 regex.workspace = true
-rumqttc.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 serde_with.workspace = true
 tokio.workspace = true
 toml.workspace = true

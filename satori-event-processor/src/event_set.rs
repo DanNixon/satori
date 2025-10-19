@@ -2,7 +2,7 @@ use crate::{hls_client::HlsClient, segments::Playlist};
 use miette::IntoDiagnostic;
 use satori_common::{
     ArchiveCommand, ArchiveSegmentsCommand, CameraSegments, Event, EventReason, Message, Trigger,
-    mqtt::{AsyncClientExt, MqttClient},
+    kafka::KafkaProducer,
 };
 use std::{
     fs::File,
@@ -93,7 +93,11 @@ impl EventSet {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn process(&mut self, camera_client: &HlsClient, mqtt_client: &MqttClient) {
+    pub(crate) async fn process(
+        &mut self,
+        camera_client: &HlsClient,
+        kafka_producer: &KafkaProducer,
+    ) {
         // Do nothing if there are no events in the queue
         if self.events.is_empty() {
             return;
@@ -139,18 +143,14 @@ impl EventSet {
 
                 if !new_segments.is_empty() {
                     // Send archive command for segments
-                    mqtt_client
-                        .client()
-                        .publish_json(
-                            mqtt_client.topic(),
-                            &Message::ArchiveCommand(ArchiveCommand::Segments(
-                                ArchiveSegmentsCommand {
-                                    camera_name: camera.name.clone(),
-                                    camera_url: camera_client.get_camera_url(&camera.name).unwrap(),
-                                    segment_list: new_segments.clone(),
-                                },
-                            )),
-                        )
+                    kafka_producer
+                        .send_json(&Message::ArchiveCommand(ArchiveCommand::Segments(
+                            ArchiveSegmentsCommand {
+                                camera_name: camera.name.clone(),
+                                camera_url: camera_client.get_camera_url(&camera.name).unwrap(),
+                                segment_list: new_segments.clone(),
+                            },
+                        )))
                         .await;
                 }
 
@@ -159,12 +159,10 @@ impl EventSet {
             }
 
             // Send archive command for event
-            mqtt_client
-                .client()
-                .publish_json(
-                    mqtt_client.topic(),
-                    &Message::ArchiveCommand(ArchiveCommand::EventMetadata(event.clone())),
-                )
+            kafka_producer
+                .send_json(&Message::ArchiveCommand(ArchiveCommand::EventMetadata(
+                    event.clone(),
+                )))
                 .await;
         }
 

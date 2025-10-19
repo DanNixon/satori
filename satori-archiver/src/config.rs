@@ -1,4 +1,3 @@
-use satori_common::mqtt::MqttConfig;
 use satori_storage::StorageConfig;
 use serde::Deserialize;
 use serde_with::{DurationMilliSeconds, serde_as};
@@ -12,7 +11,15 @@ pub(crate) struct Config {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub(crate) interval: Duration,
 
-    pub(crate) mqtt: MqttConfig,
+    pub(crate) kafka: KafkaConfig,
 
     pub(crate) storage: StorageConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct KafkaConfig {
+    pub(crate) brokers: String,
+    pub(crate) consumer_group: String,
+
+    pub(crate) archive_command_topic: String,
 }

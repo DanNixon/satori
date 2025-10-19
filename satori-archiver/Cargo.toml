@@ -11,8 +11,8 @@ git-version.workspace = true
 metrics-exporter-prometheus.workspace = true
 metrics.workspace = true
 miette = { workspace = true, features = ["fancy"] }
+rdkafka.workspace = true
 reqwest.workspace = true
-rumqttc.workspace = true
 satori-common.workspace = true
 satori-storage.workspace = true
 serde.workspace = true

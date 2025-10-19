@@ -1,13 +1,9 @@
-{
-  pkgs,
-  lib,
-  config,
-  inputs,
-  ...
-}: {
+{pkgs, ...}: {
   packages = with pkgs; [
     # Rust toolchain
     rustup
+    clang
+    cmake
 
     # Code formatting
     treefmt
@@ -19,7 +15,7 @@
 
     # Container image management
     skopeo
-
-    pkgs.git
   ];
+
+  env.LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 }
