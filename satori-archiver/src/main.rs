@@ -47,11 +47,9 @@ async fn main() -> miette::Result<()> {
     let kafka_consumer: StreamConsumer = ClientConfig::new()
         .set("bootstrap.servers", &config.kafka.brokers)
         .set("group.id", &config.kafka.consumer_group)
-        .set("enable.auto.commit", "true")
-        // .set("auto.offset.reset", "earliest")
+        .set("enable.auto.commit", "false")
         .create()
         .into_diagnostic()?;
-
     kafka_consumer
         .subscribe(&[&config.kafka.archive_command_topic])
         .into_diagnostic()?;
