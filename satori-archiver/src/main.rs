@@ -50,7 +50,7 @@ async fn main() -> miette::Result<()> {
         .into_diagnostic()?;
 
     kafka_consumer
-        .subscribe(&[&config.topic])
+        .subscribe(&[&config.kafka.archive_command_topic])
         .into_diagnostic()?;
 
     let context = AppContext {
@@ -91,6 +91,7 @@ async fn main() -> miette::Result<()> {
                 info!("Exiting");
                 break;
             }
+            // TODO
             msg = kafka_consumer.poll() => {
                 if let Some(msg) = msg {
                     queue.handle_kafka_message(msg);
