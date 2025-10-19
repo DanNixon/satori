@@ -6,7 +6,10 @@ use crate::config::Config;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use rdkafka::{ClientConfig, consumer::StreamConsumer};
+use rdkafka::{
+    ClientConfig,
+    consumer::{Consumer, StreamConsumer, stream_consumer},
+};
 use std::{net::SocketAddr, path::PathBuf};
 use tracing::info;
 
@@ -91,8 +94,8 @@ async fn main() -> miette::Result<()> {
                 info!("Exiting");
                 break;
             }
-            // TODO
-            msg = kafka_consumer.poll() => {
+            msg = kafka_consumer.recv() => {
+                // TODO
                 if let Some(msg) = msg {
                     queue.handle_kafka_message(msg);
                 }

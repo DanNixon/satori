@@ -1,6 +1,6 @@
 use crate::{AppContext, task::ArchiveTask};
 use miette::IntoDiagnostic;
-use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event, kafka::PayloadExt};
+use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event};
 use std::{
     collections::VecDeque,
     fs::File,
