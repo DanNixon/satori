@@ -6,7 +6,7 @@ edition.workspace = true
 
 [dev-dependencies]
 ctor.workspace = true
-indoc = "2.0.5"
+indoc = "2.0.7"
 reqwest.workspace = true
 rumqttc.workspace = true
 satori-common.workspace = true
