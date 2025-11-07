@@ -51,7 +51,7 @@ impl Trigger {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct TriggerTemplate {
     pub cameras: Vec<String>,
 

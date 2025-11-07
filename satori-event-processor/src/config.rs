@@ -1,23 +1,28 @@
-use satori_common::{
-    Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig, mqtt::MqttConfig,
-};
+use satori_common::{Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig};
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 use tracing::info;
+use url::Url;
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
 pub(crate) struct Config {
-    pub(crate) event_file: PathBuf,
+    pub(crate) state_store: PathBuf,
 
     #[serde_as(as = "DurationSeconds<u64>")]
-    pub(crate) interval: Duration,
+    pub(crate) event_process_interval: Duration,
+
+    #[serde_as(as = "DurationSeconds<u64>")]
+    pub(crate) archive_retry_interval: Duration,
+
+    #[serde_as(as = "DurationSeconds<u64>")]
+    pub(crate) archive_failed_task_ttl: Duration,
 
     #[serde_as(as = "DurationSeconds<u64>")]
     pub(crate) event_ttl: Duration,
 
-    pub(crate) mqtt: MqttConfig,
+    pub(crate) storage_api_urls: Vec<Url>,
 
     #[serde(flatten)]
     pub(crate) cameras: CamerasConfig,
@@ -25,7 +30,7 @@ pub(crate) struct Config {
     pub(crate) triggers: TriggersConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub(crate) struct TriggersConfig {
     /// Trigger configs that are used when a trigger with a specific ID are issued
     #[serde(default)]
