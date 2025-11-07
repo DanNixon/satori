@@ -16,7 +16,7 @@ use miette::{Context, IntoDiagnostic};
 use satori_common::ArchiveCommand;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::Mutex};
-use tracing::info;
+use tracing::{error, info};
 
 const METRIC_QUEUE_LENGTH: &str = "satori_archiver_queue_length";
 const METRIC_PROCESSED_TASKS: &str = "satori_archiver_processed_tasks";
@@ -164,7 +164,8 @@ async fn handle_archive(
     for task in tasks {
         let mut queue = state.queue.lock().await;
         if let Err(e) = queue.process_task_sync(task, &state.context).await {
-            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to process archive task: {}", e));
+            error!("Failed to process archive task: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to process archive request".to_string());
         }
     }
 

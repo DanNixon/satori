@@ -256,7 +256,7 @@ impl EventSet {
         archiver_url: &Url,
     ) -> Result<(), String> {
         let url = archiver_url.join("/archive").map_err(|e| e.to_string())?;
-        
+
         let response = http_client
             .post(url)
             .json(cmd)
