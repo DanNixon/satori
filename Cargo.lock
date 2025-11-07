@@ -2942,6 +2942,7 @@ dependencies = [
 name = "satori-archiver"
 version = "0.3.1"
 dependencies = [
+ "axum",
  "bytes",
  "clap",
  "git-version",
@@ -2949,7 +2950,6 @@ dependencies = [
  "metrics-exporter-prometheus",
  "miette",
  "reqwest",
- "rumqttc",
  "satori-common",
  "satori-storage",
  "serde",

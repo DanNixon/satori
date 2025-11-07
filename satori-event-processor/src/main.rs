@@ -11,10 +11,11 @@ use axum::{Json, Router, extract::State, http::StatusCode, response::IntoRespons
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::{TriggerCommand, mqtt::MqttClient};
+use satori_common::TriggerCommand;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::Mutex, time::Instant};
 use tracing::{debug, error, info};
+use url::Url;
 
 const METRIC_TRIGGERS: &str = "satori_eventprocessor_triggers";
 const METRIC_ACTIVE_EVENTS: &str = "satori_eventprocessor_active_events";
@@ -24,6 +25,8 @@ struct AppState {
     events: Arc<Mutex<EventSet>>,
     trigger_config: Arc<TriggersConfig>,
     trigger_tx: tokio::sync::watch::Sender<Instant>,
+    http_client: reqwest::Client,
+    archiver_url: Url,
 }
 
 /// Run the event processor.
@@ -53,11 +56,11 @@ async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config)?;
 
-    // Set up and connect MQTT client
-    let mut mqtt_client: MqttClient = config.mqtt.into();
-
     // Set up camera stream client
     let camera_client = self::hls_client::HlsClient::new(config.cameras);
+
+    // Set up HTTP client for archiver requests
+    let http_client = reqwest::Client::new();
 
     // Load existing or create new event state
     let events = Arc::new(Mutex::new(EventSet::load_or_new(
@@ -95,6 +98,8 @@ async fn main() -> miette::Result<()> {
         events: events.clone(),
         trigger_config: Arc::new(config.triggers),
         trigger_tx: trigger_tx.clone(),
+        http_client: http_client.clone(),
+        archiver_url: config.archiver_url.clone(),
     });
 
     // Configure HTTP server
@@ -124,18 +129,15 @@ async fn main() -> miette::Result<()> {
                 info!("Exiting.");
                 break;
             }
-            _ = mqtt_client.poll() => {
-                // Do not need to receive MQTT messages
-            }
             _ = process_interval.tick() => {
                 debug!("Processing events at interval");
                 let mut events = events.lock().await;
-                events.process(&camera_client, &mqtt_client).await;
+                events.process(&camera_client, &http_client, &config.archiver_url).await;
             }
             _ = trigger_rx.changed() => {
                 debug!("Processing events due to trigger");
                 let mut events = events.lock().await;
-                events.process(&camera_client, &mqtt_client).await;
+                events.process(&camera_client, &http_client, &config.archiver_url).await;
             }
         }
     }
@@ -144,9 +146,6 @@ async fn main() -> miette::Result<()> {
     info!("Stopping HTTP server");
     server_handle.abort();
     let _ = server_handle.await;
-
-    // Disconnect MQTT client
-    mqtt_client.disconnect().await;
 
     Ok(())
 }

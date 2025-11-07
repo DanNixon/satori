@@ -2,12 +2,20 @@ mod config;
 mod queue;
 mod task;
 
-use crate::config::Config;
+use crate::{config::Config, queue::ArchiveTaskQueue};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::post,
+    Json, Router,
+};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::mqtt::MqttClient;
-use std::{net::SocketAddr, path::PathBuf};
+use satori_common::ArchiveCommand;
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use tokio::{net::TcpListener, sync::Mutex};
 use tracing::info;
 
 const METRIC_QUEUE_LENGTH: &str = "satori_archiver_queue_length";
@@ -34,6 +42,11 @@ struct AppContext {
     http_client: reqwest::Client,
 }
 
+struct AppState {
+    context: Arc<AppContext>,
+    queue: Arc<Mutex<ArchiveTaskQueue>>,
+}
+
 #[tokio::main]
 async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
@@ -41,18 +54,18 @@ async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config)?;
 
-    let mut mqtt_client: MqttClient = config.mqtt.into();
-
-    let context = AppContext {
+    let context = Arc::new(AppContext {
         storage: config
             .storage
             .create_provider()
             .into_diagnostic()
             .wrap_err("Failed to create storage provider")?,
         http_client: reqwest::Client::new(),
-    };
+    });
 
-    let mut queue = queue::ArchiveTaskQueue::load_or_new(&config.queue_file);
+    let queue = Arc::new(Mutex::new(queue::ArchiveTaskQueue::load_or_new(
+        &config.queue_file,
+    )));
     let mut queue_process_interval = tokio::time::interval(config.interval);
 
     // Set up metrics server
@@ -75,25 +88,85 @@ async fn main() -> miette::Result<()> {
         "Finished task count"
     );
 
+    // Set up shared state
+    let state = Arc::new(AppState {
+        context: context.clone(),
+        queue: queue.clone(),
+    });
+
+    // Configure HTTP server
+    let app = Router::new()
+        .route("/archive", post(handle_archive))
+        .with_state(state);
+
+    let listener = TcpListener::bind(&config.http_server_address)
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to bind listener for HTTP server")?;
+
+    info!("Starting HTTP server on {}", config.http_server_address);
+
+    // Spawn HTTP server task
+    let server_handle = tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("HTTP server should run");
+    });
+
+    // Run queue processing loop
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
                 info!("Exiting");
                 break;
             }
-            msg = mqtt_client.poll() => {
-                if let Some(msg) = msg {
-                    queue.handle_mqtt_message(msg);
-                }
-            }
             _ = queue_process_interval.tick() => {
-                queue.process_one(&context).await;
+                let mut q = queue.lock().await;
+                q.process_one(&context).await;
             }
         }
     }
 
-    // Disconnect MQTT client
-    mqtt_client.disconnect().await;
+    // Stop HTTP server
+    info!("Stopping HTTP server");
+    server_handle.abort();
+    let _ = server_handle.await;
 
     Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+async fn handle_archive(
+    State(state): State<Arc<AppState>>,
+    Json(cmd): Json<ArchiveCommand>,
+) -> impl IntoResponse {
+    info!("Received archive command");
+
+    // Convert the command into tasks
+    let tasks = match &cmd {
+        ArchiveCommand::EventMetadata(event) => {
+            vec![task::ArchiveTask::EventMetadata(event.clone())]
+        }
+        ArchiveCommand::Segments(segments_cmd) => segments_cmd
+            .segment_list
+            .iter()
+            .map(|segment| {
+                task::ArchiveTask::CameraSegment(task::CameraSegment {
+                    camera_name: segments_cmd.camera_name.clone(),
+                    camera_url: segments_cmd.camera_url.clone(),
+                    filename: segment.clone(),
+                })
+            })
+            .collect(),
+    };
+
+    // Process each task synchronously
+    for task in tasks {
+        let mut queue = state.queue.lock().await;
+        if let Err(e) = queue.process_task_sync(task, &state.context).await {
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to process archive task: {}", e));
+        }
+    }
+
+    (StatusCode::OK, String::new())
 }

@@ -1,10 +1,11 @@
 use satori_common::{
-    Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig, mqtt::MqttConfig,
+    Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig,
 };
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 use tracing::info;
+use url::Url;
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
@@ -17,7 +18,7 @@ pub(crate) struct Config {
     #[serde_as(as = "DurationSeconds<u64>")]
     pub(crate) event_ttl: Duration,
 
-    pub(crate) mqtt: MqttConfig,
+    pub(crate) archiver_url: Url,
 
     #[serde(flatten)]
     pub(crate) cameras: CamerasConfig,
