@@ -1,6 +1,6 @@
 use crate::{AppContext, task::ArchiveTask};
 use miette::IntoDiagnostic;
-use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event, mqtt::PublishExt};
+use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Event};
 use std::{
     collections::VecDeque,
     fs::File,
@@ -94,29 +94,20 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn handle_mqtt_message(&mut self, msg: rumqttc::Publish) {
-        match msg.try_payload_from_json::<satori_common::Message>() {
-            Ok(msg) => {
-                if let satori_common::Message::ArchiveCommand(cmd) = msg {
-                    match cmd {
-                        ArchiveCommand::EventMetadata(cmd) => {
-                            self.handle_archive_event_metadata_message(cmd);
-                        }
-                        ArchiveCommand::Segments(cmd) => {
-                            self.handle_archive_segments_message(cmd);
-                        }
-                    }
-                    info!("Task queue length is now: {}", self.queue.len());
-                }
+    pub(crate) fn add_archive_command(&mut self, cmd: ArchiveCommand) {
+        match cmd {
+            ArchiveCommand::EventMetadata(event) => {
+                self.add_event_metadata(event);
             }
-            Err(e) => {
-                error!("Failed to parse message, error={}", e);
+            ArchiveCommand::Segments(cmd) => {
+                self.add_segments(cmd);
             }
         }
+        info!("Task queue length is now: {}", self.queue.len());
     }
 
     #[tracing::instrument(skip_all)]
-    fn handle_archive_event_metadata_message(&mut self, event: Event) {
+    fn add_event_metadata(&mut self, event: Event) {
         info!("Queueing archive event metadata command");
         self.queue.push_back(ArchiveTask::EventMetadata(event));
 
@@ -125,7 +116,7 @@ impl ArchiveTaskQueue {
     }
 
     #[tracing::instrument(skip_all)]
-    fn handle_archive_segments_message(&mut self, msg: ArchiveSegmentsCommand) {
+    fn add_segments(&mut self, msg: ArchiveSegmentsCommand) {
         info!("Queueing archive video segments command");
         for segment in msg.segment_list {
             debug!("Adding video segment to queue: {}", segment.display());
@@ -178,13 +169,50 @@ impl ArchiveTaskQueue {
             }
         }
     }
+
+    /// Process a task synchronously (for HTTP endpoint)
+    #[tracing::instrument(skip_all)]
+    pub(crate) async fn process_task_sync(
+        &mut self,
+        task: ArchiveTask,
+        context: &AppContext,
+    ) -> miette::Result<()> {
+        let task_type = match &task {
+            ArchiveTask::EventMetadata(_) => "event",
+            ArchiveTask::CameraSegment(_) => "segment",
+        };
+
+        let result = task.run(context).await;
+
+        let task_result = match &result {
+            Ok(_) => "success",
+            Err(_) => "failure",
+        };
+
+        metrics::counter!(
+            crate::METRIC_PROCESSED_TASKS,
+            "type" => task_type,
+            "result" => task_result
+        )
+        .increment(1);
+
+        match &result {
+            Ok(()) => {
+                info!("Successfully processed task: {:?}", task);
+            }
+            Err(err) => {
+                error!("Failed to process task: {:?}, reason: {}", task, err);
+            }
+        }
+
+        result
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use rumqttc::{Publish, QoS};
-    use satori_common::{ArchiveCommand, ArchiveSegmentsCommand, Message};
+    use satori_common::{ArchiveCommand, ArchiveSegmentsCommand};
     use url::Url;
 
     #[test]
@@ -199,13 +227,12 @@ mod test {
         let mut queue = ArchiveTaskQueue::default();
         assert!(queue.queue.is_empty());
 
-        let msg = Message::ArchiveCommand(ArchiveCommand::Segments(ArchiveSegmentsCommand {
+        let cmd = ArchiveCommand::Segments(ArchiveSegmentsCommand {
             camera_name: "camera-1".into(),
             camera_url: Url::parse("http://localhost:8080/stream.m3u8").unwrap(),
             segment_list: vec![],
-        }));
-        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
-        queue.handle_mqtt_message(msg);
+        });
+        queue.add_archive_command(cmd);
         assert!(queue.queue.is_empty());
     }
 
@@ -214,13 +241,12 @@ mod test {
         let mut queue = ArchiveTaskQueue::default();
         assert!(queue.queue.is_empty());
 
-        let msg = Message::ArchiveCommand(ArchiveCommand::Segments(ArchiveSegmentsCommand {
+        let cmd = ArchiveCommand::Segments(ArchiveSegmentsCommand {
             camera_name: "camera-1".into(),
             camera_url: Url::parse("http://localhost:8080/stream.m3u8").unwrap(),
             segment_list: vec!["one.ts".into(), "two.ts".into()],
-        }));
-        let msg = Publish::new("", QoS::ExactlyOnce, serde_json::to_string(&msg).unwrap());
-        queue.handle_mqtt_message(msg);
+        });
+        queue.add_archive_command(cmd);
         assert_eq!(queue.queue.len(), 2);
     }
 }

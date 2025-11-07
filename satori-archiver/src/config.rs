@@ -1,8 +1,7 @@
-use satori_common::mqtt::MqttConfig;
 use satori_storage::StorageConfig;
 use serde::Deserialize;
 use serde_with::{DurationMilliSeconds, serde_as};
-use std::{path::PathBuf, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
@@ -12,7 +11,7 @@ pub(crate) struct Config {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub(crate) interval: Duration,
 
-    pub(crate) mqtt: MqttConfig,
+    pub(crate) http_server_address: SocketAddr,
 
     pub(crate) storage: StorageConfig,
 }
