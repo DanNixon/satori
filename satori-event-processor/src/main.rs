@@ -15,7 +15,6 @@ use satori_common::TriggerCommand;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::Mutex, time::Instant};
 use tracing::{debug, error, info};
-use url::Url;
 
 const METRIC_TRIGGERS: &str = "satori_eventprocessor_triggers";
 const METRIC_ACTIVE_EVENTS: &str = "satori_eventprocessor_active_events";
@@ -25,8 +24,6 @@ struct AppState {
     events: Arc<Mutex<EventSet>>,
     trigger_config: Arc<TriggersConfig>,
     trigger_tx: tokio::sync::watch::Sender<Instant>,
-    http_client: reqwest::Client,
-    archiver_url: Url,
 }
 
 /// Run the event processor.
@@ -98,8 +95,6 @@ async fn main() -> miette::Result<()> {
         events: events.clone(),
         trigger_config: Arc::new(config.triggers),
         trigger_tx: trigger_tx.clone(),
-        http_client: http_client.clone(),
-        archiver_url: config.archiver_url.clone(),
     });
 
     // Configure HTTP server
