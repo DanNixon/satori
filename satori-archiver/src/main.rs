@@ -1,17 +1,16 @@
-mod config;
-mod queue;
-mod task;
+mod endpoints;
+mod o11y;
 
-use crate::config::Config;
+use axum::{Router, routing::post};
+use bytes::Bytes;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::mqtt::MqttClient;
+use satori_storage::StorageConfig;
 use std::{net::SocketAddr, path::PathBuf};
+use tokio::net::TcpListener;
 use tracing::info;
-
-const METRIC_QUEUE_LENGTH: &str = "satori_archiver_queue_length";
-const METRIC_PROCESSED_TASKS: &str = "satori_archiver_processed_tasks";
+use url::Url;
 
 /// Run the archiver.
 #[derive(Clone, Parser)]
@@ -20,18 +19,30 @@ const METRIC_PROCESSED_TASKS: &str = "satori_archiver_processed_tasks";
     version = satori_common::version!(),
 )]
 pub(crate) struct Cli {
-    /// Path to configuration file
-    #[arg(short, long, env = "CONFIG_FILE", value_name = "FILE")]
-    config: PathBuf,
+    /// Path to storage configuration file
+    #[arg(short, long, env = "STORAGE_CONFIG_FILE", value_name = "FILE")]
+    storage: PathBuf,
+
+    /// Address to run the HTTP API on
+    #[clap(long, env = "API_ADDRESS", default_value = "127.0.0.1:8000")]
+    api_address: SocketAddr,
 
     /// Address to listen on for observability/metrics endpoints
     #[clap(long, env = "OBSERVABILITY_ADDRESS", default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
 
-struct AppContext {
+#[derive(Clone)]
+struct AppState {
     storage: satori_storage::Provider,
     http_client: reqwest::Client,
+}
+
+impl AppState {
+    async fn get(&self, url: Url) -> reqwest::Result<Bytes> {
+        let req = self.http_client.get(url).send().await?;
+        req.bytes().await
+    }
 }
 
 #[tokio::main]
@@ -39,23 +50,10 @@ async fn main() -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
-    let config: Config = satori_common::load_config_file(&cli.config)?;
-
-    let mut mqtt_client: MqttClient = config.mqtt.into();
-
-    let context = AppContext {
-        storage: config
-            .storage
-            .create_provider()
-            .into_diagnostic()
-            .wrap_err("Failed to create storage provider")?,
-        http_client: reqwest::Client::new(),
-    };
-
-    let mut queue = queue::ArchiveTaskQueue::load_or_new(&config.queue_file);
-    let mut queue_process_interval = tokio::time::interval(config.interval);
+    let config: StorageConfig = satori_common::load_config_file(&cli.storage)?;
 
     // Set up metrics server
+    crate::o11y::init();
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(cli.observability_address)
@@ -63,37 +61,47 @@ async fn main() -> miette::Result<()> {
         .into_diagnostic()
         .wrap_err("Failed to start prometheus metrics exporter")?;
 
-    metrics::describe_gauge!(
-        METRIC_QUEUE_LENGTH,
-        metrics::Unit::Count,
-        "Number of tasks in queue"
-    );
+    let state = AppState {
+        storage: config
+            .create_provider()
+            .into_diagnostic()
+            .wrap_err("Failed to create storage provider")?,
+        http_client: reqwest::Client::new(),
+    };
 
-    metrics::describe_counter!(
-        METRIC_PROCESSED_TASKS,
-        metrics::Unit::Count,
-        "Finished task count"
-    );
+    // Configure HTTP server
+    let app = Router::new()
+        .route("/event", post(crate::endpoints::handle_event_upload))
+        .route(
+            "/video/{camera}",
+            post(crate::endpoints::handle_camera_segment_upload),
+        )
+        .with_state(state);
 
-    loop {
-        tokio::select! {
-            _ = tokio::signal::ctrl_c() => {
-                info!("Exiting");
-                break;
-            }
-            msg = mqtt_client.poll() => {
-                if let Some(msg) = msg {
-                    queue.handle_mqtt_message(msg);
-                }
-            }
-            _ = queue_process_interval.tick() => {
-                queue.process_one(&context).await;
-            }
-        }
-    }
+    let listener = TcpListener::bind(&cli.api_address)
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to bind listener for API server")?;
 
-    // Disconnect MQTT client
-    mqtt_client.disconnect().await;
+    info!("Starting HTTP server on {}", cli.api_address);
+
+    // Spawn HTTP server task
+    let server_handle = tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("API server should run");
+    });
+
+    tokio::signal::ctrl_c()
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to wait for exit signal")?;
+    info!("Exiting");
+
+    // Stop HTTP server
+    info!("Stopping HTTP server");
+    server_handle.abort();
+    let _ = server_handle.await;
 
     Ok(())
 }

@@ -4,6 +4,7 @@ use satori_common::camera_config::CamerasConfig;
 use std::collections::HashMap;
 use url::Url;
 
+#[derive(Clone)]
 pub(crate) struct HlsClient {
     http_client: reqwest::Client,
     camera_urls: HashMap<String, Url>,
