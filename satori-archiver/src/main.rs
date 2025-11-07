@@ -3,13 +3,7 @@ mod queue;
 mod task;
 
 use crate::{config::Config, queue::ArchiveTaskQueue};
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post,
-    Json, Router,
-};
+use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
@@ -165,7 +159,10 @@ async fn handle_archive(
         let mut queue = state.queue.lock().await;
         if let Err(e) = queue.process_task_sync(task, &state.context).await {
             error!("Failed to process archive task: {}", e);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to process archive request".to_string());
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to process archive request".to_string(),
+            );
         }
     }
 

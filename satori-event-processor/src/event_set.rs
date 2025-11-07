@@ -199,7 +199,10 @@ impl EventSet {
         http_client: &reqwest::Client,
         archiver_url: &Url,
     ) {
-        match self.send_archive_command(&cmd, http_client, archiver_url).await {
+        match self
+            .send_archive_command(&cmd, http_client, archiver_url)
+            .await
+        {
             Ok(()) => {
                 info!("Successfully sent archive command");
             }
@@ -223,7 +226,10 @@ impl EventSet {
         let mut remaining_operations = VecDeque::new();
 
         while let Some(mut op) = self.pending_operations.pop_front() {
-            match self.send_archive_command(&op.command, http_client, archiver_url).await {
+            match self
+                .send_archive_command(&op.command, http_client, archiver_url)
+                .await
+            {
                 Ok(()) => {
                     info!("Successfully sent pending archive command");
                 }
@@ -267,7 +273,10 @@ impl EventSet {
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(format!("HTTP request failed with status: {}", response.status()))
+            Err(format!(
+                "HTTP request failed with status: {}",
+                response.status()
+            ))
         }
     }
 

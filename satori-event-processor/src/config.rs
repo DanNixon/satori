@@ -1,6 +1,4 @@
-use satori_common::{
-    Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig,
-};
+use satori_common::{Trigger, TriggerCommand, TriggerTemplate, camera_config::CamerasConfig};
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use std::{collections::HashMap, path::PathBuf, time::Duration};
