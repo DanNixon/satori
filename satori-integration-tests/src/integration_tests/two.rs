@@ -1,6 +1,4 @@
-use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MinioDriver,
-};
+use satori_testing_utils::{DummyHlsServer, DummyStreamParams, MinioDriver};
 use std::{
     io::{Read, Write},
     time::Duration,
