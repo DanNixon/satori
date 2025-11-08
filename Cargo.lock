@@ -3014,7 +3014,6 @@ dependencies = [
  "indoc",
  "reqwest",
  "rumqttc",
- "satori-common",
  "satori-testing-utils",
  "tempfile",
  "tokio",
