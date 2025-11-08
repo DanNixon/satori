@@ -1,8 +1,6 @@
 use crate::{hls_client::HlsClient, segments::Playlist};
 use miette::IntoDiagnostic;
-use satori_common::{
-    ArchiveCommand, ArchiveSegmentCommand, CameraSegments, Event, EventReason, Trigger,
-};
+use satori_common::{CameraSegments, Event, EventReason, Trigger};
 use std::{
     collections::VecDeque,
     fs::File,

@@ -16,7 +16,7 @@ pub(crate) struct Config {
     #[serde_as(as = "DurationSeconds<u64>")]
     pub(crate) event_ttl: Duration,
 
-    pub(crate) archiver_url: Url,
+    pub(crate) archiver_urls: Vec<Url>,
 
     #[serde(flatten)]
     pub(crate) cameras: CamerasConfig,

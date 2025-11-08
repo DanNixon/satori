@@ -1,27 +1,16 @@
 mod config;
-// mod task;
+mod endpoints;
 
 use crate::config::Config;
-use axum::{
-    Json, Router,
-    extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post,
-};
+use axum::{Router, routing::post};
 use bytes::Bytes;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::{ArchiveSegmentCommand, Event};
-use satori_storage::StorageProvider;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::net::TcpListener;
-use tracing::{info, warn};
+use tracing::info;
 use url::Url;
-
-const METRIC_QUEUE_LENGTH: &str = "satori_archiver_queue_length";
-const METRIC_PROCESSED_TASKS: &str = "satori_archiver_processed_tasks";
 
 /// Run the archiver.
 #[derive(Clone, Parser)]
@@ -66,18 +55,6 @@ async fn main() -> miette::Result<()> {
         .into_diagnostic()
         .wrap_err("Failed to start prometheus metrics exporter")?;
 
-    metrics::describe_gauge!(
-        METRIC_QUEUE_LENGTH,
-        metrics::Unit::Count,
-        "Number of tasks in queue"
-    );
-
-    metrics::describe_counter!(
-        METRIC_PROCESSED_TASKS,
-        metrics::Unit::Count,
-        "Finished task count"
-    );
-
     let state = Arc::new(AppState {
         storage: config
             .storage
@@ -89,10 +66,10 @@ async fn main() -> miette::Result<()> {
 
     // Configure HTTP server
     let app = Router::new()
-        .route("/event", post(handle_event_upload))
+        .route("/event", post(endpoints::handle_event_upload))
         .route(
             "/video/{camera}/{filename}",
-            post(handle_camera_segment_upload),
+            post(endpoints::handle_camera_segment_upload),
         )
         .with_state(state);
 
@@ -122,47 +99,4 @@ async fn main() -> miette::Result<()> {
     let _ = server_handle.await;
 
     Ok(())
-}
-
-#[tracing::instrument(skip_all)]
-async fn handle_event_upload(
-    State(state): State<Arc<AppState>>,
-    Json(event): Json<Event>,
-) -> impl IntoResponse {
-    info!("Saving event");
-
-    match state.storage.put_event(&event).await {
-        Ok(_) => (StatusCode::OK, String::new()),
-        Err(e) => {
-            warn!("Failed to store event with error {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, String::new())
-        }
-    }
-}
-
-#[tracing::instrument(skip_all)]
-async fn handle_camera_segment_upload(
-    State(state): State<Arc<AppState>>,
-    Path(camera): Path<String>,
-    Json(cmd): Json<ArchiveSegmentCommand>,
-) -> impl IntoResponse {
-    info!("Saving segment");
-
-    let filename = cmd
-        .segment_url
-        .path_segments()
-        .and_then(|segments| segments.last())
-        .unwrap();
-    let filename = PathBuf::from(filename);
-
-    let data = state.get(cmd.segment_url).await.unwrap();
-
-    state
-        .storage
-        .put_segment(&camera, &filename, data)
-        .await
-        .into_diagnostic()
-        .unwrap();
-
-    (StatusCode::OK, String::new())
 }
