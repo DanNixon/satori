@@ -1,15 +1,24 @@
 mod config;
-mod task;
+// mod task;
 
 use crate::config::Config;
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::post,
+};
+use bytes::Bytes;
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use miette::{Context, IntoDiagnostic};
-use satori_common::ArchiveCommand;
+use satori_common::{ArchiveSegmentCommand, Event};
+use satori_storage::StorageProvider;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
-use tokio::{net::TcpListener, sync::Mutex};
-use tracing::{error, info};
+use tokio::net::TcpListener;
+use tracing::{info, warn};
+use url::Url;
 
 const METRIC_QUEUE_LENGTH: &str = "satori_archiver_queue_length";
 const METRIC_PROCESSED_TASKS: &str = "satori_archiver_processed_tasks";
@@ -30,13 +39,16 @@ pub(crate) struct Cli {
     observability_address: SocketAddr,
 }
 
-struct AppContext {
+struct AppState {
     storage: satori_storage::Provider,
     http_client: reqwest::Client,
 }
 
-struct AppState {
-    context: Arc<AppContext>,
+impl AppState {
+    async fn get(&self, url: Url) -> miette::Result<Bytes> {
+        let req = self.http_client.get(url).send().await.into_diagnostic()?;
+        req.bytes().await.into_diagnostic()
+    }
 }
 
 #[tokio::main]
@@ -45,15 +57,6 @@ async fn main() -> miette::Result<()> {
 
     let cli = Cli::parse();
     let config: Config = satori_common::load_config_file(&cli.config)?;
-
-    let context = Arc::new(AppContext {
-        storage: config
-            .storage
-            .create_provider()
-            .into_diagnostic()
-            .wrap_err("Failed to create storage provider")?,
-        http_client: reqwest::Client::new(),
-    });
 
     // Set up metrics server
     let builder = PrometheusBuilder::new();
@@ -75,14 +78,22 @@ async fn main() -> miette::Result<()> {
         "Finished task count"
     );
 
-    // Set up shared state
     let state = Arc::new(AppState {
-        context: context.clone(),
+        storage: config
+            .storage
+            .create_provider()
+            .into_diagnostic()
+            .wrap_err("Failed to create storage provider")?,
+        http_client: reqwest::Client::new(),
     });
 
     // Configure HTTP server
     let app = Router::new()
-        .route("/archive", post(handle_archive))
+        .route("/event", post(handle_event_upload))
+        .route(
+            "/video/{camera}/{filename}",
+            post(handle_camera_segment_upload),
+        )
         .with_state(state);
 
     let listener = TcpListener::bind(&config.http_server_address)
@@ -99,7 +110,10 @@ async fn main() -> miette::Result<()> {
             .expect("HTTP server should run");
     });
 
-    tokio::signal::ctrl_c().await;
+    tokio::signal::ctrl_c()
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to wait for exit signal")?;
     info!("Exiting");
 
     // Stop HTTP server
@@ -111,41 +125,44 @@ async fn main() -> miette::Result<()> {
 }
 
 #[tracing::instrument(skip_all)]
-async fn handle_archive(
+async fn handle_event_upload(
     State(state): State<Arc<AppState>>,
-    Json(cmd): Json<ArchiveCommand>,
+    Json(event): Json<Event>,
 ) -> impl IntoResponse {
-    info!("Received archive command");
+    info!("Saving event");
 
-    // Convert the command into tasks
-    let tasks = match &cmd {
-        ArchiveCommand::EventMetadata(event) => {
-            vec![task::ArchiveTask::EventMetadata(event.clone())]
-        }
-        ArchiveCommand::Segments(segments_cmd) => segments_cmd
-            .segment_list
-            .iter()
-            .map(|segment| {
-                task::ArchiveTask::CameraSegment(task::CameraSegment {
-                    camera_name: segments_cmd.camera_name.clone(),
-                    camera_url: segments_cmd.camera_url.clone(),
-                    filename: segment.clone(),
-                })
-            })
-            .collect(),
-    };
-
-    // Process each task synchronously
-    for task in tasks {
-        let mut queue = state.queue.lock().await;
-        if let Err(e) = queue.process_task_sync(task, &state.context).await {
-            error!("Failed to process archive task: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to process archive request".to_string(),
-            );
+    match state.storage.put_event(&event).await {
+        Ok(_) => (StatusCode::OK, String::new()),
+        Err(e) => {
+            warn!("Failed to store event with error {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, String::new())
         }
     }
+}
+
+#[tracing::instrument(skip_all)]
+async fn handle_camera_segment_upload(
+    State(state): State<Arc<AppState>>,
+    Path(camera): Path<String>,
+    Json(cmd): Json<ArchiveSegmentCommand>,
+) -> impl IntoResponse {
+    info!("Saving segment");
+
+    let filename = cmd
+        .segment_url
+        .path_segments()
+        .and_then(|segments| segments.last())
+        .unwrap();
+    let filename = PathBuf::from(filename);
+
+    let data = state.get(cmd.segment_url).await.unwrap();
+
+    state
+        .storage
+        .put_segment(&camera, &filename, data)
+        .await
+        .into_diagnostic()
+        .unwrap();
 
     (StatusCode::OK, String::new())
 }

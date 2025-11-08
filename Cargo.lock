@@ -2895,8 +2895,6 @@ dependencies = [
  "satori-common",
  "satori-storage",
  "serde",
- "serde_json",
- "serde_with",
  "tokio",
  "tracing",
  "tracing-subscriber",

@@ -24,10 +24,7 @@ impl ArchiveTask {
     }
 
     #[tracing::instrument(skip(context))]
-    async fn run_event(&self, context: &AppContext, event: &Event) -> miette::Result<()> {
-        info!("Saving event");
-        context.storage.put_event(event).await.into_diagnostic()
-    }
+    async fn run_event(&self, context: &AppContext, event: &Event) -> miette::Result<()> {}
 
     #[tracing::instrument(skip(context))]
     async fn run_segment(

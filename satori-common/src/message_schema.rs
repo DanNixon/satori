@@ -28,14 +28,6 @@ pub struct TriggerCommand {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "kind", content = "data", rename_all = "snake_case")]
-pub enum ArchiveCommand {
-    EventMetadata(crate::event::Event),
-    Segment(ArchiveSegmentCommand),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArchiveSegmentCommand {
-    pub camera_name: String,
     pub segment_url: Url,
 }
