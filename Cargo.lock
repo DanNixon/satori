@@ -2908,17 +2908,14 @@ name = "satori-common"
 version = "0.3.1"
 dependencies = [
  "chrono",
- "ctor",
  "m3u8-rs",
  "miette",
  "regex",
- "satori-testing-utils",
  "serde",
  "serde_with",
  "tokio",
  "toml",
  "tracing",
- "tracing-subscriber",
  "url",
 ]
 
@@ -2993,7 +2990,6 @@ version = "0.3.1"
 dependencies = [
  "axum",
  "chrono",
- "ctor",
  "m3u8-rs",
  "nix",
  "rand 0.8.5",
@@ -3002,7 +2998,6 @@ dependencies = [
  "satori-common",
  "tokio",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
