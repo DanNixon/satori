@@ -36,7 +36,6 @@ nix = { version = "0.30.1", features = ["process", "signal"] }
 rand = "0.8.5"
 regex = "1.12.2"
 reqwest = { version = "0.12.24", default-features = false, features = ["rustls-tls", "json"] }
-rumqttc = "0.25.0"
 satori-common = { path = "./satori-common" }
 satori-storage = { path = "./satori-storage" }
 satori-testing-utils = { path = "./satori-testing-utils" }

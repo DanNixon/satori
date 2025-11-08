@@ -3,7 +3,6 @@ mod config_file;
 mod event;
 mod hls;
 mod message_schema;
-pub mod mqtt;
 mod throttled_error;
 mod trigger;
 mod version;
