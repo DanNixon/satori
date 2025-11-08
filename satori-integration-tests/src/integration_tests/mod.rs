@@ -6,8 +6,6 @@ fn init() {
         .init();
 }
 
-// MQTT reconnect test is no longer relevant after removing MQTT
-// mod mqtt_reconnect;
 mod one;
 mod two;
 mod two_local;
