@@ -1,13 +1,11 @@
 use satori_testing_utils::{
-    DummyHlsServer, DummyStreamParams, MinioDriver, MosquittoDriver, TestMqttClient,
+    DummyHlsServer, DummyStreamParams, MinioDriver,
 };
 use std::{
     io::{Read, Write},
     time::Duration,
 };
 use tempfile::NamedTempFile;
-
-const MQTT_TOPIC: &str = "satori";
 
 #[tokio::test]
 #[ignore]
@@ -17,15 +15,6 @@ async fn two() {
     minio.set_credential_env_vars();
     let s3_bucket = minio.create_bucket("satori").await;
 
-    let mosquitto = MosquittoDriver::default();
-
-    let mut mqtt_client = TestMqttClient::new(mosquitto.port()).await;
-    mqtt_client
-        .client()
-        .subscribe(MQTT_TOPIC, rumqttc::QoS::ExactlyOnce)
-        .await
-        .unwrap();
-
     let mut stream_1 = DummyHlsServer::new(
         "stream 1".to_string(),
         DummyStreamParams::new_ending_now(Duration::from_secs(6), 100).into(),
@@ -33,61 +22,6 @@ async fn two() {
     .await;
 
     let mut event_processor_events_file = NamedTempFile::new().unwrap();
-
-    let event_processor_config_file = {
-        let contents = format!(
-            indoc::indoc!(
-                r#"
-                event_file = "{}"
-                interval = 10  # seconds
-                event_ttl = 5
-
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-event-processor"
-                username = "test"
-                password = ""
-                topic = "satori"
-
-                [triggers.fallback]
-                cameras = ["camera1"]
-                reason = "Unknown"
-                pre = 60
-                post = 60
-
-                [[cameras]]
-                name = "camera1"
-                url = "{}"
-                "#
-            ),
-            event_processor_events_file.path().display(),
-            mosquitto.port(),
-            stream_1.stream_address(),
-        );
-
-        let file = NamedTempFile::new().unwrap();
-        file.as_file().write_all(contents.as_bytes()).unwrap();
-        file
-    };
-
-    let satori_event_processor = satori_testing_utils::CargoBinaryRunner::new(
-        "satori-event-processor".to_string(),
-        vec![
-            "--config".to_string(),
-            event_processor_config_file.path().display().to_string(),
-            "--http-server-address".to_string(),
-            "127.0.0.1:8000".to_string(),
-            "--observability-address".to_string(),
-            "127.0.0.1:9090".to_string(),
-        ],
-        vec![],
-    );
-
-    // Wait for the event processor to start
-    satori_testing_utils::wait_for_url("http://localhost:9090", Duration::from_secs(600))
-        .await
-        .expect("event processor should be running");
 
     let archiver_queue_file = NamedTempFile::new().unwrap();
 
@@ -97,25 +31,17 @@ async fn two() {
                 r#"
                 queue_file = "{}"
                 interval = 10  # milliseconds
+                http_server_address = "127.0.0.1:8001"
 
                 [storage]
                 kind = "s3"
                 bucket = "satori"
                 region = ""
                 endpoint = "{}"
-
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-archiver-s3"
-                username = "test"
-                password = ""
-                topic = "satori"
                 "#
             ),
             archiver_queue_file.path().display(),
             minio.endpoint(),
-            mosquitto.port(),
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -144,6 +70,56 @@ async fn two() {
     satori_testing_utils::wait_for_url("http://localhost:9091", Duration::from_secs(600))
         .await
         .expect("archiver should be running");
+
+    let event_processor_config_file = {
+        let contents = format!(
+            indoc::indoc!(
+                r#"
+                event_file = "{}"
+                interval = 10  # seconds
+                event_ttl = 5
+                archiver_url = "http://127.0.0.1:8001"
+
+                [triggers.fallback]
+                cameras = ["camera1"]
+                reason = "Unknown"
+                pre = 60
+                post = 60
+
+                [[cameras]]
+                name = "camera1"
+                url = "{}"
+                "#
+            ),
+            event_processor_events_file.path().display(),
+            stream_1.stream_address(),
+        );
+
+        let file = NamedTempFile::new().unwrap();
+        file.as_file().write_all(contents.as_bytes()).unwrap();
+        file
+    };
+
+    let satori_event_processor = satori_testing_utils::CargoBinaryRunner::new(
+        "satori-event-processor".to_string(),
+        vec![
+            "--config".to_string(),
+            event_processor_config_file.path().display().to_string(),
+            "--http-server-address".to_string(),
+            "127.0.0.1:8000".to_string(),
+            "--observability-address".to_string(),
+            "127.0.0.1:9090".to_string(),
+        ],
+        vec![],
+    );
+
+    // Wait for the event processor to start
+    satori_testing_utils::wait_for_url("http://localhost:9090", Duration::from_secs(600))
+        .await
+        .expect("event processor should be running");
+    satori_testing_utils::wait_for_url("http://localhost:8000", Duration::from_secs(600))
+        .await
+        .expect("event processor should be running");
 
     // Trigger an event via HTTP
     let http_client = reqwest::Client::new();
@@ -186,8 +162,6 @@ async fn two() {
 
     // Ensure event state file is empty
     assert!(events_file_contents != "[]");
-
-    mqtt_client.stop().await;
 
     satori_event_processor.stop();
     satori_archiver.stop();

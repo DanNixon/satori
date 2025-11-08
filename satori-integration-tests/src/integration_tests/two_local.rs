@@ -1,11 +1,9 @@
-use satori_testing_utils::{DummyHlsServer, DummyStreamParams, MosquittoDriver, TestMqttClient};
+use satori_testing_utils::{DummyHlsServer, DummyStreamParams};
 use std::{
     io::{Read, Write},
     time::Duration,
 };
 use tempfile::NamedTempFile;
-
-const MQTT_TOPIC: &str = "satori";
 
 #[tokio::test]
 #[ignore]
@@ -13,15 +11,6 @@ async fn two_local() {
     let storage_dir = tempfile::Builder::new()
         .prefix("satori_test_storage")
         .tempdir()
-        .unwrap();
-
-    let mosquitto = MosquittoDriver::default();
-
-    let mut mqtt_client = TestMqttClient::new(mosquitto.port()).await;
-    mqtt_client
-        .client()
-        .subscribe(MQTT_TOPIC, rumqttc::QoS::ExactlyOnce)
-        .await
         .unwrap();
 
     let mut stream_1 = DummyHlsServer::new(
@@ -32,6 +21,46 @@ async fn two_local() {
 
     let mut event_processor_events_file = NamedTempFile::new().unwrap();
 
+    let archiver_queue_file = NamedTempFile::new().unwrap();
+
+    let archiver_config_file = {
+        let contents = format!(
+            indoc::indoc!(
+                r#"
+                queue_file = "{}"
+                interval = 10  # milliseconds
+                http_server_address = "127.0.0.1:8001"
+
+                [storage]
+                kind = "local"
+                path = "{}"
+                "#
+            ),
+            archiver_queue_file.path().display(),
+            storage_dir.path().display(),
+        );
+
+        let file = NamedTempFile::new().unwrap();
+        file.as_file().write_all(contents.as_bytes()).unwrap();
+        file
+    };
+
+    let satori_archiver = satori_testing_utils::CargoBinaryRunner::new(
+        "satori-archiver".to_string(),
+        vec![
+            "--config".to_string(),
+            archiver_config_file.path().display().to_string(),
+            "--observability-address".to_string(),
+            "127.0.0.1:9091".to_string(),
+        ],
+        vec![],
+    );
+
+    // Wait for the archiver to start
+    satori_testing_utils::wait_for_url("http://localhost:9091", Duration::from_secs(600))
+        .await
+        .expect("archiver should be running");
+
     let event_processor_config_file = {
         let contents = format!(
             indoc::indoc!(
@@ -39,14 +68,7 @@ async fn two_local() {
                 event_file = "{}"
                 interval = 10  # seconds
                 event_ttl = 5
-
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-event-processor"
-                username = "test"
-                password = ""
-                topic = "satori"
+                archiver_url = "http://127.0.0.1:8001"
 
                 [triggers.fallback]
                 cameras = ["camera1"]
@@ -60,7 +82,6 @@ async fn two_local() {
                 "#
             ),
             event_processor_events_file.path().display(),
-            mosquitto.port(),
             stream_1.stream_address(),
         );
 
@@ -86,54 +107,9 @@ async fn two_local() {
     satori_testing_utils::wait_for_url("http://localhost:9090", Duration::from_secs(600))
         .await
         .expect("event processor should be running");
-
-    let archiver_queue_file = NamedTempFile::new().unwrap();
-
-    let archiver_config_file = {
-        let contents = format!(
-            indoc::indoc!(
-                r#"
-                queue_file = "{}"
-                interval = 10  # milliseconds
-
-                [storage]
-                kind = "local"
-                path = "{}"
-
-                [mqtt]
-                broker = "localhost"
-                port = {}
-                client_id = "satori-archiver-local"
-                username = "test"
-                password = ""
-                topic = "satori"
-                "#
-            ),
-            archiver_queue_file.path().display(),
-            storage_dir.path().display(),
-            mosquitto.port(),
-        );
-
-        let file = NamedTempFile::new().unwrap();
-        file.as_file().write_all(contents.as_bytes()).unwrap();
-        file
-    };
-
-    let satori_archiver = satori_testing_utils::CargoBinaryRunner::new(
-        "satori-archiver".to_string(),
-        vec![
-            "--config".to_string(),
-            archiver_config_file.path().display().to_string(),
-            "--observability-address".to_string(),
-            "127.0.0.1:9091".to_string(),
-        ],
-        vec![],
-    );
-
-    // Wait for the archiver to start
-    satori_testing_utils::wait_for_url("http://localhost:9091", Duration::from_secs(600))
+    satori_testing_utils::wait_for_url("http://localhost:8000", Duration::from_secs(600))
         .await
-        .expect("archiver should be running");
+        .expect("event processor should be running");
 
     // Trigger an event via HTTP
     let http_client = reqwest::Client::new();
@@ -180,8 +156,6 @@ async fn two_local() {
 
     // Ensure event state file is empty
     assert!(events_file_contents != "[]");
-
-    mqtt_client.stop().await;
 
     satori_event_processor.stop();
     satori_archiver.stop();
