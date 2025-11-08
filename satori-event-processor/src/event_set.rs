@@ -1,7 +1,7 @@
 use crate::{hls_client::HlsClient, segments::Playlist};
 use miette::IntoDiagnostic;
 use satori_common::{
-    ArchiveCommand, ArchiveSegmentsCommand, CameraSegments, Event, EventReason, Trigger,
+    ArchiveCommand, ArchiveSegmentCommand, CameraSegments, Event, EventReason, Trigger,
 };
 use std::{
     collections::VecDeque,
@@ -161,13 +161,17 @@ impl EventSet {
                 );
 
                 if !new_segments.is_empty() {
-                    // Queue archive command for segments
-                    let cmd = ArchiveCommand::Segments(ArchiveSegmentsCommand {
-                        camera_name: camera.name.clone(),
-                        camera_url: camera_client.get_camera_url(&camera.name).unwrap(),
-                        segment_list: new_segments.clone(),
-                    });
-                    commands_to_send.push(cmd);
+                    for segment in &new_segments {
+                        let cmd = ArchiveCommand::Segment(ArchiveSegmentCommand {
+                            camera_name: camera.name.clone(),
+                            segment_url: camera_client
+                                .get_camera_url(&camera.name)
+                                .unwrap()
+                                .join(segment.to_string_lossy().as_ref())
+                                .unwrap(),
+                        });
+                        commands_to_send.push(cmd);
+                    }
                 }
 
                 // Update segment list in event

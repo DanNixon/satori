@@ -1,8 +1,7 @@
 mod config;
-mod queue;
 mod task;
 
-use crate::{config::Config, queue::ArchiveTaskQueue};
+use crate::config::Config;
 use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
 use clap::Parser;
 use metrics_exporter_prometheus::PrometheusBuilder;
@@ -38,7 +37,6 @@ struct AppContext {
 
 struct AppState {
     context: Arc<AppContext>,
-    queue: Arc<Mutex<ArchiveTaskQueue>>,
 }
 
 #[tokio::main]
@@ -56,11 +54,6 @@ async fn main() -> miette::Result<()> {
             .wrap_err("Failed to create storage provider")?,
         http_client: reqwest::Client::new(),
     });
-
-    let queue = Arc::new(Mutex::new(queue::ArchiveTaskQueue::load_or_new(
-        &config.queue_file,
-    )));
-    let mut queue_process_interval = tokio::time::interval(config.interval);
 
     // Set up metrics server
     let builder = PrometheusBuilder::new();
@@ -85,7 +78,6 @@ async fn main() -> miette::Result<()> {
     // Set up shared state
     let state = Arc::new(AppState {
         context: context.clone(),
-        queue: queue.clone(),
     });
 
     // Configure HTTP server
@@ -107,19 +99,8 @@ async fn main() -> miette::Result<()> {
             .expect("HTTP server should run");
     });
 
-    // Run queue processing loop
-    loop {
-        tokio::select! {
-            _ = tokio::signal::ctrl_c() => {
-                info!("Exiting");
-                break;
-            }
-            _ = queue_process_interval.tick() => {
-                let mut q = queue.lock().await;
-                q.process_one(&context).await;
-            }
-        }
-    }
+    tokio::signal::ctrl_c().await;
+    info!("Exiting");
 
     // Stop HTTP server
     info!("Stopping HTTP server");

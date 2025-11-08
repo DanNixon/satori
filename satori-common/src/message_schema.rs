@@ -1,15 +1,8 @@
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as};
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 use url::Url;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "kind", content = "data", rename_all = "snake_case")]
-pub enum Message {
-    TriggerCommand(TriggerCommand),
-    ArchiveCommand(ArchiveCommand),
-}
 
 #[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -38,12 +31,11 @@ pub struct TriggerCommand {
 #[serde(tag = "kind", content = "data", rename_all = "snake_case")]
 pub enum ArchiveCommand {
     EventMetadata(crate::event::Event),
-    Segments(ArchiveSegmentsCommand),
+    Segment(ArchiveSegmentCommand),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ArchiveSegmentsCommand {
+pub struct ArchiveSegmentCommand {
     pub camera_name: String,
-    pub camera_url: Url,
-    pub segment_list: Vec<PathBuf>,
+    pub segment_url: Url,
 }
