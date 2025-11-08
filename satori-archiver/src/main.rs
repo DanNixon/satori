@@ -1,5 +1,6 @@
 mod config;
 mod endpoints;
+mod metrics;
 
 use crate::config::Config;
 use axum::{Router, routing::post};
@@ -48,6 +49,7 @@ async fn main() -> miette::Result<()> {
     let config: Config = satori_common::load_config_file(&cli.config)?;
 
     // Set up metrics server
+    crate::metrics::init();
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(cli.observability_address)
@@ -66,10 +68,10 @@ async fn main() -> miette::Result<()> {
 
     // Configure HTTP server
     let app = Router::new()
-        .route("/event", post(endpoints::handle_event_upload))
+        .route("/event", post(crate::endpoints::handle_event_upload))
         .route(
             "/video/{camera}/{filename}",
-            post(endpoints::handle_camera_segment_upload),
+            post(crate::endpoints::handle_camera_segment_upload),
         )
         .with_state(state);
 

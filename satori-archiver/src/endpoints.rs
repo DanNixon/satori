@@ -19,9 +19,13 @@ pub(super) async fn handle_event_upload(
     info!("Saving event");
 
     match state.storage.put_event(&event).await {
-        Ok(_) => (StatusCode::OK, String::new()),
+        Ok(_) => {
+            // TODO: metrics
+            (StatusCode::OK, String::new())
+        },
         Err(e) => {
             warn!("Failed to store event with error {e}");
+            // TODO: metrics
             (StatusCode::INTERNAL_SERVER_ERROR, String::new())
         }
     }
@@ -34,6 +38,8 @@ pub(super) async fn handle_camera_segment_upload(
     Json(cmd): Json<ArchiveSegmentCommand>,
 ) -> impl IntoResponse {
     info!("Saving segment");
+
+    // TODO: error handling
 
     let filename = cmd
         .segment_url
