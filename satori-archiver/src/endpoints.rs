@@ -18,17 +18,16 @@ pub(super) async fn handle_event_upload(
 ) -> impl IntoResponse {
     info!("Saving event");
 
-    match state.storage.put_event(&event).await {
-        Ok(_) => {
-            // TODO: metrics
-            (StatusCode::OK, String::new())
-        }
+    let result = match state.storage.put_event(&event).await {
+        Ok(_) => StatusCode::OK,
         Err(e) => {
             warn!("Failed to store event with error {e}");
-            // TODO: metrics
-            (StatusCode::INTERNAL_SERVER_ERROR, String::new())
+            StatusCode::INTERNAL_SERVER_ERROR
         }
-    }
+    };
+
+    crate::metrics::inc_endpoints_metric("event_upload", result);
+    result
 }
 
 #[tracing::instrument(skip_all)]
@@ -39,22 +38,22 @@ pub(super) async fn handle_camera_segment_upload(
 ) -> impl IntoResponse {
     info!("Saving segment");
 
-    match cmd
+    let result = match cmd
         .segment_url
         .path_segments()
         .and_then(|segments| segments.last())
     {
         None => {
-            // TODO: metrics
-            (StatusCode::BAD_REQUEST, String::new())
+            warn!("Malformed segment URL: {}", cmd.segment_url);
+            StatusCode::BAD_REQUEST
         }
         Some(filename) => {
             let filename = PathBuf::from(filename);
 
             match state.get(cmd.segment_url).await {
-                Err(_) => {
-                    // TODO: metrics
-                    (StatusCode::INTERNAL_SERVER_ERROR, String::new())
+                Err(e) => {
+                    warn!("Failed to get segment for archive storage with error: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR
                 }
                 Ok(data) => {
                     match state
@@ -63,17 +62,17 @@ pub(super) async fn handle_camera_segment_upload(
                         .await
                         .into_diagnostic()
                     {
-                        Err(_) => {
-                            // TODO: metrics
-                            (StatusCode::INTERNAL_SERVER_ERROR, String::new())
+                        Err(e) => {
+                            warn!("Failed to store segment in archive with error: {e}");
+                            StatusCode::INTERNAL_SERVER_ERROR
                         }
-                        Ok(_) => {
-                            // TODO: metrics
-                            (StatusCode::OK, String::new())
-                        }
+                        Ok(_) => StatusCode::OK,
                     }
                 }
             }
         }
-    }
+    };
+
+    crate::metrics::inc_endpoints_metric("camera_segment_upload", result);
+    result
 }
