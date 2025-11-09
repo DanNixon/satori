@@ -35,9 +35,9 @@ struct AppState {
 }
 
 impl AppState {
-    async fn get(&self, url: Url) -> miette::Result<Bytes> {
-        let req = self.http_client.get(url).send().await.into_diagnostic()?;
-        req.bytes().await.into_diagnostic()
+    async fn get(&self, url: Url) -> reqwest::Result<Bytes> {
+        let req = self.http_client.get(url).send().await?;
+        req.bytes().await
     }
 }
 

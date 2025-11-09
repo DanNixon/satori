@@ -22,7 +22,7 @@ pub(super) async fn handle_event_upload(
         Ok(_) => {
             // TODO: metrics
             (StatusCode::OK, String::new())
-        },
+        }
         Err(e) => {
             warn!("Failed to store event with error {e}");
             // TODO: metrics
@@ -39,23 +39,41 @@ pub(super) async fn handle_camera_segment_upload(
 ) -> impl IntoResponse {
     info!("Saving segment");
 
-    // TODO: error handling
-
-    let filename = cmd
+    match cmd
         .segment_url
         .path_segments()
         .and_then(|segments| segments.last())
-        .unwrap();
-    let filename = PathBuf::from(filename);
+    {
+        None => {
+            // TODO: metrics
+            (StatusCode::BAD_REQUEST, String::new())
+        }
+        Some(filename) => {
+            let filename = PathBuf::from(filename);
 
-    let data = state.get(cmd.segment_url).await.unwrap();
-
-    state
-        .storage
-        .put_segment(&camera, &filename, data)
-        .await
-        .into_diagnostic()
-        .unwrap();
-
-    (StatusCode::OK, String::new())
+            match state.get(cmd.segment_url).await {
+                Err(_) => {
+                    // TODO: metrics
+                    (StatusCode::INTERNAL_SERVER_ERROR, String::new())
+                }
+                Ok(data) => {
+                    match state
+                        .storage
+                        .put_segment(&camera, &filename, data)
+                        .await
+                        .into_diagnostic()
+                    {
+                        Err(_) => {
+                            // TODO: metrics
+                            (StatusCode::INTERNAL_SERVER_ERROR, String::new())
+                        }
+                        Ok(_) => {
+                            // TODO: metrics
+                            (StatusCode::OK, String::new())
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
