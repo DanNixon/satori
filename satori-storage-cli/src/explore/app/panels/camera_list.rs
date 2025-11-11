@@ -1,9 +1,9 @@
 use super::{
-    super::{App, KeyEventResult, SharedEvent, border_style, highlight_style},
+    super::{
+        super::{reset_terminal, setup_terminal, table_scroll::TableScrollState},
+        App, KeyEventResult, SharedEvent, border_style, highlight_style,
+    },
     PanelOperations,
-};
-use crate::cli::archive::explore::{
-    reset_terminal, setup_terminal, table_scroll::TableScrollState,
 };
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};

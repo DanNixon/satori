@@ -1,8 +1,10 @@
 use super::{
-    super::{App, KeyEventResult, SharedEvent, border_style, highlight_style},
+    super::{
+        super::table_scroll::TableScrollState, App, KeyEventResult, SharedEvent, border_style,
+        highlight_style,
+    },
     PanelOperations,
 };
-use crate::cli::archive::explore::table_scroll::TableScrollState;
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
