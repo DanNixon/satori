@@ -2,14 +2,15 @@
 resolver = "2"
 members = [
   "satori-common",
+
   "satori-storage",
+  "satori-storage-cli",
 
   "satori-testing-utils",
 
   "satori-agent",
   "satori-archiver",
   "satori-event-processor",
-  "satorictl",
 
   "satori-integration-tests",
 ]
