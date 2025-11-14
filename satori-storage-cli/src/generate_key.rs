@@ -1,6 +1,6 @@
 use clap::Parser;
 use hpke::{Kem, Serializable};
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng};
 
 type SelectedKem = hpke::kem::X25519HkdfSha256;
 type PublicKey = <SelectedKem as hpke::Kem>::PublicKey;

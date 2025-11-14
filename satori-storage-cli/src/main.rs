@@ -71,8 +71,9 @@ impl Command {
         match &self {
             Command::GenerateKey(cmd) => cmd.execute().await,
             _ => {
-                let storage_path = storage_path
-                    .ok_or_else(|| miette::miette!("--storage argument is required for this command"))?;
+                let storage_path = storage_path.ok_or_else(|| {
+                    miette::miette!("--storage argument is required for this command")
+                })?;
                 let storage = create_provider(storage_path).await?;
                 match &self {
                     Command::ListEvents(cmd) => cmd.execute(storage).await,
