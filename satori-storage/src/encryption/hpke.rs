@@ -1,8 +1,11 @@
 use super::KeyOperations;
 use crate::{StorageError, StorageResult};
 use bytes::Bytes;
+use generic_array::GenericArray;
+use hpke::{Deserializable, Serializable};
 use rand::{SeedableRng, rngs::StdRng};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+use zeroize::Zeroize;
 
 type SelectedKem = hpke::kem::X25519HkdfSha256;
 type SelectedAead = hpke::aead::ChaCha20Poly1305;
@@ -34,7 +37,7 @@ impl std::fmt::Debug for Hpke {
 
 impl KeyOperations for Hpke {
     fn encrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes> {
-        let mut csprng = StdRng::from_entropy();
+        let mut csprng = StdRng::from_os_rng();
 
         let (capped_key, ciphertext): (EncappedKey, Vec<u8>) =
             hpke::single_shot_seal::<SelectedAead, SelectedKdf, SelectedKem, _>(
@@ -80,9 +83,41 @@ impl KeyOperations for Hpke {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Payload {
+    #[serde(with = "serde_encapped_key")]
     key: EncappedKey,
     ciphertext: Bytes,
 }
+
+macro_rules! impl_serde {
+    ($modname:ident, $t:ty) => {
+        pub(crate) mod $modname {
+            use super::*;
+
+            pub(crate) fn serialize<S: Serializer>(
+                val: &$t,
+                serializer: S,
+            ) -> Result<S::Ok, S::Error> {
+                let mut arr = val.to_bytes();
+                let ret = arr.serialize(serializer);
+                arr.zeroize();
+                ret
+            }
+
+            pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+                deserializer: D,
+            ) -> Result<$t, D::Error> {
+                let mut arr = GenericArray::<u8, <$t as Serializable>::OutputSize>::deserialize(
+                    deserializer,
+                )?;
+                let ret = <$t>::from_bytes(&arr).map_err(D::Error::custom);
+                arr.zeroize();
+                ret
+            }
+        }
+    };
+}
+
+impl_serde!(serde_encapped_key, EncappedKey);
 
 mod deserialize {
     use super::{Hpke, PrivateKey, PublicKey};
