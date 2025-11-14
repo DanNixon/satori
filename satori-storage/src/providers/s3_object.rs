@@ -223,8 +223,8 @@ mod test {
     }
 
     fn generate_random_bucket_name() -> String {
-        let id = rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
+        let id = rand::rng()
+            .sample_iter(&rand::distr::Alphanumeric)
             .take(8)
             .map(char::from)
             .collect::<String>()
