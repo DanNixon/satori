@@ -10,7 +10,10 @@ chrono.workspace = true
 clap.workspace = true
 crossterm = "0.29.0"
 git-version.workspace = true
+hpke = { version = "0.11.0", features = ["std"] }
 miette = { workspace = true, features = ["fancy"] }
+pem-rfc7468 = { version = "0.7.0", features = ["alloc"] }
+rand.workspace = true
 ratatui = { version = "0.29.0", features = ["all-widgets"]}
 rayon = "1.11.0"
 satori-common.workspace = true
@@ -22,3 +25,7 @@ tracing.workspace = true
 [lints.rust]
 # https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
 unused-crate-dependencies = "deny"
+
+[dev-dependencies]
+hex = "0.4.3"
+toml.workspace = true

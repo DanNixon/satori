@@ -2,6 +2,7 @@ mod delete_event;
 mod delete_segment;
 mod explore;
 mod export_video;
+mod generate_key;
 mod get_event;
 mod get_segment;
 mod list_cameras;
@@ -9,6 +10,9 @@ mod list_events;
 mod list_segments;
 mod prune_events;
 mod prune_segments;
+
+#[cfg(test)]
+use toml as _;
 
 use clap::Parser;
 use clap::Subcommand;
@@ -23,8 +27,8 @@ use std::path::{Path, PathBuf};
 )]
 pub(crate) struct Cli {
     /// Path to storage configuration.
-    #[arg(long)]
-    storage: PathBuf,
+    #[arg(long, global = true)]
+    storage: Option<PathBuf>,
 
     #[command(subcommand)]
     command: Command,
@@ -36,8 +40,7 @@ async fn main() -> miette::Result<()> {
 
     let args = Cli::parse();
 
-    let storage = create_provider(&args.storage).await?;
-    args.command.execute(storage).await
+    args.command.execute(args.storage.as_deref()).await
 }
 
 async fn create_provider(path: &Path) -> miette::Result<Provider> {
@@ -60,22 +63,32 @@ pub(crate) enum Command {
     PruneSegments(prune_segments::PruneSegmentsCommand),
     ExportVideo(export_video::ExportVideoSubcommand),
     Explore(explore::ExploreCommand),
+    GenerateKey(generate_key::GenerateKeyCommand),
 }
 
 impl Command {
-    async fn execute(&self, storage: Provider) -> miette::Result<()> {
+    async fn execute(&self, storage_path: Option<&Path>) -> miette::Result<()> {
         match &self {
-            Command::ListEvents(cmd) => cmd.execute(storage).await,
-            Command::ListCameras(cmd) => cmd.execute(storage).await,
-            Command::ListSegments(cmd) => cmd.execute(storage).await,
-            Command::GetEvent(cmd) => cmd.execute(storage).await,
-            Command::GetSegment(cmd) => cmd.execute(storage).await,
-            Command::DeleteEvent(cmd) => cmd.execute(storage).await,
-            Command::DeleteSegment(cmd) => cmd.execute(storage).await,
-            Command::PruneEvents(cmd) => cmd.execute(storage).await,
-            Command::PruneSegments(cmd) => cmd.execute(storage).await,
-            Command::ExportVideo(cmd) => cmd.execute(storage).await,
-            Command::Explore(cmd) => cmd.execute(storage).await,
+            Command::GenerateKey(cmd) => cmd.execute().await,
+            _ => {
+                let storage_path = storage_path
+                    .ok_or_else(|| miette::miette!("--storage argument is required for this command"))?;
+                let storage = create_provider(storage_path).await?;
+                match &self {
+                    Command::ListEvents(cmd) => cmd.execute(storage).await,
+                    Command::ListCameras(cmd) => cmd.execute(storage).await,
+                    Command::ListSegments(cmd) => cmd.execute(storage).await,
+                    Command::GetEvent(cmd) => cmd.execute(storage).await,
+                    Command::GetSegment(cmd) => cmd.execute(storage).await,
+                    Command::DeleteEvent(cmd) => cmd.execute(storage).await,
+                    Command::DeleteSegment(cmd) => cmd.execute(storage).await,
+                    Command::PruneEvents(cmd) => cmd.execute(storage).await,
+                    Command::PruneSegments(cmd) => cmd.execute(storage).await,
+                    Command::ExportVideo(cmd) => cmd.execute(storage).await,
+                    Command::Explore(cmd) => cmd.execute(storage).await,
+                    Command::GenerateKey(_) => unreachable!(),
+                }
+            }
         }
     }
 }
