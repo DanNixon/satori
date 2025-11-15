@@ -12,7 +12,8 @@ mod prune_segments;
 
 use clap::Parser;
 use clap::Subcommand;
-use satori_storage::{Provider, StorageConfig};
+use satori_storage::Provider;
+use satori_storage::StorageConfig;
 use std::path::{Path, PathBuf};
 
 /// Control Satori NVR storage.
@@ -43,7 +44,7 @@ async fn main() -> miette::Result<()> {
 async fn create_provider(path: &Path) -> miette::Result<Provider> {
     let storage_config: StorageConfig = satori_common::load_config_file(path)?;
     storage_config
-        .create_provider()
+        .try_into()
         .map_err(|e| miette::miette!("Failed to create storage provider: {}", e))
 }
 

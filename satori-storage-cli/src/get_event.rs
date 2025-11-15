@@ -1,6 +1,6 @@
 use clap::Parser;
 use miette::IntoDiagnostic;
-use satori_storage::{Provider, StorageProvider};
+use satori_storage::Provider;
 use std::path::PathBuf;
 
 /// Retrieve metadata for a specific event.

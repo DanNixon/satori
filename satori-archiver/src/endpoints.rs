@@ -7,7 +7,6 @@ use axum::{
 };
 use miette::IntoDiagnostic;
 use satori_common::{ArchiveSegmentCommand, Event};
-use satori_storage::StorageProvider;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 

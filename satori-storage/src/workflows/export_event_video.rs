@@ -1,4 +1,4 @@
-use crate::{Provider, StorageError, StorageProvider, StorageResult};
+use crate::{Provider, StorageError, StorageResult};
 use bytes::{BufMut, Bytes};
 use satori_common::{CameraSegments, Event};
 use std::path::{Path, PathBuf};
@@ -62,11 +62,12 @@ async fn get_file_from_segments(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::providers::dummy::DummyConfig;
+    use crate::EncryptionConfig;
     use bytes::Bytes;
     use chrono::Utc;
     use satori_common::{Event, EventMetadata};
     use std::path::PathBuf;
+    use url::Url;
 
     #[test]
     fn test_generate_video_filename_default_camera() {
@@ -130,9 +131,11 @@ mod test {
 
     #[tokio::test]
     async fn test_export_event_video() {
-        let provider = crate::StorageConfig::Dummy(DummyConfig::default())
-            .create_provider()
-            .unwrap();
+        let provider = Provider::new(
+            Url::parse("memory:///").unwrap(),
+            EncryptionConfig::default(),
+        )
+        .unwrap();
 
         provider
             .put_segment("camera1", Path::new("1_1.ts"), Bytes::from("one"))

@@ -2941,7 +2941,6 @@ name = "satori-storage"
 version = "0.3.1"
 dependencies = [
  "async-channel",
- "async-trait",
  "bytes",
  "chrono",
  "ciborium",
@@ -2963,6 +2962,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+ "url",
  "zeroize",
 ]
 

@@ -15,7 +15,7 @@ use ratatui::{
 };
 use rayon::prelude::*;
 use satori_common::EventMetadata;
-use satori_storage::{Provider, StorageProvider};
+use satori_storage::Provider;
 
 pub(crate) struct EventListPanel {
     active: bool,

@@ -1,4 +1,4 @@
-use crate::{Provider, StorageProvider};
+use crate::Provider;
 use bytes::Bytes;
 use chrono::Utc;
 use satori_common::{Event, EventMetadata};

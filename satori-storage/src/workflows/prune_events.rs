@@ -1,4 +1,4 @@
-use crate::{Provider, StorageError, StorageProvider, StorageResult};
+use crate::{Provider, StorageError, StorageResult};
 use chrono::{DateTime, FixedOffset};
 use satori_common::EventMetadata;
 use std::path::PathBuf;
@@ -45,14 +45,17 @@ pub async fn prune_events_older_than(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::providers::dummy::DummyConfig;
+    use crate::EncryptionConfig;
     use chrono::{FixedOffset, NaiveDate, Utc};
     use satori_common::{Event, EventMetadata};
+    use url::Url;
 
     async fn build_test_storage() -> Provider {
-        let provider = crate::StorageConfig::Dummy(DummyConfig::default())
-            .create_provider()
-            .unwrap();
+        let provider = Provider::new(
+            Url::parse("memory:///").unwrap(),
+            EncryptionConfig::default(),
+        )
+        .unwrap();
 
         provider
             .put_event(&Event {
