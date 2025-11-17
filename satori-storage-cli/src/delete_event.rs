@@ -1,13 +1,12 @@
 use clap::Parser;
 use miette::IntoDiagnostic;
 use satori_storage::Provider;
-use std::path::PathBuf;
 
 /// Delete a selection of event metadata files.
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct DeleteEventCommand {
     /// Files to delete.
-    file: Vec<PathBuf>,
+    file: Vec<String>,
 }
 
 impl DeleteEventCommand {

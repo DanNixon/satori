@@ -1,9 +1,6 @@
 use chrono::{DateTime, FixedOffset, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::time::Duration;
 use tracing::error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -57,24 +54,21 @@ pub struct EventMetadata {
 }
 
 impl EventMetadata {
-    pub fn get_filename(&self) -> PathBuf {
+    pub fn filename(&self) -> String {
         format!(
             "{}_{}.json",
             self.timestamp.to_rfc3339_opts(SecondsFormat::Secs, false),
             self.id,
         )
-        .into()
     }
 
     #[tracing::instrument]
-    pub fn from_filename(path: &Path) -> Result<Self, ()> {
-        let path = path.display().to_string();
-
+    pub fn from_filename(path: &str) -> Result<Self, ()> {
         let re =
             regex::Regex::new(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})_(.+).json")
                 .unwrap();
 
-        let captures = re.captures(&path).ok_or_else(|| {
+        let captures = re.captures(path).ok_or_else(|| {
             error!("Regex match failed on filename");
         })?;
 
@@ -106,7 +100,7 @@ pub struct CameraSegments {
     pub name: String,
 
     /// List of segments used from this camera
-    pub segment_list: Vec<PathBuf>,
+    pub segment_list: Vec<String>,
 }
 
 #[cfg(test)]

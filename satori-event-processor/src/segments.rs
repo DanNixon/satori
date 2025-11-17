@@ -1,5 +1,5 @@
 use chrono::{DateTime, FixedOffset};
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 
 pub(crate) struct Playlist {
     pub(crate) segments: Vec<SegmentFile>,
@@ -28,7 +28,7 @@ impl From<m3u8_rs::MediaPlaylist> for Playlist {
 
 #[derive(Debug)]
 pub(crate) struct SegmentFile {
-    pub(crate) filename: PathBuf,
+    pub(crate) filename: String,
 
     start: DateTime<FixedOffset>,
     end: DateTime<FixedOffset>,
@@ -52,7 +52,7 @@ impl From<m3u8_rs::MediaSegment> for SegmentFile {
             start + chrono::Duration::from_std(Duration::from_secs_f32(segment.duration)).unwrap();
 
         Self {
-            filename: segment.uri.into(),
+            filename: segment.uri,
             start,
             end,
         }

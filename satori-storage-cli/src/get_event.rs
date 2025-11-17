@@ -1,13 +1,12 @@
 use clap::Parser;
 use miette::IntoDiagnostic;
 use satori_storage::Provider;
-use std::path::PathBuf;
 
 /// Retrieve metadata for a specific event.
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct GetEventCommand {
     /// File to retrieve.
-    file: PathBuf,
+    file: String,
 }
 
 impl GetEventCommand {

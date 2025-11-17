@@ -118,7 +118,7 @@ impl CameraListPanel {
 
             let (_, file_content) = workflows::export_event_video(
                 self.storage.clone(),
-                &event.metadata.get_filename(),
+                &event.metadata.filename(),
                 camera_name,
             )
             .await

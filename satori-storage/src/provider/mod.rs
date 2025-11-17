@@ -35,18 +35,15 @@ impl Provider {
     }
 
     fn get_event_path(&self, event: &Event) -> Path {
-        Path::from(format!(
-            "events/{}",
-            event.metadata.get_filename().display()
-        ))
+        Path::from(format!("events/{}", event.metadata.filename()))
     }
 
-    fn get_event_path_from_filename(&self, filename: &std::path::Path) -> Path {
-        Path::from(format!("events/{}", filename.display()))
+    fn get_event_path_from_filename(&self, filename: &str) -> Path {
+        Path::from(format!("events/{}", filename))
     }
 
-    fn get_segment_path(&self, camera_name: &str, filename: &std::path::Path) -> Path {
-        Path::from(format!("segments/{}/{}", camera_name, filename.display()))
+    fn get_segment_path(&self, camera_name: &str, filename: &str) -> Path {
+        Path::from(format!("segments/{}/{}", camera_name, filename))
     }
 }
 
@@ -94,8 +91,7 @@ impl Provider {
 
         let data = serde_json::to_vec_pretty(&event)?;
 
-        let info =
-            crate::encryption::info::event_info_from_filename(&event.metadata.get_filename());
+        let info = crate::encryption::info::event_info_from_filename(&event.metadata.filename());
         let data = self.encryption.event.encrypt(info, data.into())?;
 
         self.store.put(&path, data.into()).await?;
@@ -104,7 +100,7 @@ impl Provider {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn list_events(&self) -> StorageResult<Vec<std::path::PathBuf>> {
+    pub async fn list_events(&self) -> StorageResult<Vec<String>> {
         let prefix = Path::from("events");
         let mut list_stream = self.store.list(Some(&prefix));
         let mut results = Vec::new();
@@ -114,7 +110,7 @@ impl Provider {
             if let Some(filename) = meta.location.filename()
                 && filename.ends_with(".json")
             {
-                results.push(std::path::PathBuf::from(filename));
+                results.push(filename.into());
             }
         }
 
@@ -123,7 +119,7 @@ impl Provider {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn get_event(&self, filename: &std::path::Path) -> StorageResult<Event> {
+    pub async fn get_event(&self, filename: &str) -> StorageResult<Event> {
         let path = self.get_event_path_from_filename(filename);
 
         let get_result = self.store.get(&path).await?;
@@ -143,7 +139,7 @@ impl Provider {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn delete_event_filename(&self, filename: &std::path::Path) -> StorageResult<()> {
+    pub async fn delete_event_filename(&self, filename: &str) -> StorageResult<()> {
         let path = self.get_event_path_from_filename(filename);
         self.store.delete(&path).await?;
         Ok(())
@@ -168,7 +164,7 @@ impl Provider {
     pub async fn put_segment(
         &self,
         camera_name: &str,
-        filename: &std::path::Path,
+        filename: &str,
         data: Bytes,
     ) -> StorageResult<()> {
         let path = self.get_segment_path(camera_name, filename);
@@ -183,7 +179,7 @@ impl Provider {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn list_segments(&self, camera_name: &str) -> StorageResult<Vec<std::path::PathBuf>> {
+    pub async fn list_segments(&self, camera_name: &str) -> StorageResult<Vec<String>> {
         let prefix = Path::from(format!("segments/{}", camera_name));
         let mut list_stream = self.store.list(Some(&prefix));
         let mut results = Vec::new();
@@ -193,7 +189,7 @@ impl Provider {
             if let Some(filename) = meta.location.filename()
                 && filename.ends_with(".ts")
             {
-                results.push(std::path::PathBuf::from(filename));
+                results.push(filename.into());
             }
         }
 
@@ -202,11 +198,7 @@ impl Provider {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn get_segment(
-        &self,
-        camera_name: &str,
-        filename: &std::path::Path,
-    ) -> StorageResult<Bytes> {
+    pub async fn get_segment(&self, camera_name: &str, filename: &str) -> StorageResult<Bytes> {
         let path = self.get_segment_path(camera_name, filename);
 
         let get_result = self.store.get(&path).await?;
@@ -220,11 +212,7 @@ impl Provider {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn delete_segment(
-        &self,
-        camera_name: &str,
-        filename: &std::path::Path,
-    ) -> StorageResult<()> {
+    pub async fn delete_segment(&self, camera_name: &str, filename: &str) -> StorageResult<()> {
         let path = self.get_segment_path(camera_name, filename);
         self.store.delete(&path).await?;
         Ok(())

@@ -5,7 +5,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     io::Write,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, Mutex},
 };
 use tracing::{info, warn};
@@ -13,7 +13,7 @@ use tracing::{info, warn};
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct UnreferencedSegments {
     #[serde(flatten)]
-    inner: HashMap<String, Vec<PathBuf>>,
+    inner: HashMap<String, Vec<String>>,
 }
 
 impl UnreferencedSegments {
@@ -69,10 +69,7 @@ async fn get_referenced_segments(
 
         workers.push(tokio::spawn(async move {
             while let Ok(filename) = rx.recv().await {
-                info!(
-                    "(worker {worker_idx}) Processing event {}",
-                    filename.display()
-                );
+                info!("(worker {worker_idx}) Processing event {filename}");
 
                 // Attempt to get event data
                 match storage.get_event(&filename).await {
@@ -80,10 +77,7 @@ async fn get_referenced_segments(
                         referenced_segments.add_from_event(event);
                     }
                     Err(err) => {
-                        warn!(
-                            "Failed to retrieve event {}, error: {err}",
-                            filename.display()
-                        );
+                        warn!("Failed to retrieve event {filename}, error: {err}");
                         return Err(StorageError::WorkflowPartialError);
                     }
                 };
@@ -118,7 +112,7 @@ pub async fn calculate_unreferenced_segments(
     let cameras = storage.list_cameras().await?;
 
     info!("Getting segment list(s)");
-    let mut camera_segment_cache: HashMap<String, Vec<PathBuf>> = HashMap::new();
+    let mut camera_segment_cache: HashMap<String, Vec<String>> = HashMap::new();
     // For each camera that has segments in the archive
     for camera in &cameras {
         info!("Getting segment list for camera \"{camera}\"");
@@ -185,17 +179,11 @@ pub async fn delete_unreferenced_segments(
                 let mut result = Ok(());
 
                 while let Ok(segment) = rx.recv().await {
-                    info!(
-                        "(worker {worker_idx}) Deleting segment {}",
-                        segment.display()
-                    );
+                    info!("(worker {worker_idx}) Deleting segment {segment}");
 
                     if let Err(err) = storage.delete_segment(&camera, &segment).await {
                         result = Err(StorageError::WorkflowPartialError);
-                        warn!(
-                            "Failed to delete segment {}, error: {err}",
-                            segment.display()
-                        );
+                        warn!("Failed to delete segment {segment}, error: {err}");
                     }
                 }
 
@@ -229,7 +217,7 @@ pub async fn delete_unreferenced_segments(
 
 #[derive(Debug, Default, Clone)]
 struct UniqueCameraSegmentCollection {
-    inner: Arc<Mutex<HashMap<String, HashSet<PathBuf>>>>,
+    inner: Arc<Mutex<HashMap<String, HashSet<String>>>>,
 }
 
 impl UniqueCameraSegmentCollection {
@@ -256,7 +244,6 @@ mod test {
     use bytes::Bytes;
     use chrono::Utc;
     use satori_common::{CameraSegments, EventMetadata};
-    use std::path::{Path, PathBuf};
     use url::Url;
 
     async fn build_test_storage() -> Provider {
@@ -267,41 +254,41 @@ mod test {
         .unwrap();
 
         provider
-            .put_segment("camera1", Path::new("1_1.ts"), Bytes::default())
+            .put_segment("camera1", "1_1.ts", Bytes::default())
             .await
             .unwrap();
         provider
-            .put_segment("camera1", Path::new("1_2.ts"), Bytes::default())
+            .put_segment("camera1", "1_2.ts", Bytes::default())
             .await
             .unwrap();
         provider
-            .put_segment("camera1", Path::new("1_3.ts"), Bytes::default())
-            .await
-            .unwrap();
-
-        provider
-            .put_segment("camera2", Path::new("2_1.ts"), Bytes::default())
-            .await
-            .unwrap();
-        provider
-            .put_segment("camera2", Path::new("2_2.ts"), Bytes::default())
-            .await
-            .unwrap();
-        provider
-            .put_segment("camera2", Path::new("2_3.ts"), Bytes::default())
+            .put_segment("camera1", "1_3.ts", Bytes::default())
             .await
             .unwrap();
 
         provider
-            .put_segment("camera3", Path::new("3_1.ts"), Bytes::default())
+            .put_segment("camera2", "2_1.ts", Bytes::default())
             .await
             .unwrap();
         provider
-            .put_segment("camera3", Path::new("3_2.ts"), Bytes::default())
+            .put_segment("camera2", "2_2.ts", Bytes::default())
             .await
             .unwrap();
         provider
-            .put_segment("camera3", Path::new("3_3.ts"), Bytes::default())
+            .put_segment("camera2", "2_3.ts", Bytes::default())
+            .await
+            .unwrap();
+
+        provider
+            .put_segment("camera3", "3_1.ts", Bytes::default())
+            .await
+            .unwrap();
+        provider
+            .put_segment("camera3", "3_2.ts", Bytes::default())
+            .await
+            .unwrap();
+        provider
+            .put_segment("camera3", "3_3.ts", Bytes::default())
             .await
             .unwrap();
 
@@ -325,17 +312,17 @@ mod test {
                     CameraSegments {
                         name: "camera1".into(),
                         segment_list: vec![
-                            PathBuf::from("1_1.ts"),
-                            PathBuf::from("1_2.ts"),
-                            PathBuf::from("1_3.ts"),
+                            "1_1.ts".to_owned(),
+                            "1_2.ts".to_owned(),
+                            "1_3.ts".to_owned(),
                         ],
                     },
                     CameraSegments {
                         name: "camera3".into(),
                         segment_list: vec![
-                            PathBuf::from("3_1.ts"),
-                            PathBuf::from("3_2.ts"),
-                            PathBuf::from("3_3.ts"),
+                            "3_1.ts".to_owned(),
+                            "3_2.ts".to_owned(),
+                            "3_3.ts".to_owned(),
                         ],
                     },
                 ],
@@ -355,9 +342,9 @@ mod test {
                 cameras: vec![CameraSegments {
                     name: "camera2".into(),
                     segment_list: vec![
-                        PathBuf::from("2_1.ts"),
-                        PathBuf::from("2_2.ts"),
-                        PathBuf::from("2_3.ts"),
+                        "2_1.ts".to_owned(),
+                        "2_2.ts".to_owned(),
+                        "2_3.ts".to_owned(),
                     ],
                 }],
             })
@@ -384,25 +371,25 @@ mod test {
         assert_eq!(
             provider.list_segments("camera1").await.unwrap(),
             vec![
-                Path::new("1_1.ts").to_owned(),
-                Path::new("1_2.ts").to_owned(),
-                Path::new("1_3.ts").to_owned(),
+                "1_1.ts".to_owned(),
+                "1_2.ts".to_owned(),
+                "1_3.ts".to_owned(),
             ]
         );
         assert_eq!(
             provider.list_segments("camera2").await.unwrap(),
             vec![
-                Path::new("2_1.ts").to_owned(),
-                Path::new("2_2.ts").to_owned(),
-                Path::new("2_3.ts").to_owned(),
+                "2_1.ts".to_owned(),
+                "2_2.ts".to_owned(),
+                "2_3.ts".to_owned(),
             ]
         );
         assert_eq!(
             provider.list_segments("camera3").await.unwrap(),
             vec![
-                Path::new("3_1.ts").to_owned(),
-                Path::new("3_2.ts").to_owned(),
-                Path::new("3_3.ts").to_owned(),
+                "3_1.ts".to_owned(),
+                "3_2.ts".to_owned(),
+                "3_3.ts".to_owned(),
             ]
         );
     }
@@ -423,9 +410,9 @@ mod test {
                 cameras: vec![CameraSegments {
                     name: "camera1".into(),
                     segment_list: vec![
-                        PathBuf::from("1_1.ts"),
-                        PathBuf::from("1_2.ts"),
-                        PathBuf::from("1_3.ts"),
+                        "1_1.ts".to_owned(),
+                        "1_2.ts".to_owned(),
+                        "1_3.ts".to_owned(),
                     ],
                 }],
             })
@@ -443,7 +430,7 @@ mod test {
                 reasons: Default::default(),
                 cameras: vec![CameraSegments {
                     name: "camera2".into(),
-                    segment_list: vec![PathBuf::from("2_2.ts"), PathBuf::from("2_3.ts")],
+                    segment_list: vec!["2_2.ts".to_owned(), "2_3.ts".to_owned()],
                 }],
             })
             .await
@@ -465,17 +452,14 @@ mod test {
         assert_eq!(
             provider.list_segments("camera1").await.unwrap(),
             vec![
-                Path::new("1_1.ts").to_owned(),
-                Path::new("1_2.ts").to_owned(),
-                Path::new("1_3.ts").to_owned(),
+                "1_1.ts".to_owned(),
+                "1_2.ts".to_owned(),
+                "1_3.ts".to_owned(),
             ]
         );
         assert_eq!(
             provider.list_segments("camera2").await.unwrap(),
-            vec![
-                Path::new("2_2.ts").to_owned(),
-                Path::new("2_3.ts").to_owned(),
-            ]
+            vec!["2_2.ts".to_owned(), "2_3.ts".to_owned()]
         );
     }
 }
