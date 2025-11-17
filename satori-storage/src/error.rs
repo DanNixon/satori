@@ -21,6 +21,9 @@ pub enum StorageError {
     #[error("Object store error: {0}")]
     ObjectStoreError(#[from] object_store::Error),
 
+    #[error("No appropriate backend for URL: {0}")]
+    NoBackendForUrl(url::Url),
+
     #[error("Camera with name \"{0}\" was not found")]
     NoSuchCamera(String),
 

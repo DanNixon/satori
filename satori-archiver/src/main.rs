@@ -63,7 +63,7 @@ async fn main() -> miette::Result<()> {
 
     let state = AppState {
         storage: config
-            .create_provider()
+            .try_into()
             .into_diagnostic()
             .wrap_err("Failed to create storage provider")?,
         http_client: reqwest::Client::new(),

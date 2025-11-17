@@ -1,4 +1,4 @@
-use crate::{Provider, StorageError, StorageProvider, StorageResult};
+use crate::{Provider, StorageError, StorageResult};
 use satori_common::Event;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -252,16 +252,19 @@ impl UniqueCameraSegmentCollection {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::providers::dummy::DummyConfig;
+    use crate::EncryptionConfig;
     use bytes::Bytes;
     use chrono::Utc;
     use satori_common::{CameraSegments, EventMetadata};
     use std::path::{Path, PathBuf};
+    use url::Url;
 
     async fn build_test_storage() -> Provider {
-        let provider = crate::StorageConfig::Dummy(DummyConfig::default())
-            .create_provider()
-            .unwrap();
+        let provider = Provider::new(
+            Url::parse("memory:///").unwrap(),
+            EncryptionConfig::default(),
+        )
+        .unwrap();
 
         provider
             .put_segment("camera1", Path::new("1_1.ts"), Bytes::default())

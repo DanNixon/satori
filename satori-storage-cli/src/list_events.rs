@@ -1,6 +1,6 @@
 use clap::Parser;
 use miette::IntoDiagnostic;
-use satori_storage::{Provider, StorageProvider};
+use satori_storage::Provider;
 
 /// List all event metadata files.
 #[derive(Debug, Clone, Parser)]

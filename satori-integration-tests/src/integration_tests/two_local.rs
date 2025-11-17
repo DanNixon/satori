@@ -26,8 +26,7 @@ async fn two_local() {
         let contents = format!(
             indoc::indoc!(
                 r#"
-                kind = "local"
-                path = "{}"
+                url = "file://{}"
                 "#
             ),
             storage_dir.path().display(),

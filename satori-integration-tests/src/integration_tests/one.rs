@@ -35,16 +35,10 @@ async fn one() {
     let event_processor_state_store = tempfile::tempdir().unwrap();
 
     let archiver_config_file = {
-        let contents = format!(
-            indoc::indoc!(
-                r#"
-                kind = "s3"
-                bucket = "satori"
-                region = ""
-                endpoint = "{}"
-                "#
-            ),
-            minio.endpoint(),
+        let contents = indoc::indoc!(
+            r#"
+            url = "s3://satori/"
+            "#
         );
 
         let file = NamedTempFile::new().unwrap();
@@ -63,6 +57,8 @@ async fn one() {
             "127.0.0.1:9091".to_string(),
         ],
         vec![
+            ("AWS_ENDPOINT".to_string(), minio.endpoint()),
+            ("AWS_ALLOW_HTTP".to_string(), "true".to_string()),
             ("AWS_ACCESS_KEY_ID".to_string(), "minioadmin".to_string()),
             (
                 "AWS_SECRET_ACCESS_KEY".to_string(),

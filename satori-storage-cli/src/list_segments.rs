@@ -1,6 +1,6 @@
 use clap::Parser;
 use miette::IntoDiagnostic;
-use satori_storage::{Provider, StorageProvider};
+use satori_storage::Provider;
 
 /// List video segment files for a given camera.
 #[derive(Debug, Clone, Parser)]

@@ -1,4 +1,4 @@
-use crate::{Provider, StorageProvider};
+use crate::Provider;
 
 pub(crate) async fn test_init(provider: Provider) {
     assert!(provider.list_events().await.unwrap().is_empty());

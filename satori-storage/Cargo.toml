@@ -6,7 +6,6 @@ edition.workspace = true
 
 [dependencies]
 async-channel = "2.5.0"
-async-trait.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 ciborium = "0.2.2"
@@ -23,6 +22,7 @@ thiserror = "2.0.17"
 tokio.workspace = true
 toml.workspace = true
 tracing.workspace = true
+url.workspace = true
 zeroize = "1.8.2"
 
 [dev-dependencies]
@@ -30,6 +30,7 @@ ctor.workspace = true
 hex = "0.4.3"
 lazy_static = "1.5.0"
 satori-testing-utils.workspace = true
+temp-env = "0.3.6"
 tempfile.workspace = true
 
 [lints.rust]
