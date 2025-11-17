@@ -13,7 +13,7 @@ futures.workspace = true
 generic-array = { version = "1.3.5", features = ["serde"] }
 hpke = { version = "0.13.0", features = ["std"] }
 object_store.workspace = true
-pem-rfc7468 = { version = "0.7.0", features = ["alloc"] }
+pem-rfc7468 = { version = "1.0.0", features = ["alloc"] }
 rand.workspace = true
 satori-common.workspace = true
 serde.workspace = true
