@@ -30,6 +30,7 @@ ctor.workspace = true
 hex = "0.4.3"
 lazy_static = "1.5.0"
 satori-testing-utils.workspace = true
+temp-env = "0.3.6"
 tempfile.workspace = true
 
 [lints.rust]

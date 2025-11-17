@@ -181,18 +181,21 @@ mod s3 {
                     let bucket = super::generate_random_bucket_name();
                     minio.create_bucket(&bucket).await;
 
-                    unsafe {
-                        std::env::set_var("AWS_ENDPOINT", minio.endpoint());
-                        std::env::set_var("AWS_ALLOW_HTTP", "true");
-                    }
-
                     let storage_url = format!("s3://{}/", bucket);
 
-                    let provider = crate::Provider::new(
-                        url::Url::parse(&storage_url).unwrap(),
-                        crate::EncryptionConfig::default(),
-                    )
-                    .unwrap();
+                    let provider = temp_env::with_vars(
+                        [
+                            ("AWS_ENDPOINT", Some(minio.endpoint())),
+                            ("AWS_ALLOW_HTTP", Some("true".to_string())),
+                        ],
+                        || {
+                            crate::Provider::new(
+                                url::Url::parse(&storage_url).unwrap(),
+                                crate::EncryptionConfig::default(),
+                            )
+                            .unwrap()
+                        },
+                    );
 
                     crate::provider::test::$test(provider).await;
                 }
@@ -217,17 +220,18 @@ mod s3 {
                     let bucket = super::generate_random_bucket_name();
                     minio.create_bucket(&bucket).await;
 
-                    unsafe {
-                        std::env::set_var("AWS_ENDPOINT", minio.endpoint());
-                        std::env::set_var("AWS_ALLOW_HTTP", "true");
-                    }
-
                     let storage_url = format!("s3://{}/", bucket);
 
-                    let provider = crate::Provider::new(
-                        url::Url::parse(&storage_url).unwrap(),
-                        toml::from_str(
-                            "
+                    let provider = temp_env::with_vars(
+                        [
+                            ("AWS_ENDPOINT", Some(minio.endpoint())),
+                            ("AWS_ALLOW_HTTP", Some("true".to_string())),
+                        ],
+                        || {
+                            crate::Provider::new(
+                                url::Url::parse(&storage_url).unwrap(),
+                                toml::from_str(
+                                    "
 [event]
 kind = \"hpke\"
 public_key = \"\"\"
@@ -253,10 +257,12 @@ MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
 -----END PRIVATE KEY-----
 \"\"\"
 ",
-                        )
-                        .unwrap(),
-                    )
-                    .unwrap();
+                                )
+                                .unwrap(),
+                            )
+                            .unwrap()
+                        },
+                    );
 
                     crate::provider::test::$test(provider).await;
                 }
