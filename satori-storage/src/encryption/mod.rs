@@ -56,20 +56,16 @@ impl KeyOperations for EncryptionKey {
 
 pub(crate) mod info {
     use bytes::Bytes;
-    use std::path::Path;
 
-    pub(crate) fn event_info_from_filename(filename: &Path) -> Bytes {
-        format!("{}", filename.display())
-            .as_bytes()
-            .to_owned()
-            .into()
+    pub(crate) fn event_info_from_filename(filename: &str) -> Bytes {
+        filename.as_bytes().to_owned().into()
     }
 
     pub(crate) fn segment_info_from_camera_and_filename(
         camera_name: &str,
-        filename: &Path,
+        filename: &str,
     ) -> Bytes {
-        format!("{camera_name} {}", filename.display())
+        format!("{camera_name} {}", filename)
             .as_bytes()
             .to_owned()
             .into()

@@ -11,12 +11,12 @@ pub(crate) struct ListSegmentsCommand {
 
 impl ListSegmentsCommand {
     pub(super) async fn execute(&self, storage: Provider) -> miette::Result<()> {
-        for segment_file in storage
+        for segment_filename in storage
             .list_segments(&self.camera)
             .await
             .into_diagnostic()?
         {
-            println!("{}", segment_file.display());
+            println!("{segment_filename}");
         }
         Ok(())
     }

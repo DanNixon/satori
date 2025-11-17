@@ -2,7 +2,6 @@ use crate::Provider;
 use bytes::Bytes;
 use chrono::Utc;
 use satori_common::{Event, EventMetadata};
-use std::path::{Path, PathBuf};
 
 pub(crate) async fn test_event_getters(provider: Provider) {
     let event1 = Event {
@@ -32,15 +31,12 @@ pub(crate) async fn test_event_getters(provider: Provider) {
 
     assert_eq!(
         provider.list_events().await.unwrap(),
-        vec![
-            event1.metadata.get_filename(),
-            event2.metadata.get_filename(),
-        ]
+        vec![event1.metadata.filename(), event2.metadata.filename(),]
     );
 
     assert_eq!(
         provider
-            .get_event(&event1.metadata.get_filename())
+            .get_event(&event1.metadata.filename())
             .await
             .unwrap(),
         event1
@@ -49,41 +45,41 @@ pub(crate) async fn test_event_getters(provider: Provider) {
 
 pub(crate) async fn test_segment_getters(provider: Provider) {
     provider
-        .put_segment("camera1", Path::new("1_1.ts"), Bytes::from("camera1_one"))
+        .put_segment("camera1", "1_1.ts", Bytes::from("camera1_one"))
         .await
         .unwrap();
     provider
-        .put_segment("camera1", Path::new("1_2.ts"), Bytes::from("camera1_two"))
+        .put_segment("camera1", "1_2.ts", Bytes::from("camera1_two"))
         .await
         .unwrap();
     provider
-        .put_segment("camera1", Path::new("1_3.ts"), Bytes::from("camera1_three"))
-        .await
-        .unwrap();
-
-    provider
-        .put_segment("camera2", Path::new("2_1.ts"), Bytes::from("camera2_onw"))
-        .await
-        .unwrap();
-    provider
-        .put_segment("camera2", Path::new("2_2.ts"), Bytes::from("camera2_two"))
-        .await
-        .unwrap();
-    provider
-        .put_segment("camera2", Path::new("2_3.ts"), Bytes::from("camera2_three"))
+        .put_segment("camera1", "1_3.ts", Bytes::from("camera1_three"))
         .await
         .unwrap();
 
     provider
-        .put_segment("camera3", Path::new("3_1.ts"), Bytes::from("camera3_one"))
+        .put_segment("camera2", "2_1.ts", Bytes::from("camera2_onw"))
         .await
         .unwrap();
     provider
-        .put_segment("camera3", Path::new("3_2.ts"), Bytes::from("camera3_two"))
+        .put_segment("camera2", "2_2.ts", Bytes::from("camera2_two"))
         .await
         .unwrap();
     provider
-        .put_segment("camera3", Path::new("3_3.ts"), Bytes::from("camera3_three"))
+        .put_segment("camera2", "2_3.ts", Bytes::from("camera2_three"))
+        .await
+        .unwrap();
+
+    provider
+        .put_segment("camera3", "3_1.ts", Bytes::from("camera3_one"))
+        .await
+        .unwrap();
+    provider
+        .put_segment("camera3", "3_2.ts", Bytes::from("camera3_two"))
+        .await
+        .unwrap();
+    provider
+        .put_segment("camera3", "3_3.ts", Bytes::from("camera3_three"))
         .await
         .unwrap();
 
@@ -99,17 +95,14 @@ pub(crate) async fn test_segment_getters(provider: Provider) {
     assert_eq!(
         provider.list_segments("camera2").await.unwrap(),
         vec![
-            Path::new("2_1.ts").to_owned(),
-            Path::new("2_2.ts").to_owned(),
-            Path::new("2_3.ts").to_owned(),
+            "2_1.ts".to_owned(),
+            "2_2.ts".to_owned(),
+            "2_3.ts".to_owned(),
         ]
     );
 
     assert_eq!(
-        provider
-            .get_segment("camera2", &PathBuf::from("2_3.ts"))
-            .await
-            .unwrap(),
+        provider.get_segment("camera2", "2_3.ts").await.unwrap(),
         Bytes::from("camera2_three"),
     );
 }

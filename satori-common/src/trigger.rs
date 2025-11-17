@@ -68,7 +68,6 @@ pub struct TriggerTemplate {
 mod test {
     use super::*;
     use chrono::TimeZone;
-    use std::path::PathBuf;
 
     #[test]
     fn test_get_filename() {
@@ -80,13 +79,13 @@ mod test {
             id: "thing1".into(),
         };
 
-        let expected = PathBuf::from("2022-11-20T05:28:30+00:00_thing1.json");
-        assert_eq!(metadata.get_filename(), expected);
+        let expected = "2022-11-20T05:28:30+00:00_thing1.json";
+        assert_eq!(metadata.filename(), expected);
     }
 
     #[test]
     fn test_from_filename() {
-        let filename = PathBuf::from("2022-11-20T05:28:30+00:00_thing1.json");
+        let filename = "2022-11-20T05:28:30+00:00_thing1.json";
 
         let expected = EventMetadata {
             timestamp: Utc
@@ -95,12 +94,12 @@ mod test {
                 .into(),
             id: "thing1".into(),
         };
-        assert_eq!(EventMetadata::from_filename(&filename).unwrap(), expected);
+        assert_eq!(EventMetadata::from_filename(filename).unwrap(), expected);
     }
 
     #[test]
     fn test_from_filename_underscore_in_id() {
-        let filename = PathBuf::from("2022-11-20T05:28:30+00:00_thing_1.json");
+        let filename = "2022-11-20T05:28:30+00:00_thing_1.json";
 
         let expected = EventMetadata {
             timestamp: Utc
@@ -109,19 +108,19 @@ mod test {
                 .into(),
             id: "thing_1".into(),
         };
-        assert_eq!(EventMetadata::from_filename(&filename).unwrap(), expected);
+        assert_eq!(EventMetadata::from_filename(filename).unwrap(), expected);
     }
 
     #[test]
     fn test_from_filename_fail_no_id() {
-        let filename = PathBuf::from("2022-11-20T05:28:30+00:00.json");
-        assert!(EventMetadata::from_filename(&filename).is_err());
+        let filename = "2022-11-20T05:28:30+00:00.json";
+        assert!(EventMetadata::from_filename(filename).is_err());
     }
 
     #[test]
     fn test_from_filename_fail_bad_timestamp() {
-        let filename = PathBuf::from("2022-31-20T05:28:30+00:00_thing1.json");
-        assert!(EventMetadata::from_filename(&filename).is_err());
+        let filename = "2022-31-20T05:28:30+00:00_thing1.json";
+        assert!(EventMetadata::from_filename(filename).is_err());
     }
 
     #[test]

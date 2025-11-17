@@ -1,7 +1,6 @@
 use clap::Parser;
 use miette::IntoDiagnostic;
 use satori_storage::Provider;
-use std::path::PathBuf;
 
 /// Delete a selection of video segment files for a given camera.
 #[derive(Debug, Clone, Parser)]
@@ -10,7 +9,7 @@ pub(crate) struct DeleteSegmentCommand {
     camera: String,
 
     /// Files to delete.
-    file: Vec<PathBuf>,
+    file: Vec<String>,
 }
 
 impl DeleteSegmentCommand {

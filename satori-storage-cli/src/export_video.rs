@@ -18,7 +18,7 @@ pub(crate) struct ExportVideoSubcommand {
     output: Option<PathBuf>,
 
     /// Filename of the event to export.
-    event: PathBuf,
+    event: String,
 }
 
 impl ExportVideoSubcommand {

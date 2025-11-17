@@ -2,7 +2,7 @@ use crate::{archive::tasks::ArchiveTask, hls_client::HlsClient, segments::Playli
 use miette::{Context, IntoDiagnostic};
 use object_store::{ObjectStore, path::Path};
 use satori_common::{CameraSegments, Event, EventReason, Trigger};
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use tracing::{error, info, warn};
 use url::Url;
 
@@ -91,7 +91,7 @@ impl EventSet {
                 let segments = playlist.between(event.start, event.end);
 
                 // Compute set of new segments (that are not already recorded in event)
-                let mut new_segments: Vec<PathBuf> = segments
+                let mut new_segments: Vec<String> = segments
                     .into_iter()
                     .filter_map(|s| {
                         if camera.segment_list.contains(&s.filename) {
@@ -112,7 +112,7 @@ impl EventSet {
                         let segment_url = camera_client
                             .get_camera_url(&camera.name)
                             .unwrap()
-                            .join(segment.to_string_lossy().as_ref())
+                            .join(segment)
                             .unwrap();
 
                         // Create and send the segment archive tasks for this camera

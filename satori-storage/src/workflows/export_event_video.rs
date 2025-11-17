@@ -1,7 +1,7 @@
 use crate::{Provider, StorageError, StorageResult};
 use bytes::{BufMut, Bytes};
 use satori_common::{CameraSegments, Event};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing::info;
 
 pub fn generate_video_filename(
@@ -15,10 +15,10 @@ pub fn generate_video_filename(
 
 pub async fn export_event_video(
     storage: Provider,
-    event_filename: &Path,
+    event_filename: &str,
     camera_name: Option<String>,
 ) -> StorageResult<(Event, Bytes)> {
-    info!("Getting event: {}", event_filename.display());
+    info!("Getting event: {}", event_filename);
     let event = storage.get_event(event_filename).await?;
     let camera = get_camera_from_event_by_name(&event, camera_name)?;
     let video_data = get_file_from_segments(storage, camera).await?;
@@ -52,7 +52,7 @@ async fn get_file_from_segments(
     let mut file_content: Vec<u8> = Vec::new();
 
     for segment_filename in &camera.segment_list {
-        info!("Getting segment: {}", segment_filename.display());
+        info!("Getting segment: {segment_filename}");
         file_content.put(storage.get_segment(&camera.name, segment_filename).await?);
     }
 
@@ -86,7 +86,7 @@ mod test {
             reasons: Default::default(),
             cameras: vec![CameraSegments {
                 name: "camera1".into(),
-                segment_list: vec![PathBuf::from("1_2.ts"), PathBuf::from("1_3.ts")],
+                segment_list: vec!["1_2.ts".to_owned(), "1_3.ts".to_owned()],
             }],
         };
 
@@ -114,11 +114,11 @@ mod test {
             cameras: vec![
                 CameraSegments {
                     name: "camera1".into(),
-                    segment_list: vec![PathBuf::from("1_2.ts"), PathBuf::from("1_3.ts")],
+                    segment_list: vec!["1_2.ts".to_owned(), "1_3.ts".to_owned()],
                 },
                 CameraSegments {
                     name: "camera2".into(),
-                    segment_list: vec![PathBuf::from("2_2.ts"), PathBuf::from("2_3.ts")],
+                    segment_list: vec!["2_2.ts".to_owned(), "2_3.ts".to_owned()],
                 },
             ],
         };
@@ -138,15 +138,15 @@ mod test {
         .unwrap();
 
         provider
-            .put_segment("camera1", Path::new("1_1.ts"), Bytes::from("one"))
+            .put_segment("camera1", "1_1.ts", Bytes::from("one"))
             .await
             .unwrap();
         provider
-            .put_segment("camera1", Path::new("1_2.ts"), Bytes::from("two"))
+            .put_segment("camera1", "1_2.ts", Bytes::from("two"))
             .await
             .unwrap();
         provider
-            .put_segment("camera1", Path::new("1_3.ts"), Bytes::from("three"))
+            .put_segment("camera1", "1_3.ts", Bytes::from("three"))
             .await
             .unwrap();
 
@@ -160,19 +160,16 @@ mod test {
             reasons: Default::default(),
             cameras: vec![CameraSegments {
                 name: "camera1".into(),
-                segment_list: vec![PathBuf::from("1_2.ts"), PathBuf::from("1_3.ts")],
+                segment_list: vec!["1_2.ts".to_owned(), "1_3.ts".to_owned()],
             }],
         };
 
         provider.put_event(&event).await.unwrap();
 
-        let (returned_event, video_bytes) = export_event_video(
-            provider,
-            &event.metadata.get_filename(),
-            Some("camera1".into()),
-        )
-        .await
-        .unwrap();
+        let (returned_event, video_bytes) =
+            export_event_video(provider, &event.metadata.filename(), Some("camera1".into()))
+                .await
+                .unwrap();
 
         assert_eq!(returned_event, event);
         assert_eq!(video_bytes, Bytes::from("twothree"));

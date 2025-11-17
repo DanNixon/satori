@@ -7,7 +7,6 @@ use axum::{
 };
 use miette::IntoDiagnostic;
 use satori_common::{ArchiveSegmentCommand, Event};
-use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
 #[tracing::instrument(skip_all)]
@@ -48,9 +47,8 @@ pub(super) async fn handle_camera_segment_upload(
         }
         Some(filename) => {
             debug!("Segment filename: {filename}");
-            let filename = PathBuf::from(filename);
 
-            match state.get(cmd.segment_url).await {
+            match state.get(cmd.segment_url.clone()).await {
                 Err(e) => {
                     warn!("Failed to get segment for archive storage with error: {e}");
                     StatusCode::INTERNAL_SERVER_ERROR
@@ -58,7 +56,7 @@ pub(super) async fn handle_camera_segment_upload(
                 Ok(data) => {
                     match state
                         .storage
-                        .put_segment(&camera, &filename, data)
+                        .put_segment(&camera, filename, data)
                         .await
                         .into_diagnostic()
                     {

@@ -113,7 +113,7 @@ impl EventListPanel {
         if let Some(i) = self.state.state().selected() {
             *self.selected_event.lock().unwrap() = Some(
                 self.storage
-                    .get_event(&self.event_metadata_cache[i].get_filename())
+                    .get_event(&self.event_metadata_cache[i].filename())
                     .await
                     .unwrap(),
             );

@@ -2,7 +2,6 @@ use crate::Provider;
 use bytes::Bytes;
 use chrono::Utc;
 use satori_common::{Event, EventMetadata};
-use std::path::{Path, PathBuf};
 
 pub(crate) async fn test_delete_event(provider: Provider) {
     let event1 = Event {
@@ -34,7 +33,7 @@ pub(crate) async fn test_delete_event(provider: Provider) {
 
     let mut events = provider.list_events().await.unwrap();
     events.sort();
-    assert_eq!(events, vec![event2.metadata.get_filename(),]);
+    assert_eq!(events, vec![event2.metadata.filename()]);
 }
 
 pub(crate) async fn test_delete_event_filename(provider: Provider) {
@@ -64,52 +63,45 @@ pub(crate) async fn test_delete_event_filename(provider: Provider) {
     provider.put_event(&event2).await.unwrap();
 
     provider
-        .delete_event_filename(&event1.metadata.get_filename())
+        .delete_event_filename(&event1.metadata.filename())
         .await
         .unwrap();
 
     let mut events = provider.list_events().await.unwrap();
     events.sort();
-    assert_eq!(events, vec![event2.metadata.get_filename(),]);
+    assert_eq!(events, vec![event2.metadata.filename()]);
 }
 
 pub(crate) async fn test_delete_segment(provider: Provider) {
     provider
-        .put_segment("camera1", Path::new("1.ts"), Bytes::default())
+        .put_segment("camera1", "1.ts", Bytes::default())
         .await
         .unwrap();
     provider
-        .put_segment("camera1", Path::new("2.ts"), Bytes::default())
+        .put_segment("camera1", "2.ts", Bytes::default())
         .await
         .unwrap();
     provider
-        .put_segment("camera1", Path::new("3.ts"), Bytes::default())
+        .put_segment("camera1", "3.ts", Bytes::default())
         .await
         .unwrap();
 
     assert_eq!(
         provider.list_segments("camera1").await.unwrap(),
-        vec![
-            Path::new("1.ts").to_owned(),
-            Path::new("2.ts").to_owned(),
-            Path::new("3.ts").to_owned(),
-        ]
+        vec!["1.ts".to_owned(), "2.ts".to_owned(), "3.ts".to_owned(),]
     );
 
-    provider
-        .delete_segment("camera1", Path::new("2.ts"))
-        .await
-        .unwrap();
+    provider.delete_segment("camera1", "2.ts").await.unwrap();
 
     assert_eq!(
         provider.list_segments("camera1").await.unwrap(),
-        vec![Path::new("1.ts").to_owned(), Path::new("3.ts").to_owned(),]
+        vec!["1.ts".to_owned(), "3.ts".to_owned()]
     );
 }
 
 pub(crate) async fn test_delete_last_segment_deletes_camera(provider: Provider) {
     provider
-        .put_segment("camera1", Path::new("1.ts"), Bytes::default())
+        .put_segment("camera1", "1.ts", Bytes::default())
         .await
         .unwrap();
 
@@ -117,13 +109,10 @@ pub(crate) async fn test_delete_last_segment_deletes_camera(provider: Provider) 
 
     assert_eq!(
         provider.list_segments("camera1").await.unwrap(),
-        vec![PathBuf::from("1.ts")]
+        vec!["1.ts".to_owned()]
     );
 
-    provider
-        .delete_segment("camera1", Path::new("1.ts"))
-        .await
-        .unwrap();
+    provider.delete_segment("camera1", "1.ts").await.unwrap();
 
     assert!(provider.list_cameras().await.unwrap().is_empty());
 }

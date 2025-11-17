@@ -1,7 +1,6 @@
 use crate::{Provider, StorageError, StorageResult};
 use chrono::{DateTime, FixedOffset};
 use satori_common::EventMetadata;
-use std::path::PathBuf;
 use tracing::{error, info};
 
 pub async fn prune_events_older_than(
@@ -14,7 +13,7 @@ pub async fn prune_events_older_than(
     let mut result = Ok(());
 
     // Filter the list of event filenames, removing those that we want to keep
-    let event_files_to_delete: Vec<PathBuf> = event_filenames
+    let event_files_to_delete: Vec<String> = event_filenames
         .into_iter()
         .filter(|event| match EventMetadata::from_filename(event) {
             Ok(metadata) => metadata.timestamp < time,
@@ -28,13 +27,9 @@ pub async fn prune_events_older_than(
 
     // Delete all the events marked for deletion
     for filename in event_files_to_delete {
-        info!("Pruning event: {}", filename.display());
+        info!("Pruning event: {}", filename);
         if let Err(err) = storage.delete_event_filename(&filename).await {
-            error!(
-                "Failed to remove event file {}, reason: {}",
-                filename.display(),
-                err
-            );
+            error!("Failed to remove event file {filename}, reason: {err}");
             result = Err(StorageError::WorkflowPartialError);
         }
     }
