@@ -2,7 +2,7 @@
 mod test;
 
 use super::StorageResult;
-use crate::{EncryptionConfig, StorageConfig, encryption::KeyOperations};
+use crate::{EncryptionConfig, StorageConfig, StorageError, encryption::KeyOperations};
 use bytes::Bytes;
 use futures::StreamExt;
 use object_store::{
@@ -11,7 +11,7 @@ use object_store::{
 };
 use satori_common::Event;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{error, info};
 use url::Url;
 
 #[derive(Clone)]
@@ -21,7 +21,7 @@ pub struct Provider {
 }
 
 impl TryFrom<StorageConfig> for Provider {
-    type Error = crate::StorageError;
+    type Error = StorageError;
 
     fn try_from(value: StorageConfig) -> Result<Self, Self::Error> {
         Self::new(value.url, value.encryption)
@@ -51,7 +51,10 @@ impl Provider {
 }
 
 pub fn backend_from_url(url: &Url) -> StorageResult<Arc<dyn ObjectStore>> {
-    let (scheme, path) = ObjectStoreScheme::parse(url).unwrap();
+    let (scheme, path) = ObjectStoreScheme::parse(url).map_err(|e| {
+        error!("Failed to parse storage URL {url}: {e}");
+        StorageError::NoBackendForUrl(url.to_owned())
+    })?;
 
     let store: Arc<dyn ObjectStore> = match scheme {
         ObjectStoreScheme::Memory => {
@@ -75,8 +78,9 @@ pub fn backend_from_url(url: &Url) -> StorageResult<Arc<dyn ObjectStore>> {
                     .build()?,
             )
         }
-        _ => {
-            return Err(crate::StorageError::NoBackendForUrl(url.to_owned()));
+        s => {
+            error!("No backend available for URL {url} with scheme {s:?}");
+            return Err(StorageError::NoBackendForUrl(url.to_owned()));
         }
     };
 
