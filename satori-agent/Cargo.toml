@@ -23,7 +23,7 @@ serde_with.workspace = true
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = { version = "0.7.16", features = ["codec"] }
 tokio.workspace = true
-tower-http = { version = "0.6.6", features = ["fs"] }
+tower-http = { version = "0.6.7", features = ["fs"] }
 tracing-subscriber.workspace = true
 tracing.workspace = true
 url.workspace = true
