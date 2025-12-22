@@ -1,10 +1,4 @@
-{
-  pkgs,
-  lib,
-  config,
-  inputs,
-  ...
-}: {
+{pkgs, ...}: {
   packages = with pkgs; [
     # Rust toolchain
     rustup
@@ -16,10 +10,5 @@
 
     # Rust dependency linting
     cargo-deny
-
-    # Container image management
-    skopeo
-
-    pkgs.git
   ];
 }
