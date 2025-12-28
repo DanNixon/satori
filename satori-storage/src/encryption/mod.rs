@@ -7,31 +7,10 @@ use crate::StorageResult;
 use bytes::Bytes;
 use serde::Deserialize;
 
-#[derive(Debug, Default, Clone, Deserialize)]
-pub struct EncryptionConfig {
-    pub event: Option<EncryptionKey>,
-    pub segment: Option<EncryptionKey>,
-}
-
-pub(crate) trait KeyOperations {
+pub trait KeyOperations {
+    fn generate() -> Self;
     fn encrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes>;
     fn decrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes>;
-}
-
-impl KeyOperations for Option<EncryptionKey> {
-    fn encrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes> {
-        match &self {
-            Some(key) => key.encrypt(id, data),
-            None => Ok(data),
-        }
-    }
-
-    fn decrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes> {
-        match &self {
-            Some(key) => key.decrypt(id, data),
-            None => Ok(data),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -41,6 +20,12 @@ pub enum EncryptionKey {
 }
 
 impl KeyOperations for EncryptionKey {
+    fn generate() -> Self {
+        // Default to generating a HPKE key (although this function is unlikely
+        // to be called, it is just here to fulfill the trait requirements).
+        Self::Hpke(hpke::Hpke::generate())
+    }
+
     fn encrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes> {
         match &self {
             Self::Hpke(k) => k.encrypt(id, data),

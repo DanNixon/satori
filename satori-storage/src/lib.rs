@@ -2,8 +2,9 @@ mod config;
 pub use self::config::StorageConfig;
 
 mod encryption;
-pub use self::encryption::{EncryptionConfig, EncryptionKey};
+pub use self::encryption::{EncryptionKey, KeyOperations};
 
+// TODO: `error` should not be `pub`
 pub mod error;
 pub use self::error::{StorageError, StorageResult};
 

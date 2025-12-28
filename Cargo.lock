@@ -2932,9 +2932,11 @@ dependencies = [
  "ctor",
  "indoc",
  "reqwest",
+ "satori-storage",
  "satori-testing-utils",
  "tempfile",
  "tokio",
+ "toml",
  "tracing",
  "tracing-subscriber",
 ]

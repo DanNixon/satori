@@ -2,7 +2,7 @@ use super::KeyOperations;
 use crate::{StorageError, StorageResult};
 use bytes::Bytes;
 use generic_array::GenericArray;
-use hpke::{Deserializable, Serializable};
+use hpke::{Deserializable, Kem, Serializable};
 use rand::{SeedableRng, rngs::StdRng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 use zeroize::Zeroize;
@@ -36,6 +36,15 @@ impl std::fmt::Debug for Hpke {
 }
 
 impl KeyOperations for Hpke {
+    fn generate() -> Self {
+        let mut rng = StdRng::from_os_rng();
+        let (private_key, public_key) = SelectedKem::gen_keypair(&mut rng);
+        Self {
+            public_key,
+            private_key: Some(private_key),
+        }
+    }
+
     fn encrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes> {
         let mut csprng = StdRng::from_os_rng();
 
