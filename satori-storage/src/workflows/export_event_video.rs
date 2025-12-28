@@ -62,7 +62,7 @@ async fn get_file_from_segments(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::EncryptionConfig;
+    use crate::{EncryptionKey, encryption::KeyOperations};
     use bytes::Bytes;
     use chrono::Utc;
     use satori_common::{Event, EventMetadata};
@@ -131,11 +131,8 @@ mod test {
 
     #[tokio::test]
     async fn test_export_event_video() {
-        let provider = Provider::new(
-            Url::parse("memory:///").unwrap(),
-            EncryptionConfig::default(),
-        )
-        .unwrap();
+        let provider =
+            Provider::new(Url::parse("memory:///").unwrap(), EncryptionKey::generate()).unwrap();
 
         provider
             .put_segment("camera1", "1_1.ts", Bytes::from("one"))

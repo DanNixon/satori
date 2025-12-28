@@ -40,17 +40,14 @@ pub async fn prune_events_older_than(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::EncryptionConfig;
+    use crate::{EncryptionKey, encryption::KeyOperations};
     use chrono::{FixedOffset, NaiveDate, Utc};
     use satori_common::{Event, EventMetadata};
     use url::Url;
 
     async fn build_test_storage() -> Provider {
-        let provider = Provider::new(
-            Url::parse("memory:///").unwrap(),
-            EncryptionConfig::default(),
-        )
-        .unwrap();
+        let provider =
+            Provider::new(Url::parse("memory:///").unwrap(), EncryptionKey::generate()).unwrap();
 
         provider
             .put_event(&Event {

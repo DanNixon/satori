@@ -1,3 +1,4 @@
+use satori_storage::{EncryptionKey, KeyOperations};
 use satori_testing_utils::{DummyHlsServer, DummyStreamParams, MinioDriver};
 use std::{
     fs::File,
@@ -34,10 +35,40 @@ async fn one() {
 
     let event_processor_state_store = tempfile::tempdir().unwrap();
 
+    let encryption: EncryptionKey = toml::from_str(
+        "
+kind = \"hpke\"
+public_key = \"\"\"
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
+-----END PUBLIC KEY-----
+\"\"\"
+private_key = \"\"\"
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
+-----END PRIVATE KEY-----
+\"\"\"
+",
+    )
+    .unwrap();
+
     let archiver_config_file = {
         let contents = indoc::indoc!(
             r#"
             url = "s3://satori/"
+
+            [encryption]
+            kind = "hpke"
+            public_key = """
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
+            -----END PUBLIC KEY-----
+            """
+            private_key = """
+            -----BEGIN PRIVATE KEY-----
+            MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
+            -----END PRIVATE KEY-----
+            """
             "#
         );
 
@@ -166,7 +197,10 @@ async fn one() {
         .get_object("events/2023-01-01T00:02:15+00:00_test.json")
         .await
         .unwrap();
-    let s3_event = s3_event.as_str().unwrap();
+    let info = "2023-01-01T00:02:15+00:00_test.json".into();
+    let s3_event = encryption
+        .decrypt(info, s3_event.bytes().to_owned())
+        .unwrap();
     assert_eq!(
         s3_event,
         "{\n  \"metadata\": {\n    \"id\": \"test\",\n    \"timestamp\": \"2023-01-01T00:02:15Z\"\n  },\n  \"reasons\": [\n    {\n      \"timestamp\": \"2023-01-01T00:02:15Z\",\n      \"reason\": \"test\"\n    }\n  ],\n  \"start\": \"2023-01-01T00:01:25Z\",\n  \"end\": \"2023-01-01T00:02:45Z\",\n  \"cameras\": [\n    {\n      \"name\": \"camera1\",\n      \"segment_list\": [\n        \"2023-01-01T00_01_24+0000.ts\",\n        \"2023-01-01T00_01_30+0000.ts\",\n        \"2023-01-01T00_01_36+0000.ts\",\n        \"2023-01-01T00_01_42+0000.ts\",\n        \"2023-01-01T00_01_48+0000.ts\",\n        \"2023-01-01T00_01_54+0000.ts\",\n        \"2023-01-01T00_02_00+0000.ts\",\n        \"2023-01-01T00_02_06+0000.ts\",\n        \"2023-01-01T00_02_12+0000.ts\",\n        \"2023-01-01T00_02_18+0000.ts\",\n        \"2023-01-01T00_02_24+0000.ts\",\n        \"2023-01-01T00_02_30+0000.ts\",\n        \"2023-01-01T00_02_36+0000.ts\",\n        \"2023-01-01T00_02_42+0000.ts\"\n      ]\n    },\n    {\n      \"name\": \"camera3\",\n      \"segment_list\": [\n        \"2023-01-01T00_01_20+0000.ts\",\n        \"2023-01-01T00_01_26+0000.ts\",\n        \"2023-01-01T00_01_32+0000.ts\",\n        \"2023-01-01T00_01_38+0000.ts\",\n        \"2023-01-01T00_01_44+0000.ts\",\n        \"2023-01-01T00_01_50+0000.ts\",\n        \"2023-01-01T00_01_56+0000.ts\",\n        \"2023-01-01T00_02_02+0000.ts\",\n        \"2023-01-01T00_02_08+0000.ts\",\n        \"2023-01-01T00_02_14+0000.ts\",\n        \"2023-01-01T00_02_20+0000.ts\",\n        \"2023-01-01T00_02_26+0000.ts\",\n        \"2023-01-01T00_02_32+0000.ts\",\n        \"2023-01-01T00_02_38+0000.ts\",\n        \"2023-01-01T00_02_44+0000.ts\"\n      ]\n    }\n  ]\n}"

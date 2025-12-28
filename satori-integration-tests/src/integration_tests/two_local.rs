@@ -27,6 +27,19 @@ async fn two_local() {
             indoc::indoc!(
                 r#"
                 url = "file://{}"
+
+                [encryption]
+                kind = "hpke"
+                public_key = """
+                -----BEGIN PUBLIC KEY-----
+                MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
+                -----END PUBLIC KEY-----
+                """
+                private_key = """
+                -----BEGIN PRIVATE KEY-----
+                MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
+                -----END PRIVATE KEY-----
+                """
                 "#
             ),
             storage_dir.path().display(),

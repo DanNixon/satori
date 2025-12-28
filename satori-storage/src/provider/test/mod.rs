@@ -30,14 +30,29 @@ macro_rules! all_storage_tests {
 }
 
 mod inmemory {
-    mod no_encryption {
+    mod encryption_hpke {
         macro_rules! test {
             ( $test:ident ) => {
                 #[tokio::test]
                 async fn $test() {
                     let provider = crate::Provider::new(
                         url::Url::parse("memory:///").unwrap(),
-                        crate::EncryptionConfig::default(),
+                        toml::from_str(
+                            "
+kind = \"hpke\"
+public_key = \"\"\"
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
+-----END PUBLIC KEY-----
+\"\"\"
+private_key = \"\"\"
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
+-----END PRIVATE KEY-----
+\"\"\"
+",
+                        )
+                        .unwrap(),
                     )
                     .unwrap();
 
@@ -51,32 +66,6 @@ mod inmemory {
 }
 
 mod local {
-    mod no_encryption {
-        macro_rules! test {
-            ( $test:ident ) => {
-                #[tokio::test]
-                async fn $test() {
-                    let temp_dir = tempfile::Builder::new()
-                        .prefix("satori_local_storage_test")
-                        .tempdir()
-                        .unwrap();
-
-                    let storage_url = format!("file://{}", temp_dir.path().display());
-
-                    let provider = crate::Provider::new(
-                        url::Url::parse(&storage_url).unwrap(),
-                        crate::EncryptionConfig::default(),
-                    )
-                    .unwrap();
-
-                    crate::provider::test::$test(provider).await;
-                }
-            };
-        }
-
-        all_storage_tests!(test);
-    }
-
     mod encryption_hpke {
         macro_rules! test {
             ( $test:ident ) => {
@@ -93,7 +82,6 @@ mod local {
                         url::Url::parse(&storage_url).unwrap(),
                         toml::from_str(
                             "
-[event]
 kind = \"hpke\"
 public_key = \"\"\"
 -----BEGIN PUBLIC KEY-----
@@ -103,18 +91,6 @@ MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
 private_key = \"\"\"
 -----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
------END PRIVATE KEY-----
-\"\"\"
-[segment]
-kind = \"hpke\"
-public_key = \"\"\"
------BEGIN PUBLIC KEY-----
-MCowBQYDK2VuAyEA4xQouJZhiNpBedFJBs3lE8FIOMQtnMzZG426m2nVjko=
------END PUBLIC KEY-----
-\"\"\"
-private_key = \"\"\"
------BEGIN PRIVATE KEY-----
-MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
 -----END PRIVATE KEY-----
 \"\"\"
 ",
@@ -166,45 +142,6 @@ mod s3 {
         format!("satori-storage-test-{id}")
     }
 
-    mod no_encryption {
-        use super::MINIO;
-
-        macro_rules! test {
-            ( $test:ident ) => {
-                #[tokio::test]
-                async fn $test() {
-                    let minio = MINIO.lock().await;
-                    let minio = minio.as_ref().unwrap();
-
-                    minio.wait_for_ready().await;
-
-                    let bucket = super::generate_random_bucket_name();
-                    minio.create_bucket(&bucket).await;
-
-                    let storage_url = format!("s3://{}/", bucket);
-
-                    let provider = temp_env::with_vars(
-                        [
-                            ("AWS_ENDPOINT", Some(minio.endpoint())),
-                            ("AWS_ALLOW_HTTP", Some("true".to_string())),
-                        ],
-                        || {
-                            crate::Provider::new(
-                                url::Url::parse(&storage_url).unwrap(),
-                                crate::EncryptionConfig::default(),
-                            )
-                            .unwrap()
-                        },
-                    );
-
-                    crate::provider::test::$test(provider).await;
-                }
-            };
-        }
-
-        all_storage_tests!(test);
-    }
-
     mod encryption_hpke {
         use super::MINIO;
 
@@ -232,7 +169,6 @@ mod s3 {
                                 url::Url::parse(&storage_url).unwrap(),
                                 toml::from_str(
                                     "
-[event]
 kind = \"hpke\"
 public_key = \"\"\"
 -----BEGIN PUBLIC KEY-----
@@ -242,18 +178,6 @@ MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
 private_key = \"\"\"
 -----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
------END PRIVATE KEY-----
-\"\"\"
-[segment]
-kind = \"hpke\"
-public_key = \"\"\"
------BEGIN PUBLIC KEY-----
-MCowBQYDK2VuAyEA4xQouJZhiNpBedFJBs3lE8FIOMQtnMzZG426m2nVjko=
------END PUBLIC KEY-----
-\"\"\"
-private_key = \"\"\"
------BEGIN PRIVATE KEY-----
-MC4CAQAwBQYDK2VuBCIEILhAcPMmERCi9QmBwH26wXzVo/6e5Lqw9lvA+8hf//xJ
 -----END PRIVATE KEY-----
 \"\"\"
 ",

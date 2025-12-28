@@ -2,7 +2,7 @@
 mod test;
 
 use super::StorageResult;
-use crate::{EncryptionConfig, StorageConfig, StorageError, encryption::KeyOperations};
+use crate::{EncryptionKey, StorageConfig, StorageError, encryption::KeyOperations};
 use bytes::Bytes;
 use futures::StreamExt;
 use object_store::{
@@ -17,7 +17,7 @@ use url::Url;
 #[derive(Clone)]
 pub struct Provider {
     store: Arc<dyn ObjectStore>,
-    encryption: EncryptionConfig,
+    encryption: EncryptionKey,
 }
 
 impl TryFrom<StorageConfig> for Provider {
@@ -29,7 +29,7 @@ impl TryFrom<StorageConfig> for Provider {
 }
 
 impl Provider {
-    pub fn new(url: Url, encryption: EncryptionConfig) -> StorageResult<Self> {
+    pub fn new(url: Url, encryption: EncryptionKey) -> StorageResult<Self> {
         let store = backend_from_url(&url)?;
         Ok(Self { store, encryption })
     }
@@ -92,7 +92,7 @@ impl Provider {
         let data = serde_json::to_vec_pretty(&event)?;
 
         let info = crate::encryption::info::event_info_from_filename(&event.metadata.filename());
-        let data = self.encryption.event.encrypt(info, data.into())?;
+        let data = self.encryption.encrypt(info, data.into())?;
 
         self.store.put(&path, data.into()).await?;
 
@@ -126,7 +126,7 @@ impl Provider {
         let data = get_result.bytes().await?;
 
         let info = crate::encryption::info::event_info_from_filename(filename);
-        let data = self.encryption.event.decrypt(info, data)?;
+        let data = self.encryption.decrypt(info, data)?;
 
         Ok(serde_json::from_slice(&data)?)
     }
@@ -171,7 +171,7 @@ impl Provider {
 
         let info =
             crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
-        let data = self.encryption.segment.encrypt(info, data)?;
+        let data = self.encryption.encrypt(info, data)?;
 
         self.store.put(&path, data.into()).await?;
 
@@ -206,7 +206,7 @@ impl Provider {
 
         let info =
             crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
-        let data = self.encryption.segment.decrypt(info, data)?;
+        let data = self.encryption.decrypt(info, data)?;
 
         Ok(data)
     }
