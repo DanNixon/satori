@@ -1,11 +1,10 @@
 mod hpke;
-
 #[cfg(test)]
 mod test;
 
 use crate::StorageResult;
 use bytes::Bytes;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub trait KeyOperations {
     fn generate() -> Self;
@@ -13,7 +12,7 @@ pub trait KeyOperations {
     fn decrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes>;
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum EncryptionKey {
     Hpke(hpke::Hpke),
@@ -23,7 +22,7 @@ impl KeyOperations for EncryptionKey {
     fn generate() -> Self {
         // Default to generating a HPKE key (although this function is unlikely
         // to be called, it is just here to fulfill the trait requirements).
-        Self::Hpke(hpke::Hpke::generate())
+        Self::Hpke(KeyOperations::generate())
     }
 
     fn encrypt(&self, id: Bytes, data: Bytes) -> StorageResult<Bytes> {
