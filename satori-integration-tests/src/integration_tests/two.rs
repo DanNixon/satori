@@ -29,16 +29,8 @@ async fn two() {
 
             [encryption]
             kind = "hpke"
-            public_key = """
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VuAyEAZWyBUeaFatX3a3/OnqFljoEhAUHjrLgDJzzc5EqR/ho=
-            -----END PUBLIC KEY-----
-            """
-            private_key = """
-            -----BEGIN PRIVATE KEY-----
-            MC4CAQAwBQYDK2VuBCIEIPAn/aQduWFV5VAlGQF79sBuzQItqFWu6FdJ4B77/UJ7
-            -----END PRIVATE KEY-----
-            """
+            public_key = [227, 73, 200, 96, 32, 198, 168, 234, 95, 35, 250, 8, 195, 25, 114, 67, 2, 206, 247, 21, 255, 175, 211, 33, 232, 187, 73, 197, 167, 157, 7, 121]
+            private_key = [94, 205, 32, 31, 23, 53, 162, 104, 83, 164, 87, 216, 55, 121, 41, 107, 8, 236, 255, 233, 48, 52, 79, 109, 58, 254, 138, 158, 131, 204, 1, 118]
             "#
         );
 
