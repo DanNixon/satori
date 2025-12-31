@@ -16,32 +16,22 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: cachix/install-nix-action@v31
-      - uses: cachix/cachix-action@v16
-        with:
-          name: devenv
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
+      - uses: DeterminateSystems/nix-installer-action@v21
 
       - name: Format
-        shell: devenv shell bash -- -e {0}
-        run: treefmt --fail-on-change
+        run: nix develop . --command treefmt --fail-on-change
 
       - name: cargo-deny
-        shell: devenv shell bash -- -e {0}
-        run: cargo deny check
+        run: nix develop . --command cargo deny check
 
       - name: Clippy
-        shell: devenv shell bash -- -e {0}
-        run: cargo clippy --all-targets -- -D warnings
+        run: nix develop . --command cargo clippy --all-targets -- -D warnings
 
       - name: Build
-        shell: devenv shell bash -- -e {0}
-        run: cargo build --all-targets
+        run: nix develop . --command cargo build --all-targets
 
       - name: Tests
-        shell: devenv shell bash -- -e {0}
-        run: cargo test
+        run: nix develop . --command cargo test
 
   build-container-images:
     name: Build Container Images
@@ -91,16 +81,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: cachix/install-nix-action@v31
-      - uses: cachix/cachix-action@v16
-        with:
-          name: devenv
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
+      - uses: DeterminateSystems/nix-installer-action@v21
 
       - name: Integration tests
-        shell: devenv shell bash -- -e {0}
-        run: cargo test integration_tests -- --ignored --test-threads=1
+        run: nix develop . --command cargo test integration_tests -- --ignored --test-threads=1
 
   publish-container-images:
     name: Publish Container Images
