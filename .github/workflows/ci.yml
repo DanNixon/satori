@@ -19,19 +19,19 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v21
 
       - name: Format
-        run: nix develop . --command treefmt --fail-on-change
+        run: nix develop --command treefmt --fail-on-change
 
       - name: cargo-deny
-        run: nix develop . --command cargo deny check
+        run: nix develop --command cargo deny check
 
       - name: Clippy
-        run: nix develop . --command cargo clippy --all-targets -- -D warnings
+        run: nix develop --command cargo clippy --all-targets -- -D warnings
 
       - name: Build
-        run: nix develop . --command cargo build --all-targets
+        run: nix develop --command cargo build --all-targets
 
       - name: Tests
-        run: nix develop . --command cargo test
+        run: nix develop --command cargo test
 
   build-container-images:
     name: Build Container Images
@@ -84,7 +84,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v21
 
       - name: Integration tests
-        run: nix develop . --command cargo test integration_tests -- --ignored --test-threads=1
+        run: nix develop --command cargo test integration_tests -- --ignored --test-threads=1
 
   publish-container-images:
     name: Publish Container Images
