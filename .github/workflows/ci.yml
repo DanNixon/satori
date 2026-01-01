@@ -68,7 +68,7 @@ jobs:
             "docker-archive:/tmp/oci-image-${{ matrix.package }}.tar"
 
       - name: Upload image archive
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: oci-image-${{ matrix.package }}
           path: /tmp/oci-image-${{ matrix.package }}.tar
