@@ -11,7 +11,7 @@ m3u8-rs.workspace = true
 nix.workspace = true
 rand.workspace = true
 reqwest.workspace = true
-rust-s3 = { version = "0.37.0", default-features = false, features = ["tokio-rustls-tls"] }
+rust-s3 = { version = "0.37.1", default-features = false, features = ["tokio-rustls-tls"] }
 satori-common.workspace = true
 tokio.workspace = true
 tracing.workspace = true

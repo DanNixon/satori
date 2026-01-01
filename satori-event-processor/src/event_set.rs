@@ -1,6 +1,6 @@
 use crate::{archive::tasks::ArchiveTask, hls_client::HlsClient, segments::Playlist};
 use miette::{Context, IntoDiagnostic};
-use object_store::{ObjectStore, path::Path};
+use object_store::{ObjectStore, ObjectStoreExt, path::Path};
 use satori_common::{CameraSegments, Event, EventReason, Trigger};
 use std::{sync::Arc, time::Duration};
 use tracing::{error, info, warn};

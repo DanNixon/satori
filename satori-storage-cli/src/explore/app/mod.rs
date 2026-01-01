@@ -14,10 +14,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use satori_storage::Provider;
-use std::{
-    io,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 fn border_style(active: bool) -> Style {
     if active {
@@ -44,7 +41,10 @@ enum KeyEventResult {
     ClearTerminal,
 }
 
-pub(super) async fn run<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+pub(super) async fn run<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> std::io::Result<()>
+where
+    std::io::Error: From<<B as Backend>::Error>,
+{
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
 

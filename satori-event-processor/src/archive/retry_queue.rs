@@ -2,7 +2,7 @@ use super::tasks::ArchiveTask;
 use crate::{archive::tasks::ArchiveOperation, o11y::ArchiveTaskResult};
 use chrono::{Duration, Utc};
 use miette::{Context, IntoDiagnostic};
-use object_store::{ObjectStore, path::Path};
+use object_store::{ObjectStore, ObjectStoreExt, path::Path};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
