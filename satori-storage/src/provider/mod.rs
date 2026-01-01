@@ -6,8 +6,8 @@ use crate::{EncryptionKey, StorageConfig, StorageError, encryption::KeyOperation
 use bytes::Bytes;
 use futures::StreamExt;
 use object_store::{
-    ObjectStore, ObjectStoreScheme, aws::AmazonS3Builder, local::LocalFileSystem, memory::InMemory,
-    path::Path,
+    ObjectStore, ObjectStoreExt, ObjectStoreScheme, aws::AmazonS3Builder, local::LocalFileSystem,
+    memory::InMemory, path::Path,
 };
 use satori_common::Event;
 use std::sync::Arc;
