@@ -10,7 +10,7 @@ bytes.workspace = true
 chrono.workspace = true
 ciborium = "0.2.2"
 futures.workspace = true
-generic-array = { version = "0.14.7", features = ["serde"] }
+generic-array = { version = "1.3.5", features = ["serde"] }
 hpke = { version = "0.13.0", features = ["std"] }
 object_store.workspace = true
 rand.workspace = true
