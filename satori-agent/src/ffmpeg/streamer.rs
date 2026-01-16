@@ -138,7 +138,7 @@ impl Streamer {
                                         error!("JPEG frame channel error: {}", e);
                                     }
                                 }
-                                Err(e) => error!("ffmpeg stdout frame errror: {:?}", e),
+                                Err(e) => error!("ffmpeg stdout frame error: {:?}", e),
                             }
                         }
                         // Output stderr to log with prefix

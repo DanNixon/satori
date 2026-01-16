@@ -58,7 +58,7 @@ pub(crate) async fn test_segment_getters(provider: Provider) {
         .unwrap();
 
     provider
-        .put_segment("camera2", "2_1.ts", Bytes::from("camera2_onw"))
+        .put_segment("camera2", "2_1.ts", Bytes::from("camera2_one"))
         .await
         .unwrap();
     provider
