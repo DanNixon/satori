@@ -49,7 +49,7 @@ pub struct EventMetadata {
     /// String used to uniquely identify different distinct trigger scenarios.
     pub id: String,
 
-    /// Time that the trgger was triggered.
+    /// Time that the trigger was triggered.
     pub timestamp: DateTime<FixedOffset>,
 }
 

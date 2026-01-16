@@ -16,6 +16,7 @@
         treefmt
         alejandra
         mdl
+        typos
 
         # Rust dependency linting
         cargo-deny

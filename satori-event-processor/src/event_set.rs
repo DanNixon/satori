@@ -220,9 +220,9 @@ fn update_event(event: &mut Event, other: &Trigger) {
     }
 
     // Add any cameras not already in the event.
-    let currnet_cams: Vec<String> = event.cameras.iter().map(|i| i.name.clone()).collect();
+    let current_cams: Vec<String> = event.cameras.iter().map(|i| i.name.clone()).collect();
     for camera in &other.cameras {
-        if !currnet_cams.contains(camera) {
+        if !current_cams.contains(camera) {
             event.cameras.push(CameraSegments {
                 name: camera.clone(),
                 segment_list: Vec::new(),
