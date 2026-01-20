@@ -20,8 +20,8 @@ regex.workspace = true
 satori-common.workspace = true
 serde.workspace = true
 serde_with.workspace = true
-tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-util = { version = "0.7.16", features = ["codec"] }
+tokio-stream = { version = "0.1.18", features = ["sync"] }
+tokio-util = { version = "0.7.18", features = ["codec"] }
 tokio.workspace = true
 tower-http = { version = "0.6.8", features = ["fs"] }
 tracing-subscriber.workspace = true
