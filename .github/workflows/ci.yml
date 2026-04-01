@@ -103,7 +103,7 @@ jobs:
 
     steps:
       - name: Download image archive
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: oci-image-${{ matrix.package }}
 
