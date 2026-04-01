@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/nix-installer-action@v22
 
       - name: Format
         run: nix develop --command treefmt --fail-on-change
@@ -81,7 +81,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/nix-installer-action@v22
 
       - name: Integration tests
         run: nix develop --command cargo test integration_tests -- --ignored --test-threads=1
