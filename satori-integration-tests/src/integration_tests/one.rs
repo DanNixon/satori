@@ -178,7 +178,7 @@ private_key = [94, 205, 32, 31, 23, 53, 162, 104, 83, 164, 87, 216, 55, 121, 41,
 
     // Check correct event metadata is stored in S3
     let s3_event = s3_bucket
-        .get_object("events/2023-01-01T00:02:15+00:00_test.json")
+        .get_object("events/2023/01/01/00/2023-01-01T00:02:15+00:00_test.json")
         .await
         .unwrap();
     let info = "2023-01-01T00:02:15+00:00_test.json".into();
@@ -203,20 +203,20 @@ private_key = [94, 205, 32, 31, 23, 53, 162, 104, 83, 164, 87, 216, 55, 121, 41,
     assert_eq!(
         s3_segments_camera1,
         vec![
-            "segments/camera1/2023-01-01T00_01_24+0000.ts",
-            "segments/camera1/2023-01-01T00_01_30+0000.ts",
-            "segments/camera1/2023-01-01T00_01_36+0000.ts",
-            "segments/camera1/2023-01-01T00_01_42+0000.ts",
-            "segments/camera1/2023-01-01T00_01_48+0000.ts",
-            "segments/camera1/2023-01-01T00_01_54+0000.ts",
-            "segments/camera1/2023-01-01T00_02_00+0000.ts",
-            "segments/camera1/2023-01-01T00_02_06+0000.ts",
-            "segments/camera1/2023-01-01T00_02_12+0000.ts",
-            "segments/camera1/2023-01-01T00_02_18+0000.ts",
-            "segments/camera1/2023-01-01T00_02_24+0000.ts",
-            "segments/camera1/2023-01-01T00_02_30+0000.ts",
-            "segments/camera1/2023-01-01T00_02_36+0000.ts",
-            "segments/camera1/2023-01-01T00_02_42+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_01_24+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_01_30+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_01_36+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_01_42+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_01_48+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_01_54+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_00+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_06+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_12+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_18+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_24+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_30+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_36+0000.ts",
+            "segments/camera1/2023/01/01/00/2023-01-01T00_02_42+0000.ts",
         ]
     );
 

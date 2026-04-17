@@ -4,6 +4,7 @@ mod test;
 use super::StorageResult;
 use crate::{EncryptionKey, StorageConfig, StorageError, encryption::KeyOperations};
 use bytes::Bytes;
+use chrono::{Datelike, Timelike};
 use futures::StreamExt;
 use object_store::{
     ObjectStore, ObjectStoreExt, ObjectStoreScheme, aws::AmazonS3Builder, local::LocalFileSystem,
@@ -34,16 +35,56 @@ impl Provider {
         Ok(Self { store, encryption })
     }
 
+    fn extract_timestamp_from_event_filename(
+        filename: &str,
+    ) -> Option<chrono::DateTime<chrono::FixedOffset>> {
+        // Extract timestamp from event filename format: "2023-01-01T00:01:24+00:00_{id}.json"
+        // Find the underscore separator and extract everything before it
+        let underscore_pos = filename.find('_')?;
+        let timestamp_str = &filename[..underscore_pos];
+        chrono::DateTime::parse_from_rfc3339(timestamp_str).ok()
+    }
+
+    fn extract_timestamp_from_segment_filename(
+        filename: &str,
+    ) -> Option<chrono::DateTime<chrono::FixedOffset>> {
+        // Extract timestamp from segment filename format: "2023-01-01T00_01_24+0000.ts"
+        chrono::DateTime::parse_from_str(filename, satori_common::SEGMENT_FILENAME_FORMAT).ok()
+    }
+
+    fn create_hierarchical_path(timestamp: chrono::DateTime<chrono::FixedOffset>) -> String {
+        format!(
+            "{:04}/{:02}/{:02}/{:02}",
+            timestamp.year(),
+            timestamp.month(),
+            timestamp.day(),
+            timestamp.hour()
+        )
+    }
+
     fn get_event_path(&self, event: &Event) -> Path {
-        Path::from(format!("events/{}", event.metadata.filename()))
+        let filename = event.metadata.filename();
+        let hierarchy = Self::extract_timestamp_from_event_filename(&filename)
+            .map(Self::create_hierarchical_path)
+            .unwrap_or_default();
+        Path::from(format!("events/{}/{}", hierarchy, filename))
     }
 
     fn get_event_path_from_filename(&self, filename: &str) -> Path {
-        Path::from(format!("events/{}", filename))
+        let hierarchy = Self::extract_timestamp_from_event_filename(filename)
+            .map(Self::create_hierarchical_path)
+            .unwrap_or_default();
+        Path::from(format!("events/{}/{}", hierarchy, filename))
     }
 
     fn get_segment_path(&self, camera_name: &str, filename: &str) -> Path {
-        Path::from(format!("segments/{}/{}", camera_name, filename))
+        let hierarchy = Self::extract_timestamp_from_segment_filename(filename)
+            .map(Self::create_hierarchical_path)
+            .unwrap_or_default();
+        Path::from(format!(
+            "segments/{}/{}/{}",
+            camera_name, hierarchy, filename
+        ))
     }
 }
 
@@ -107,6 +148,7 @@ impl Provider {
 
         while let Some(item) = list_stream.next().await {
             let meta = item?;
+            // Extract just the filename from the full path (strip the year/month/day/hour hierarchy)
             if let Some(filename) = meta.location.filename()
                 && filename.ends_with(".json")
             {
@@ -186,6 +228,7 @@ impl Provider {
 
         while let Some(item) = list_stream.next().await {
             let meta = item?;
+            // Extract just the filename from the full path (strip the year/month/day/hour hierarchy)
             if let Some(filename) = meta.location.filename()
                 && filename.ends_with(".ts")
             {
