@@ -40,7 +40,7 @@ pub async fn prune_events_older_than(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{EncryptionKey, encryption::KeyOperations};
+    use crate::{EncryptionKey, KeyOperations};
     use chrono::{FixedOffset, NaiveDate, Utc};
     use satori_common::{Event, EventMetadata};
     use url::Url;

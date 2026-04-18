@@ -12,7 +12,6 @@ satori-storage.workspace = true
 satori-testing-utils.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
-toml.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 

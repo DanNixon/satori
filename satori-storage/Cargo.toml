@@ -5,13 +5,13 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+aes-gcm = "0.11.0-rc.3"
 async-channel = "2.5.0"
 bytes.workspace = true
 chrono.workspace = true
 ciborium = "0.2.2"
 futures.workspace = true
-generic-array = { version = "0.14.7", features = ["serde"] }
-hpke = { version = "0.13.0", features = ["std"] }
+hybrid-array = { version = "0.4.6", features = ["serde"] }
 object_store.workspace = true
 rand.workspace = true
 satori-common.workspace = true
@@ -22,7 +22,6 @@ tokio.workspace = true
 toml.workspace = true
 tracing.workspace = true
 url.workspace = true
-zeroize = "1.8.2"
 
 [dev-dependencies]
 ctor.workspace = true

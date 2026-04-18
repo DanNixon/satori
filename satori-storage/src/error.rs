@@ -3,12 +3,6 @@ pub enum StorageError {
     #[error("serde_json error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
 
-    #[error("ciborium serialisation error: {0}")]
-    CiboriumSerialisationError(#[from] ciborium::ser::Error<std::io::Error>),
-
-    #[error("ciborium deserialisation error: {0}")]
-    CiboriumDeserialisationError(#[from] ciborium::de::Error<std::io::Error>),
-
     #[error("toml serialization error: {0}")]
     SerdeTomlSerError(#[from] toml::ser::Error),
 
@@ -38,17 +32,8 @@ pub enum StorageError {
     #[error("A requested item was not found")]
     NotFound,
 
-    #[error("A key that is required to perform an en/decrption operation is not provided")]
-    KeyMissing,
-
-    #[error("Encryption key length incorrect, expected {0}, got {1}")]
-    KeyLengthError(usize, usize),
-
-    #[error("PEM error")]
-    PemError,
-
-    #[error("HPKE error: {0}")]
-    HpkeError(#[from] hpke::HpkeError),
+    #[error("Encryption/decryption failed")]
+    Encryption,
 }
 
 pub type StorageResult<T> = Result<T, StorageError>;

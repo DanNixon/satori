@@ -62,7 +62,7 @@ async fn get_file_from_segments(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{EncryptionKey, encryption::KeyOperations};
+    use crate::{EncryptionKey, KeyOperations};
     use bytes::Bytes;
     use chrono::Utc;
     use satori_common::{Event, EventMetadata};
