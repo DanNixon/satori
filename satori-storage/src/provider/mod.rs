@@ -17,21 +17,24 @@ use url::Url;
 #[derive(Clone)]
 pub struct Provider {
     store: Arc<dyn ObjectStore>,
-    encryption: EncryptionKey,
+    encryption_key: EncryptionKey,
 }
 
 impl TryFrom<StorageConfig> for Provider {
     type Error = StorageError;
 
     fn try_from(value: StorageConfig) -> Result<Self, Self::Error> {
-        Self::new(value.url, value.encryption)
+        Self::new(value.url, value.encryption_key)
     }
 }
 
 impl Provider {
     pub fn new(url: Url, encryption: EncryptionKey) -> StorageResult<Self> {
         let store = backend_from_url(&url)?;
-        Ok(Self { store, encryption })
+        Ok(Self {
+            store,
+            encryption_key: encryption,
+        })
     }
 
     fn get_event_path(&self, event: &Event) -> Path {
@@ -91,8 +94,7 @@ impl Provider {
 
         let data = serde_json::to_vec_pretty(&event)?;
 
-        let info = crate::encryption::info::event_info_from_filename(&event.metadata.filename());
-        let data = self.encryption.encrypt(info, data.into())?;
+        let data = self.encryption_key.encrypt(data.into())?;
 
         self.store.put(&path, data.into()).await?;
 
@@ -125,8 +127,7 @@ impl Provider {
         let get_result = self.store.get(&path).await?;
         let data = get_result.bytes().await?;
 
-        let info = crate::encryption::info::event_info_from_filename(filename);
-        let data = self.encryption.decrypt(info, data)?;
+        let data = self.encryption_key.decrypt(data)?;
 
         Ok(serde_json::from_slice(&data)?)
     }
@@ -169,9 +170,7 @@ impl Provider {
     ) -> StorageResult<()> {
         let path = self.get_segment_path(camera_name, filename);
 
-        let info =
-            crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
-        let data = self.encryption.encrypt(info, data)?;
+        let data = self.encryption_key.encrypt(data)?;
 
         self.store.put(&path, data.into()).await?;
 
@@ -204,9 +203,7 @@ impl Provider {
         let get_result = self.store.get(&path).await?;
         let data = get_result.bytes().await?;
 
-        let info =
-            crate::encryption::info::segment_info_from_camera_and_filename(camera_name, filename);
-        let data = self.encryption.decrypt(info, data)?;
+        let data = self.encryption_key.decrypt(data)?;
 
         Ok(data)
     }
