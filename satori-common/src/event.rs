@@ -62,6 +62,7 @@ impl EventMetadata {
         )
     }
 
+    #[allow(clippy::result_unit_err)]
     #[tracing::instrument]
     pub fn from_filename(path: &str) -> Result<Self, ()> {
         let re =
