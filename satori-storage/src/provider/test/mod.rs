@@ -96,14 +96,14 @@ mod s3 {
         static ref MINIO: Arc<Mutex<Option<MinioDriver>>> = Arc::new(Mutex::new(None));
     }
 
-    #[ctor::ctor]
+    #[ctor::ctor(unsafe)]
     fn init_minio() {
         let minio = MinioDriver::default();
         minio.set_credential_env_vars();
         MINIO.try_lock().unwrap().replace(minio);
     }
 
-    #[ctor::dtor]
+    #[dtor::dtor(unsafe)]
     fn cleanup_minio() {
         let minio = MINIO.try_lock().unwrap().take().unwrap();
         drop(minio);
