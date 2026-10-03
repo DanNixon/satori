@@ -1,7 +1,13 @@
 use tokio::time::{Duration, Instant};
 use tracing::{error, info};
 
-pub async fn wait_for_url(url: &str, timeout: Duration) -> Result<(), ()> {
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+pub enum WaitForUrlError {
+    #[error("timed out waiting for URL")]
+    Timeout,
+}
+
+pub async fn wait_for_url(url: &str, timeout: Duration) -> Result<(), WaitForUrlError> {
     let client = reqwest::Client::new();
     let start = Instant::now();
 
@@ -10,7 +16,7 @@ pub async fn wait_for_url(url: &str, timeout: Duration) -> Result<(), ()> {
 
         if spent > timeout {
             error!("Timeout waiting for URL: {}", url);
-            return Err(());
+            return Err(WaitForUrlError::Timeout);
         }
 
         if client.get(url).send().await.is_ok() {
