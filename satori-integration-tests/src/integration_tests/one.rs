@@ -1,5 +1,5 @@
 use satori_storage::{EncryptionKey, KeyOperations};
-use satori_testing_utils::{DummyHlsServer, DummyStreamParams, MinioDriver};
+use satori_testing_utils::{DummyHlsServer, DummyStreamParams, GarageDriver};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -10,10 +10,10 @@ use tempfile::NamedTempFile;
 #[tokio::test]
 #[ignore]
 async fn one() {
-    let minio = MinioDriver::default();
-    minio.wait_for_ready().await;
-    minio.set_credential_env_vars();
-    let s3_bucket = minio.create_bucket("satori").await;
+    let garage = GarageDriver::default();
+    garage.wait_for_ready().await;
+    garage.set_credential_env_vars();
+    let s3_bucket = garage.create_bucket("satori").await;
 
     let mut stream_1 = DummyHlsServer::new(
         "stream 1".to_string(),
@@ -65,12 +65,17 @@ async fn one() {
             "127.0.0.1:9091".to_string(),
         ],
         vec![
-            ("AWS_ENDPOINT".to_string(), minio.endpoint()),
+            ("AWS_ENDPOINT".to_string(), garage.endpoint()),
             ("AWS_ALLOW_HTTP".to_string(), "true".to_string()),
-            ("AWS_ACCESS_KEY_ID".to_string(), "minioadmin".to_string()),
+            ("AWS_ACCESS_KEY_ID".to_string(), garage.key_id().to_string()),
             (
                 "AWS_SECRET_ACCESS_KEY".to_string(),
-                "minioadmin".to_string(),
+                garage.secret_key().to_string(),
+            ),
+            ("AWS_REGION".to_string(), garage.region().to_string()),
+            (
+                "AWS_DEFAULT_REGION".to_string(),
+                garage.region().to_string(),
             ),
         ],
     );

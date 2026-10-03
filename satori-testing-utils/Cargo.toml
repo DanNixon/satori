@@ -13,6 +13,7 @@ rand.workspace = true
 reqwest.workspace = true
 rust-s3 = { version = "0.37.1", default-features = false, features = ["tokio-rustls-tls"] }
 satori-common.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

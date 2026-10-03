@@ -1,13 +1,13 @@
 mod cargo;
 mod dummy_hls_server;
-mod minio;
+mod garage;
 mod network;
 mod podman;
 
 pub use self::{
     cargo::CargoBinaryRunner,
     dummy_hls_server::{DummyHlsServer, DummyStreamParams},
-    minio::MinioDriver,
+    garage::GarageDriver,
     network::{WaitForUrlError, wait_for_url},
     podman::PodmanDriver,
 };
