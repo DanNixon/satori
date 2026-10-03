@@ -3540,6 +3540,7 @@ dependencies = [
  "reqwest 0.12.28",
  "rust-s3",
  "satori-common",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tracing",

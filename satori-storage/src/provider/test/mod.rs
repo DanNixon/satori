@@ -88,25 +88,25 @@ mod local {
 
 mod s3 {
     use rand::RngExt;
-    use satori_testing_utils::MinioDriver;
+    use satori_testing_utils::GarageDriver;
     use std::sync::Arc;
     use tokio::sync::Mutex;
 
     lazy_static::lazy_static! {
-        static ref MINIO: Arc<Mutex<Option<MinioDriver>>> = Arc::new(Mutex::new(None));
+        static ref GARAGE: Arc<Mutex<Option<GarageDriver>>> = Arc::new(Mutex::new(None));
     }
 
     #[ctor::ctor(unsafe)]
-    fn init_minio() {
-        let minio = MinioDriver::default();
-        minio.set_credential_env_vars();
-        MINIO.try_lock().unwrap().replace(minio);
+    fn init_garage() {
+        let garage = GarageDriver::default();
+        garage.set_credential_env_vars();
+        GARAGE.try_lock().unwrap().replace(garage);
     }
 
     #[dtor::dtor(unsafe)]
-    fn cleanup_minio() {
-        let minio = MINIO.try_lock().unwrap().take().unwrap();
-        drop(minio);
+    fn cleanup_garage() {
+        let garage = GARAGE.try_lock().unwrap().take().unwrap();
+        drop(garage);
     }
 
     fn generate_random_bucket_name() -> String {
@@ -121,26 +121,28 @@ mod s3 {
     }
 
     mod encryption_hpke {
-        use super::MINIO;
+        use super::GARAGE;
 
         macro_rules! test {
             ( $test:ident ) => {
                 #[tokio::test]
                 async fn $test() {
-                    let minio = MINIO.lock().await;
-                    let minio = minio.as_ref().unwrap();
+                    let garage = GARAGE.lock().await;
+                    let garage = garage.as_ref().unwrap();
 
-                    minio.wait_for_ready().await;
+                    garage.wait_for_ready().await;
 
                     let bucket = super::generate_random_bucket_name();
-                    minio.create_bucket(&bucket).await;
+                    garage.create_bucket(&bucket).await;
 
                     let storage_url = format!("s3://{}/", bucket);
 
                     let provider = temp_env::with_vars(
                         [
-                            ("AWS_ENDPOINT", Some(minio.endpoint())),
+                            ("AWS_ENDPOINT", Some(garage.endpoint())),
                             ("AWS_ALLOW_HTTP", Some("true".to_string())),
+                            ("AWS_REGION", Some(garage.region().to_string())),
+                            ("AWS_DEFAULT_REGION", Some(garage.region().to_string())),
                         ],
                         || {
                             crate::Provider::new(
