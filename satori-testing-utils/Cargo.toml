@@ -18,4 +18,4 @@ tracing.workspace = true
 
 [lints.rust]
 # https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
-unused-crate-dependencies = "deny"
+unused_crate_dependencies = "deny"
