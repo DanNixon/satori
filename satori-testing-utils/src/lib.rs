@@ -8,6 +8,6 @@ pub use self::{
     cargo::CargoBinaryRunner,
     dummy_hls_server::{DummyHlsServer, DummyStreamParams},
     minio::MinioDriver,
-    network::wait_for_url,
+    network::{WaitForUrlError, wait_for_url},
     podman::PodmanDriver,
 };
